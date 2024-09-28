@@ -6,6 +6,7 @@ use crate::config::Config;
 
 mod commands;
 mod config;
+mod extensions;
 
 fn generate_context() -> tauri::Context<Wry> {
     tauri::generate_context!()
