@@ -11,6 +11,7 @@ mod extensions;
 mod jm_client;
 mod responses;
 mod types;
+mod utils;
 
 fn generate_context() -> tauri::Context<Wry> {
     tauri::generate_context!()
