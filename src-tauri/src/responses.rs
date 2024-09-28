@@ -44,3 +44,43 @@ pub struct UserProfileRespData {
     #[serde(rename = "invited_cnt")]
     pub invited_cnt: String,
 }
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchRespData {
+    #[serde(rename = "search_query")]
+    pub search_query: String,
+    pub total: String,
+    pub content: Vec<AlbumInSearchRespData>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AlbumInSearchRespData {
+    pub id: String,
+    pub author: String,
+    pub name: String,
+    pub image: String,
+    pub category: CategoryRespData,
+    #[serde(rename = "category_sub")]
+    pub category_sub: CategorySubRespData,
+    pub liked: bool,
+    #[serde(rename = "is_favorite")]
+    pub is_favorite: bool,
+    #[serde(rename = "update_at")]
+    pub update_at: i64,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryRespData {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CategorySubRespData {
+    pub id: Option<String>,
+    pub title: Option<String>,
+}

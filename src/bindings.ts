@@ -18,6 +18,14 @@ async login(username: string, password: string) : Promise<Result<UserProfileResp
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchRespData, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search", { keyword, page, sort }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -31,8 +39,13 @@ async login(username: string, password: string) : Promise<Result<UserProfileResp
 
 /** user-defined types **/
 
+export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
+export type CategoryRespData = { id: string; title: string }
+export type CategorySubRespData = { id: string | null; title: string | null }
 export type CommandError = string
 export type Config = { avs: string }
+export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
+export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/
