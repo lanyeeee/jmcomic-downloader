@@ -129,3 +129,21 @@ pub struct RelatedListRespData {
     pub name: String,
     pub image: String,
 }
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RedirectRespData {
+    #[serde(rename = "search_query")]
+    pub search_query: String,
+    pub total: i64,
+    #[serde(rename = "redirect_aid")]
+    pub redirect_aid: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum SearchResp {
+    SearchRespData(SearchRespData),
+    // 用Box包装Album，因为Album比SearchResult大得多
+    // 如果不用Box包装，即使SearchResp的类型是SearchResult，也会占用与Album一样大的内存
+    AlbumRespData(Box<AlbumRespData>),
+}

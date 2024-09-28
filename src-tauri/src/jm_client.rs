@@ -15,7 +15,9 @@ use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
-use crate::responses::{AlbumRespData, JmResp, SearchRespData, UserProfileRespData};
+use crate::responses::{
+    AlbumRespData, JmResp, RedirectRespData, SearchResp, SearchRespData, UserProfileRespData,
+};
 use crate::types::SearchSort;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
@@ -169,7 +171,7 @@ impl JmClient {
         keyword: &str,
         page: i64,
         sort: SearchSort,
-    ) -> anyhow::Result<SearchRespData> {
+    ) -> anyhow::Result<SearchResp> {
         let query = json!({
             "main_tag": 0,
             "search_query": keyword,
@@ -200,11 +202,19 @@ impl JmClient {
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为 SearchRespData
-        let search_resp_data = serde_json::from_str::<SearchRespData>(&data).context(format!(
-            "将解密后的data字段解析为SearchRespData失败: {data}"
-        ))?;
-
-        Ok(search_resp_data)
+        if let Ok(search_resp_data) = serde_json::from_str::<SearchRespData>(&data) {
+            return Ok(SearchResp::SearchRespData(search_resp_data));
+        }
+        // 尝试将解密后的数据解析为 RedirectRespData
+        if let Ok(redirect_resp_data) = serde_json::from_str::<RedirectRespData>(&data) {
+            let album = self
+                .get_album(redirect_resp_data.redirect_aid.parse()?)
+                .await?;
+            return Ok(SearchResp::AlbumRespData(Box::new(album)));
+        }
+        Err(anyhow!(
+            "将解密后的数据解析为SearchRespData或RedirectRespData失败: {data}"
+        ))
     }
 
     pub async fn get_album(&self, aid: i64) -> anyhow::Result<AlbumRespData> {

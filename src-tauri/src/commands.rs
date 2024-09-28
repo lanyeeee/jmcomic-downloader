@@ -5,7 +5,7 @@ use tauri::State;
 use crate::config::Config;
 use crate::errors::CommandResult;
 use crate::jm_client::JmClient;
-use crate::responses::{AlbumRespData, SearchRespData, UserProfileRespData};
+use crate::responses::{AlbumRespData, SearchResp, UserProfileRespData};
 use crate::types::SearchSort;
 
 #[tauri::command]
@@ -39,7 +39,7 @@ pub async fn search(
     keyword: String,
     page: i64,
     sort: SearchSort,
-) -> CommandResult<SearchRespData> {
+) -> CommandResult<SearchResp> {
     let search_result = jm_client.search(&keyword, page, sort).await?;
     Ok(search_result)
 }

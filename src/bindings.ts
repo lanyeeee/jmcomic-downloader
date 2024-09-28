@@ -19,7 +19,7 @@ async login(username: string, password: string) : Promise<Result<UserProfileResp
     else return { status: "error", error: e  as any };
 }
 },
-async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchRespData, CommandError>> {
+async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchResp, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("search", { keyword, page, sort }) };
 } catch (e) {
@@ -54,6 +54,7 @@ export type CategorySubRespData = { id: string | null; title: string | null }
 export type CommandError = string
 export type Config = { avs: string }
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
+export type SearchResp = { SearchRespData: SearchRespData } | { AlbumRespData: AlbumRespData }
 export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
