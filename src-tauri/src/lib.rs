@@ -20,7 +20,7 @@ fn generate_context() -> tauri::Context<Wry> {
 pub fn run() {
     let builder = tauri_specta::Builder::<Wry>::new()
         .commands(tauri_specta::collect_commands![
-            greet, get_config, login, search
+            greet, get_config, login, search, get_album,
         ])
         .events(tauri_specta::collect_events![]);
 
