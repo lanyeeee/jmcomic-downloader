@@ -8,7 +8,8 @@ use aes::cipher::generic_array::GenericArray;
 use anyhow::{anyhow, Context};
 use base64::Engine;
 use base64::engine::general_purpose;
-use reqwest::{Client, ClientBuilder};
+use reqwest_middleware::ClientWithMiddleware;
+use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 
@@ -46,12 +47,19 @@ impl JmClient {
         Self { app }
     }
 
-    pub fn client() -> Client {
-        // TODO: 添加重试机制
-        ClientBuilder::new()
+    pub fn client() -> ClientWithMiddleware {
+        // TODO: 可以将retry_policy缓存起来，避免每次请求都创建
+        let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
+            .base(1) // 指数为1，保证重试间隔为1秒不变
+            .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
+            .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
+        let client = reqwest::ClientBuilder::new()
             .timeout(Duration::from_secs(2)) // 每个请求超过2秒就超时
             .build()
-            .unwrap()
+            .unwrap();
+        reqwest_middleware::ClientBuilder::new(client)
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build()
     }
 
     async fn jm_request(
