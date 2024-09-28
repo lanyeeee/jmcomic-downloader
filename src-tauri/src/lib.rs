@@ -1,23 +1,11 @@
 use anyhow::Context;
 use tauri::{Manager, Wry};
 
+use crate::commands::*;
 use crate::config::Config;
 
+mod commands;
 mod config;
-
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-#[specta::specta]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-#[specta::specta]
-#[allow(clippy::needless_pass_by_value)]
-fn get_config(config: tauri::State<std::sync::RwLock<Config>>) -> Config {
-    config.read().unwrap().clone()
-}
 
 fn generate_context() -> tauri::Context<Wry> {
     tauri::generate_context!()
