@@ -75,3 +75,10 @@ pub async fn get_chapter(
     let chapter = jm_client.get_chapter(id).await?;
     Ok(chapter)
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_scramble_id(jm_client: State<'_, JmClient>, id: i64) -> CommandResult<i64> {
+    let scramble_id = jm_client.get_scramble_id(id).await?;
+    Ok(scramble_id)
+}
