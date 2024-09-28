@@ -21,7 +21,7 @@ async function test() {
     <input id="greet-input" v-model="name" placeholder="Enter a name..."/>
     <button type="submit">Greet</button>
   </form>
-  <button @click="test">测试</button>
+  <n-button @click="test">测试</n-button>
 
   <p>{{ greetMsg }}</p>
 </template>
