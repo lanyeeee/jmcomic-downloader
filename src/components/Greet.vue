@@ -23,5 +23,5 @@ async function test() {
   </form>
   <n-button @click="test">测试</n-button>
 
-  <p>{{ greetMsg }}</p>
+  <p class="text-red">{{ greetMsg }}</p>
 </template>
