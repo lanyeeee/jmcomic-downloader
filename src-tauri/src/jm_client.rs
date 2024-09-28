@@ -16,7 +16,8 @@ use tauri::{AppHandle, Manager};
 use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{
-    AlbumRespData, JmResp, RedirectRespData, SearchResp, SearchRespData, UserProfileRespData,
+    AlbumRespData, ChapterRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
+    UserProfileRespData,
 };
 use crate::types::SearchSort;
 
@@ -33,6 +34,7 @@ enum ApiPath {
     Login,
     Search,
     Album,
+    Chapter,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -40,6 +42,7 @@ impl ApiPath {
             ApiPath::Login => "/login",
             ApiPath::Search => "/search",
             ApiPath::Album => "/album",
+            ApiPath::Chapter => "/chapter",
         }
     }
 }
@@ -246,6 +249,38 @@ impl JmClient {
         let album = serde_json::from_str::<AlbumRespData>(&data)
             .context(format!("将解密后的data字段解析为AlbumRespData失败: {data}"))?;
         Ok(album)
+    }
+
+    pub async fn get_chapter(&self, id: i64) -> anyhow::Result<ChapterRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({"id": id,});
+        // 发送获取章节请求
+        let http_resp = self.jm_get(ApiPath::Chapter, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!("获取章节失败，预料之外的状态码({status}): {body}"));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取章节失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp
+            .data
+            .as_str()
+            .context(format!("获取章节失败，data字段不是字符串: {jm_resp:?}"))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为ChapterRespData
+        let chapter = serde_json::from_str::<ChapterRespData>(&data).context(format!(
+            "将解密后的data字段解析为ChapterRespData失败: {data}"
+        ))?;
+        Ok(chapter)
     }
 }
 

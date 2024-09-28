@@ -147,3 +147,19 @@ pub enum SearchResp {
     // 如果不用Box包装，即使SearchResp的类型是SearchResult，也会占用与Album一样大的内存
     AlbumRespData(Box<AlbumRespData>),
 }
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChapterRespData {
+    pub id: i64,
+    pub series: Vec<SeriesRespData>,
+    pub tags: String,
+    pub name: String,
+    pub images: Vec<String>,
+    pub addtime: String,
+    #[serde(rename = "series_id")]
+    pub series_id: String,
+    #[serde(rename = "is_favorite")]
+    pub is_favorite: bool,
+    pub liked: bool,
+}

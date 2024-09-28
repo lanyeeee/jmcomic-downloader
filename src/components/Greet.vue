@@ -11,7 +11,7 @@ async function greet() {
 }
 
 async function test() {
-  const result = await commands.search("456688", 1, "Latest");
+  const result = await commands.getChapter(456688);
   if (result.status === "error") {
     console.error(result.error);
     return;
