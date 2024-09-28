@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import {onMounted, ref, watch} from "vue";
 import {commands, Config, UserProfileRespData} from "./bindings.ts";
-import {useMessage} from "naive-ui";
+import {useMessage, useNotification} from "naive-ui";
 import LoginDialog from "./components/LoginDialog.vue";
 
 const message = useMessage();
+const notification = useNotification();
 
 const config = ref<Config>();
 const userProfile = ref<UserProfileRespData>();
@@ -17,6 +18,17 @@ watch(config, async () => {
   await commands.saveConfig(config.value);
   message.success("保存配置成功");
 }, {deep: true});
+
+watch(() => config.value?.avs, async () => {
+  const result = await commands.getUserProfile();
+  if (result.status === "error") {
+    notification.error({title: "获取用户信息失败", description: result.error});
+    userProfile.value = undefined;
+    return;
+  }
+  userProfile.value = result.data;
+  message.success("获取用户信息成功");
+});
 
 onMounted(async () => {
   config.value = await commands.getConfig();
@@ -43,6 +55,10 @@ async function test() {
       </n-input>
       <n-button type="primary" @click="loginDialogShowing=true">账号登录</n-button>
       <n-button @click="test">测试用</n-button>
+      <div v-if="userProfile!==undefined" class="flex flex-col">
+        <!--    TODO: 显示头像    -->
+        <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
+      </div>
     </div>
 
     <n-modal v-model:show="loginDialogShowing">
