@@ -11,7 +11,7 @@ async function greet() {
 }
 
 async function test() {
-  const result = await commands.getChapter(456688);
+  const result = await commands.getScrambleId(456688);
   if (result.status === "error") {
     console.error(result.error);
     return;

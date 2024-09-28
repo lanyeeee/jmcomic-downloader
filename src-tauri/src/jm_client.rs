@@ -35,6 +35,7 @@ enum ApiPath {
     Search,
     Album,
     Chapter,
+    ScrambleId,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -43,6 +44,7 @@ impl ApiPath {
             ApiPath::Search => "/search",
             ApiPath::Album => "/album",
             ApiPath::Chapter => "/chapter",
+            ApiPath::ScrambleId => "/chapter_view_template",
         }
     }
 }
@@ -81,7 +83,11 @@ impl JmClient {
         ts: u64,
     ) -> anyhow::Result<reqwest::Response> {
         let tokenparam = format!("{ts},{APP_VERSION}");
-        let token = md5_hex(&format!("{ts}{APP_TOKEN_SECRET}")); //TODO: 后面对于/chapter_view_template这个接口的请求，token的计算方式不一样
+        let token = if path != ApiPath::ScrambleId {
+            md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
+        } else {
+            md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
+        };
         let cookie = if path == ApiPath::Login && form.is_some() {
             String::new()
         } else {
@@ -281,6 +287,37 @@ impl JmClient {
             "将解密后的data字段解析为ChapterRespData失败: {data}"
         ))?;
         Ok(chapter)
+    }
+
+    pub async fn get_scramble_id(&self, id: i64) -> anyhow::Result<i64> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({
+            "id": id,
+            "v": ts,
+            "mode": "vertical",
+            "page": 0,
+            "app_img_shunt": 1,
+            "express": "off",
+        });
+        // 发送获取scramble_id请求
+        let http_resp = self.jm_get(ApiPath::ScrambleId, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取scramble_id失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        std::fs::write("scramble_id.html", &body).unwrap();
+        // 从body中提取scramble_id，如果提取失败则使用默认值
+        let scramble_id = body
+            .split("var scramble_id = ")
+            .nth(1)
+            .and_then(|s| s.split(';').next())
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(220980);
+        Ok(scramble_id)
     }
 }
 

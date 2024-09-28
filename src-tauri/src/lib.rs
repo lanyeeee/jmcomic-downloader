@@ -27,6 +27,7 @@ pub fn run() {
             search,
             get_album,
             get_chapter,
+            get_scramble_id,
         ])
         .events(tauri_specta::collect_events![]);
 

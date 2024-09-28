@@ -50,6 +50,14 @@ async getChapter(id: number) : Promise<Result<ChapterRespData, CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getScrambleId(id: number) : Promise<Result<number, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_scramble_id", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
