@@ -6,8 +6,10 @@ use crate::config::Config;
 
 mod commands;
 mod config;
-mod extensions;
 mod errors;
+mod extensions;
+mod jm_client;
+mod responses;
 
 fn generate_context() -> tauri::Context<Wry> {
     tauri::generate_context!()
@@ -16,7 +18,7 @@ fn generate_context() -> tauri::Context<Wry> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri_specta::Builder::<Wry>::new()
-        .commands(tauri_specta::collect_commands![greet, get_config])
+        .commands(tauri_specta::collect_commands![greet, get_config, login])
         .events(tauri_specta::collect_events![]);
 
     #[cfg(debug_assertions)]
@@ -41,9 +43,14 @@ pub fn run() {
 
             std::fs::create_dir_all(&app_data_dir)
                 .context(format!("failed to create app data dir: {app_data_dir:?}"))?;
+            println!("app data dir: {app_data_dir:?}");
 
             let config = std::sync::RwLock::new(Config::new(app.handle())?);
             app.manage(config);
+
+            let jm_client = jm_client::JmClient::new(app.handle().clone());
+            app.manage(jm_client);
+
             Ok(())
         })
         .run(generate_context())
