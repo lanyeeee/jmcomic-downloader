@@ -15,7 +15,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
-use crate::responses::{JmResp, SearchRespData, UserProfileRespData};
+use crate::responses::{AlbumRespData, JmResp, SearchRespData, UserProfileRespData};
 use crate::types::SearchSort;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
@@ -30,12 +30,14 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 enum ApiPath {
     Login,
     Search,
+    Album,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
         match self {
             ApiPath::Login => "/login",
             ApiPath::Search => "/search",
+            ApiPath::Album => "/album",
         }
     }
 }
@@ -154,9 +156,10 @@ impl JmClient {
         ))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为UserProfile
-        let user_profile = serde_json::from_str::<UserProfileRespData>(&data)
-            .context(format!("将解密后的data字段解析为UserProfile失败: {data}"))?;
+        // 尝试将解密后的data字段解析为UserProfileRespData
+        let user_profile = serde_json::from_str::<UserProfileRespData>(&data).context(format!(
+            "将解密后的data字段解析为UserProfileRespData失败: {data}"
+        ))?;
 
         Ok(user_profile)
     }
@@ -202,6 +205,37 @@ impl JmClient {
         ))?;
 
         Ok(search_resp_data)
+    }
+
+    pub async fn get_album(&self, aid: i64) -> anyhow::Result<AlbumRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({"id": aid,});
+        // 发送获取漫画请求
+        let http_resp = self.jm_get(ApiPath::Album, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!("获取漫画失败，预料之外的状态码({status}): {body}"));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取漫画失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp
+            .data
+            .as_str()
+            .context(format!("获取漫画失败，data字段不是字符串: {jm_resp:?}"))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为AlbumRespData
+        let album = serde_json::from_str::<AlbumRespData>(&data)
+            .context(format!("将解密后的data字段解析为AlbumRespData失败: {data}"))?;
+        Ok(album)
     }
 }
 

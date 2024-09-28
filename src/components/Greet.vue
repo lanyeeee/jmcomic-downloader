@@ -11,7 +11,7 @@ async function greet() {
 }
 
 async function test() {
-  const result = await commands.search("C104", 1, "Latest");
+  const result = await commands.getAlbum(456688);
   if (result.status === "error") {
     console.error(result.error);
     return;
