@@ -32,6 +32,7 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
     Login,
+    UserProfile,
     Search,
     Album,
     Chapter,
@@ -41,6 +42,10 @@ impl ApiPath {
     fn as_str(&self) -> &'static str {
         match self {
             ApiPath::Login => "/login",
+            // 没错，就是这么奇葩，获取用户信息也是用的/login
+            // 带AVS去请求/login，就能获取用户信息，而不需要用户名密码
+            // 如果AVS无效或过期，就走正常的登录流程s
+            ApiPath::UserProfile => "/login",
             ApiPath::Search => "/search",
             ApiPath::Album => "/album",
             ApiPath::Chapter => "/chapter",
@@ -165,6 +170,42 @@ impl JmClient {
         let data = jm_resp.data.as_str().context(format!(
             "使用账号密码登录失败，data字段不是字符串: {jm_resp:?}"
         ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为UserProfileRespData
+        let user_profile = serde_json::from_str::<UserProfileRespData>(&data).context(format!(
+            "将解密后的data字段解析为UserProfileRespData失败: {data}"
+        ))?;
+
+        Ok(user_profile)
+    }
+
+    pub async fn get_user_profile(&self) -> anyhow::Result<UserProfileRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        // 发送获取用户信息请求
+        let http_resp = self.jm_post(ApiPath::Login, None, None, ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(anyhow!("获取用户信息失败，AVS无效或已过期"));
+        } else if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取用户信息失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取用户信息失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp
+            .data
+            .as_str()
+            .context(format!("获取用户信息失败，data字段不是字符串: {jm_resp:?}"))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为UserProfileRespData

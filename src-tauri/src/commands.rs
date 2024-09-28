@@ -49,6 +49,15 @@ pub async fn login(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn get_user_profile(
+    jm_client: State<'_, JmClient>,
+) -> CommandResult<UserProfileRespData> {
+    let user_profile = jm_client.get_user_profile().await?;
+    Ok(user_profile)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn search(
     jm_client: State<'_, JmClient>,
     keyword: String,

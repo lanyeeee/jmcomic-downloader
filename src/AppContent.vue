@@ -23,7 +23,12 @@ onMounted(async () => {
 });
 
 async function test() {
-  console.log(userProfile.value);
+  const result = await commands.getUserProfile();
+  if (result.status === "error") {
+    message.error(result.error);
+    return;
+  }
+  console.log(result.data);
 }
 
 </script>

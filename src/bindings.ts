@@ -58,6 +58,14 @@ async getScrambleId(id: number) : Promise<Result<number, CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getUserProfile() : Promise<Result<UserProfileRespData, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_user_profile") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
