@@ -24,6 +24,8 @@ specta = { version = "2.0.0-rc" }
 tauri-specta = { version = "2.0.0-rc", features = ["derive", "typescript"] }
 specta-typescript = { version = "0.0.7" }
 
+anyhow = { version = "1" }
+
 [profile.release]
 strip = true
 lto = true
