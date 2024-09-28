@@ -11,6 +11,14 @@ async greet(name: string) : Promise<string> {
 async getConfig() : Promise<Config> {
     return await TAURI_INVOKE("get_config");
 },
+async saveConfig(config: Config) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async login(username: string, password: string) : Promise<Result<UserProfileRespData, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("login", { username, password }) };
