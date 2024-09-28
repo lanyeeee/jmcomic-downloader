@@ -22,6 +22,7 @@ pub fn run() {
         .commands(tauri_specta::collect_commands![
             greet,
             get_config,
+            save_config,
             login,
             search,
             get_album,
