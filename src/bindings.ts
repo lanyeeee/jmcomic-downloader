@@ -34,6 +34,14 @@ async getAlbum(aid: number) : Promise<Result<AlbumRespData, CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getChapter(id: number) : Promise<Result<ChapterRespData, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_chapter", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -51,6 +59,7 @@ export type AlbumInSearchRespData = { id: string; author: string; name: string; 
 export type AlbumRespData = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; series: SeriesRespData[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
 export type CategoryRespData = { id: string; title: string }
 export type CategorySubRespData = { id: string | null; title: string | null }
+export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
 export type Config = { avs: string }
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
