@@ -11,8 +11,12 @@ async function greet() {
 }
 
 async function test() {
-  const config = await commands.getConfig();
-  console.log(config);
+  const result = await commands.search("C104", 1, "Latest");
+  if (result.status === "error") {
+    console.error(result.error);
+    return;
+  }
+  console.log(result.data);
 }
 </script>
 

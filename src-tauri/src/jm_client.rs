@@ -15,7 +15,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
-use crate::responses::{JmResp, UserProfileRespData};
+use crate::responses::{JmResp, SearchRespData, UserProfileRespData};
+use crate::types::SearchSort;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -28,11 +29,13 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
     Login,
+    Search,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
         match self {
             ApiPath::Login => "/login",
+            ApiPath::Search => "/search",
         }
     }
 }
@@ -156,6 +159,49 @@ impl JmClient {
             .context(format!("将解密后的data字段解析为UserProfile失败: {data}"))?;
 
         Ok(user_profile)
+    }
+
+    pub async fn search(
+        &self,
+        keyword: &str,
+        page: i64,
+        sort: SearchSort,
+    ) -> anyhow::Result<SearchRespData> {
+        let query = json!({
+            "main_tag": 0,
+            "search_query": keyword,
+            "page": page,
+            "o": sort.as_str(),
+        });
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        // 发送搜索请求
+        let http_resp = self.jm_get(ApiPath::Search, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!("搜索失败，预料之外的状态码({status}): {body}"));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("搜索失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp
+            .data
+            .as_str()
+            .context(format!("搜索失败，data字段不是字符串: {jm_resp:?}"))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为 SearchRespData
+        let search_resp_data = serde_json::from_str::<SearchRespData>(&data).context(format!(
+            "将解密后的data字段解析为SearchRespData失败: {data}"
+        ))?;
+
+        Ok(search_resp_data)
     }
 }
 
