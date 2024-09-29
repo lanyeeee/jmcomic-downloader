@@ -8,6 +8,7 @@ import ChapterPane from "./components/ChapterPane.vue";
 import DownloadingList from "./components/DownloadingList.vue";
 import {appDataDir} from "@tauri-apps/api/path";
 import {path} from "@tauri-apps/api";
+import FavoritePane from "./components/FavoritePane.vue";
 
 const message = useMessage();
 const notification = useNotification();
@@ -15,7 +16,7 @@ const notification = useNotification();
 const config = ref<Config>();
 const userProfile = ref<UserProfileRespData>();
 const loginDialogShowing = ref<boolean>(false);
-const currentTabName = ref<"search" | "chapter">("search");
+const currentTabName = ref<"search" | "favorite" | "chapter">("search");
 const selectedAlbum = ref<Album>();
 
 watch(config, async () => {
@@ -34,21 +35,22 @@ watch(() => config.value?.avs, async () => {
     return;
   }
   const profileNotification = notification.error({title: "获取用户信息失败", description: profileResult.error});
-  if (config.value === undefined || config.value.username === "" || config.value.password === "") {
-    return;
+  if (config.value !== undefined && config.value.username !== "" && config.value.password !== "") {
+    const loginMessage = message.loading("获取用户信息失败，正在尝试用配置文件中的用户名和密码登录");
+    const loginResult = await commands.login(config.value.username, config.value.password);
+    if (loginResult.status === "ok") {
+      config.value.avs = loginResult.data.s;
+      loginMessage.content = "登录成功";
+      loginMessage.type = "success";
+      profileNotification.type = "success";
+      profileNotification.title = "获取用户信息成功";
+      profileNotification.description = "使用配置文件中的用户名和密码登录成功";
+      return;
+    }
+    notification.error({title: "登录失败", description: loginResult.error});
   }
-  const loginMessage = message.loading("获取用户信息失败，正在尝试用配置文件中的用户名和密码登录");
-  const loginResult = await commands.login(config.value.username, config.value.password);
-  if (loginResult.status === "ok") {
-    config.value.avs = loginResult.data.s;
-    loginMessage.content = "登录成功";
-    loginMessage.type = "success";
-    profileNotification.type = "success";
-    profileNotification.title = "获取用户信息成功";
-    profileNotification.description = "使用配置文件中的用户名和密码登录成功";
-    return;
-  }
-  notification.error({title: "登录失败", description: loginResult.error});
+
+  userProfile.value = undefined;
 });
 
 onMounted(async () => {
@@ -70,9 +72,9 @@ async function showConfigInFileManager() {
 }
 
 async function test() {
-  const result = await commands.getUserProfile();
+  const result = await commands.getFavoriteFolder(0, 1, "FavoriteTime");
   if (result.status === "error") {
-    message.error(result.error);
+    notification.error({title: "出现错误", description: result.error});
     return;
   }
   console.log(result.data);
@@ -100,6 +102,11 @@ async function test() {
       <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
         <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
           <search-pane v-model:selected-album="selectedAlbum" v-model:current-tab-name="currentTabName"/>
+        </n-tab-pane>
+        <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show:lazy">
+          <favorite-pane :user-profile="userProfile"
+                         v-model:selected-album="selectedAlbum"
+                         v-model:current-tab-name="currentTabName"/>
         </n-tab-pane>
         <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show:lazy">
           <chapter-pane v-model:selected-album="selectedAlbum"/>

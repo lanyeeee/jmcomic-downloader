@@ -11,8 +11,8 @@ use crate::download_manager::DownloadManager;
 use crate::errors::CommandResult;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::jm_client::JmClient;
-use crate::responses::{ChapterRespData, UserProfileRespData};
-use crate::types::{Album, ChapterInfo, SearchResult, SearchSort};
+use crate::responses::{ChapterRespData, FavoriteRespData, UserProfileRespData};
+use crate::types::{Album, ChapterInfo, FavoriteSort, SearchResult, SearchSort};
 
 #[tauri::command]
 #[specta::specta]
@@ -104,6 +104,18 @@ pub async fn get_chapter(
 pub async fn get_scramble_id(jm_client: State<'_, JmClient>, id: i64) -> CommandResult<i64> {
     let scramble_id = jm_client.get_scramble_id(id).await?;
     Ok(scramble_id)
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn get_favorite_folder(
+    jm_client: State<'_, JmClient>,
+    folder_id: i64,
+    page: i64,
+    sort: FavoriteSort,
+) -> CommandResult<FavoriteRespData> {
+    let favorite_resp_data = jm_client.get_favorite_folder(folder_id, page, sort).await?;
+    Ok(favorite_resp_data)
 }
 
 #[tauri::command(async)]
