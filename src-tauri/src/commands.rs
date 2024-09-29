@@ -6,8 +6,8 @@ use crate::config::Config;
 use crate::errors::CommandResult;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::jm_client::JmClient;
-use crate::responses::{AlbumRespData, ChapterRespData, SearchResp, UserProfileRespData};
-use crate::types::SearchSort;
+use crate::responses::{ChapterRespData, SearchResp, UserProfileRespData};
+use crate::types::{Album, SearchSort};
 
 #[tauri::command]
 #[specta::specta]
@@ -64,14 +64,16 @@ pub async fn search(
     page: i64,
     sort: SearchSort,
 ) -> CommandResult<SearchResp> {
+    // TODO: 变量名改为search_resp
     let search_result = jm_client.search(&keyword, page, sort).await?;
     Ok(search_result)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_album(jm_client: State<'_, JmClient>, aid: i64) -> CommandResult<AlbumRespData> {
-    let album = jm_client.get_album(aid).await?;
+pub async fn get_album(jm_client: State<'_, JmClient>, aid: i64) -> CommandResult<Album> {
+    let album_resp_data = jm_client.get_album(aid).await?;
+    let album = Album::from(album_resp_data);
     Ok(album)
 }
 
@@ -81,6 +83,7 @@ pub async fn get_chapter(
     jm_client: State<'_, JmClient>,
     id: i64,
 ) -> CommandResult<ChapterRespData> {
+    // TODO: 变量名改为chapter_resp_data
     let chapter = jm_client.get_chapter(id).await?;
     Ok(chapter)
 }
