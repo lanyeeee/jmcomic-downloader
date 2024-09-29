@@ -20,6 +20,7 @@ use crate::responses::{
     UserProfileRespData,
 };
 use crate::types::{Album, SearchSort};
+use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -27,7 +28,6 @@ const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
 const APP_VERSION: &str = "1.7.3";
 
 const API_DOMAIN: &str = "www.jmeadpoolcdn.life";
-const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
@@ -88,10 +88,11 @@ impl JmClient {
         ts: u64,
     ) -> anyhow::Result<reqwest::Response> {
         let tokenparam = format!("{ts},{APP_VERSION}");
+        // TODO: 直接用 ==
         let token = if path != ApiPath::ScrambleId {
-            md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
+            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         } else {
-            md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
+            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
         };
         let cookie = if path == ApiPath::Login && form.is_some() {
             String::new()
@@ -183,6 +184,7 @@ impl JmClient {
     pub async fn get_user_profile(&self) -> anyhow::Result<UserProfileRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         // 发送获取用户信息请求
+        // TODO: 改成ApiPath::UserProfile
         let http_resp = self.jm_post(ApiPath::Login, None, None, ts).await?;
         // 检查http响应状态码
         let status = http_resp.status();
@@ -351,7 +353,6 @@ impl JmClient {
                 "获取scramble_id失败，预料之外的状态码({status}): {body}"
             ));
         }
-        std::fs::write("scramble_id.html", &body).unwrap();
         // 从body中提取scramble_id，如果提取失败则使用默认值
         let scramble_id = body
             .split("var scramble_id = ")
@@ -363,16 +364,12 @@ impl JmClient {
     }
 }
 
-// 计算MD5哈希并返回十六进制字符串
-fn md5_hex(data: &str) -> String {
-    format!("{:x}", md5::compute(data))
-}
-
 fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 使用Base64解码传入的数据，得到AES-256-ECB加密的数据
     let aes256_ecb_encrypted_data = general_purpose::STANDARD.decode(data)?;
     // 生成密钥
-    let key = md5_hex(&format!("{}{}", ts, APP_DATA_SECRET));
+    // TODO: 直接用format!("{ts}{APP_DATA_SECRET}")
+    let key = utils::md5_hex(&format!("{}{}", ts, APP_DATA_SECRET));
     // 使用AES-256-ECB进行解密
     let cipher = Aes256::new(GenericArray::from_slice(key.as_bytes()));
     let decrypted_data_with_padding: Vec<u8> = aes256_ecb_encrypted_data
@@ -390,20 +387,4 @@ fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 将解密后的数据转换为UTF-8字符串
     let decrypted_data = String::from_utf8(decrypted_data_without_padding)?;
     Ok(decrypted_data)
-}
-
-fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> i64 {
-    return if id < scramble_id {
-        0
-    } else if id < 268850 {
-        10
-    } else {
-        let x = if id < 421926 { 10 } else { 8 };
-        let s = format!("{}{}", id, filename);
-        let s = md5_hex(&s);
-        let mut block_num = s.chars().last().unwrap() as i64;
-        block_num %= x;
-        block_num = block_num * 2 + 2;
-        block_num
-    };
 }

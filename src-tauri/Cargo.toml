@@ -33,6 +33,9 @@ md5 = { version = "0.7.0" }
 aes = { version = "0.8.4" }
 
 anyhow = { version = "1" }
+tokio = { version = "1.40.0", features = ["full"] }
+bytes = { version = "1.7.2" }
+image = { version = "0.25.2", default-features = false, features = ["webp"] }
 
 [profile.release]
 strip = true

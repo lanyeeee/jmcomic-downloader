@@ -66,12 +66,37 @@ async getUserProfile() : Promise<Result<UserProfileRespData, CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async downloadChapters(chapterInfos: ChapterInfo[]) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_chapters", { chapterInfos }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+downloadChapterEndEvent: DownloadChapterEndEvent,
+downloadChapterPendingEvent: DownloadChapterPendingEvent,
+downloadChapterStartEvent: DownloadChapterStartEvent,
+downloadImageErrorEvent: DownloadImageErrorEvent,
+downloadImageSuccessEvent: DownloadImageSuccessEvent,
+downloadSpeedEvent: DownloadSpeedEvent,
+updateOverallDownloadProgressEvent: UpdateOverallDownloadProgressEvent
+}>({
+downloadChapterEndEvent: "download-chapter-end-event",
+downloadChapterPendingEvent: "download-chapter-pending-event",
+downloadChapterStartEvent: "download-chapter-start-event",
+downloadImageErrorEvent: "download-image-error-event",
+downloadImageSuccessEvent: "download-image-success-event",
+downloadSpeedEvent: "download-speed-event",
+updateOverallDownloadProgressEvent: "update-overall-download-progress-event"
+})
 
 /** user-defined constants **/
 
@@ -86,12 +111,26 @@ export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
 export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
-export type Config = { avs: string }
+export type Config = { avs: string; downloadDir: string }
+export type DownloadChapterEndEvent = DownloadChapterEndEventPayload
+export type DownloadChapterEndEventPayload = { chapterId: number; errMsg: string | null }
+export type DownloadChapterPendingEvent = DownloadChapterPendingEventPayload
+export type DownloadChapterPendingEventPayload = { chapterId: number; title: string }
+export type DownloadChapterStartEvent = DownloadChapterStartEventPayload
+export type DownloadChapterStartEventPayload = { chapterId: number; title: string; total: number }
+export type DownloadImageErrorEvent = DownloadImageErrorEventPayload
+export type DownloadImageErrorEventPayload = { chapterId: number; url: string; errMsg: string }
+export type DownloadImageSuccessEvent = DownloadImageSuccessEventPayload
+export type DownloadImageSuccessEventPayload = { chapterId: number; url: string; downloadedCount: number }
+export type DownloadSpeedEvent = DownloadSpeedEventPayload
+export type DownloadSpeedEventPayload = { speed: string }
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
 export type SearchResp = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
+export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload
+export type UpdateOverallDownloadProgressEventPayload = { downloadedImageCount: number; totalImageCount: number; percentage: number }
 export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/

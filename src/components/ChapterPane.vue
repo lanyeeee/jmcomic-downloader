@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {SelectionArea, SelectionEvent, SelectionOptions} from "@viselect/vue";
 import {nextTick, ref, watch} from "vue";
-import {Album} from "../bindings.ts";
+import {Album, commands} from "../bindings.ts";
 
 const selectedAlbum = defineModel<Album | undefined>("selectedAlbum", {required: true});
 
@@ -100,6 +100,19 @@ async function onContextMenu(e: MouseEvent) {
 }
 
 async function downloadChapters() {
+  const chapterToDownload = selectedAlbum.value?.chapterInfos.filter(c => !c.isDownloaded && checkedIds.value.includes(c.chapterId));
+  if (chapterToDownload === undefined) {
+    return;
+  }
+  await commands.downloadChapters(chapterToDownload);
+
+  for (const downloadedChapter of chapterToDownload) {
+    const chapter = selectedAlbum.value?.chapterInfos.find(c => c.chapterId === downloadedChapter.chapterId);
+    if (chapter !== undefined) {
+      chapter.isDownloaded = true;
+      checkedIds.value = checkedIds.value.filter(id => id !== downloadedChapter.chapterId);
+    }
+  }
 }
 
 async function refreshChapters() {
