@@ -36,6 +36,7 @@ pub fn run() {
             get_scramble_id,
             get_user_profile,
             download_chapters,
+            show_path_in_file_manager,
         ])
         .events(tauri_specta::collect_events![
             DownloadChapterEndEvent,
