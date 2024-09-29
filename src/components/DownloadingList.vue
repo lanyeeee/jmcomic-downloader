@@ -2,6 +2,7 @@
 
 import {onMounted, ref} from "vue";
 import {commands, Config, events} from "../bindings.ts";
+import {open} from "@tauri-apps/plugin-dialog";
 import {NProgress, useNotification} from "naive-ui";
 
 type ProgressData = {
@@ -101,13 +102,28 @@ async function showDownloadDirInFileManager() {
   }
 }
 
+async function selectDownloadDir() {
+  const selectedDirPath = await open({directory: true});
+  if (selectedDirPath === null) {
+    return;
+  }
+  config.value.downloadDir = selectedDirPath;
+}
+
 </script>
 
 <template>
   <div class="flex flex-col gap-row-1">
-    <div class="flex flex-justify-between">
-      <n-text>下载列表</n-text>
-      <n-button class="w-1/3" size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
+    <n-h3 class="m-be-0">下载列表</n-h3>
+    <div class="flex">
+      <n-input v-model:value="config.downloadDir"
+               size="tiny"
+               readonly
+               placeholder="请选择漫画目录"
+               @click="selectDownloadDir">
+        <template #prefix>下载目录：</template>
+      </n-input>
+      <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
     </div>
     <div class="grid grid-cols-[1fr_4fr_2fr]">
       <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.title }}</span>
