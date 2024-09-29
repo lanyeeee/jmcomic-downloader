@@ -151,7 +151,7 @@ export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
 export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload
 export type UpdateOverallDownloadProgressEventPayload = { downloadedImageCount: number; totalImageCount: number; percentage: number }
-export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
+export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/
 
