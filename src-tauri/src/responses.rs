@@ -21,7 +21,6 @@ pub struct UserProfileRespData {
     pub fname: String,
     pub gender: String,
     pub message: Option<String>,
-    pub coin: i64, // TODO: coin有可能为String，例如`"0"`，也有可能为i64，例如`0`，可以考虑把它删了
     #[serde(rename = "album_favorites")]
     pub album_favorites: i64,
     pub s: String,

@@ -128,13 +128,14 @@ export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
 export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
-export type Config = { username: string; password: string; avs: string; downloadDir: string }
+export type Config = { username: string; password: string; avs: string; downloadDir: string; downloadFormat: DownloadFormat }
 export type DownloadChapterEndEvent = DownloadChapterEndEventPayload
 export type DownloadChapterEndEventPayload = { chapterId: number; errMsg: string | null }
 export type DownloadChapterPendingEvent = DownloadChapterPendingEventPayload
 export type DownloadChapterPendingEventPayload = { chapterId: number; title: string }
 export type DownloadChapterStartEvent = DownloadChapterStartEventPayload
 export type DownloadChapterStartEventPayload = { chapterId: number; title: string; total: number }
+export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type DownloadImageErrorEvent = DownloadImageErrorEventPayload
 export type DownloadImageErrorEventPayload = { chapterId: number; url: string; errMsg: string }
 export type DownloadImageSuccessEvent = DownloadImageSuccessEventPayload
@@ -151,7 +152,7 @@ export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
 export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload
 export type UpdateOverallDownloadProgressEventPayload = { downloadedImageCount: number; totalImageCount: number; percentage: number }
-export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
+export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/
 
