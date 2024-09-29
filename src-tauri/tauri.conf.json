@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "jmcomic-downloader",
+        "title": "禁漫天堂下载器",
         "width": 800,
         "height": 600
       }
