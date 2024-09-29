@@ -38,13 +38,13 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     notification.error({title: "搜索失败", description: result.error});
     return;
   }
-  const searchResp = result.data;
-  if ("SearchRespData" in searchResp) {
-    searchRespData.value = searchResp.SearchRespData;
-    console.log(searchResp.SearchRespData);
-  } else if ("Album" in searchResp) {
-    selectedAlbum.value = searchResp.Album;
-    console.log(searchResp.Album);
+  const searchResult = result.data;
+  if ("SearchRespData" in searchResult) {
+    searchRespData.value = searchResult.SearchRespData;
+    console.log(searchResult.SearchRespData);
+  } else if ("Album" in searchResult) {
+    selectedAlbum.value = searchResult.Album;
+    console.log(searchResult.Album);
     currentTabName.value = "chapter";
   }
 }

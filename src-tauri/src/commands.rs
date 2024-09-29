@@ -8,8 +8,8 @@ use crate::download_manager::DownloadManager;
 use crate::errors::CommandResult;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::jm_client::JmClient;
-use crate::responses::{ChapterRespData, SearchResp, UserProfileRespData};
-use crate::types::{Album, ChapterInfo, SearchSort};
+use crate::responses::{ChapterRespData, UserProfileRespData};
+use crate::types::{Album, ChapterInfo, SearchResult, SearchSort};
 
 #[tauri::command]
 #[specta::specta]
@@ -61,21 +61,27 @@ pub async fn get_user_profile(
 #[tauri::command]
 #[specta::specta]
 pub async fn search(
+    app: AppHandle,
     jm_client: State<'_, JmClient>,
     keyword: String,
     page: i64,
     sort: SearchSort,
-) -> CommandResult<SearchResp> {
-    // TODO: 变量名改为search_resp
-    let search_result = jm_client.search(&keyword, page, sort).await?;
+) -> CommandResult<SearchResult> {
+    let search_resp = jm_client.search(&keyword, page, sort).await?;
+    let search_result = SearchResult::from_search_resp(&app, search_resp);
+
     Ok(search_result)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_album(jm_client: State<'_, JmClient>, aid: i64) -> CommandResult<Album> {
+pub async fn get_album(
+    app: AppHandle,
+    jm_client: State<'_, JmClient>,
+    aid: i64,
+) -> CommandResult<Album> {
     let album_resp_data = jm_client.get_album(aid).await?;
-    let album = Album::from(album_resp_data);
+    let album = Album::from_album_resp_data(&app, album_resp_data);
     Ok(album)
 }
 

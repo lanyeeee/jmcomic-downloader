@@ -27,7 +27,7 @@ async login(username: string, password: string) : Promise<Result<UserProfileResp
     else return { status: "error", error: e  as any };
 }
 },
-async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchResp, CommandError>> {
+async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchResult, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("search", { keyword, page, sort }) };
 } catch (e) {
@@ -125,8 +125,8 @@ export type DownloadImageSuccessEventPayload = { chapterId: number; url: string;
 export type DownloadSpeedEvent = DownloadSpeedEventPayload
 export type DownloadSpeedEventPayload = { speed: string }
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
-export type SearchResp = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
+export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
 export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload

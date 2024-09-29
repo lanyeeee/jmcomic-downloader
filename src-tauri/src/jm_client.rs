@@ -19,7 +19,7 @@ use crate::responses::{
     AlbumRespData, ChapterRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
     UserProfileRespData,
 };
-use crate::types::{Album, SearchSort};
+use crate::types::SearchSort;
 use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
@@ -262,8 +262,7 @@ impl JmClient {
             let album_resp_data = self
                 .get_album(redirect_resp_data.redirect_aid.parse()?)
                 .await?;
-            let album = Album::from(album_resp_data);
-            return Ok(SearchResp::Album(Box::new(album)));
+            return Ok(SearchResp::AlbumRespData(Box::new(album_resp_data)));
         }
         Err(anyhow!(
             "将解密后的数据解析为SearchRespData或RedirectRespData失败: {data}"
