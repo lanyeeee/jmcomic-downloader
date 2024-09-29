@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::types::DownloadFormat;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
@@ -11,6 +12,7 @@ pub struct Config {
     pub password: String,
     pub avs: String,
     pub download_dir: PathBuf,
+    pub download_format: DownloadFormat,
 }
 
 impl Config {
@@ -22,6 +24,7 @@ impl Config {
             password: String::new(),
             avs: String::new(),
             download_dir: app_data_dir.join("漫画下载"),
+            download_format: DownloadFormat::Jpeg,
         };
         // 如果配置文件存在且能够解析，则使用配置文件中的配置，否则使用默认配置
         let config = if config_path.exists() {
