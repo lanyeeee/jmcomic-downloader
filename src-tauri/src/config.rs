@@ -7,6 +7,8 @@ use tauri::{AppHandle, Manager};
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
+    pub username: String,
+    pub password: String,
     pub avs: String,
     pub download_dir: PathBuf,
 }
@@ -16,6 +18,8 @@ impl Config {
         let app_data_dir = app.path().app_data_dir()?;
         let config_path = app_data_dir.join("config.json");
         let default_config = Config {
+            username: String::new(),
+            password: String::new(),
             avs: String::new(),
             download_dir: app_data_dir.join("漫画下载"),
         };
