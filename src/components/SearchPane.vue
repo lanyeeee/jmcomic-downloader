@@ -1,0 +1,94 @@
+<script setup lang="ts">
+import {computed, ref} from "vue";
+import {Album, commands, SearchRespData, SearchSort} from "../bindings.ts";
+import {useNotification} from "naive-ui";
+import AlbumCard from "./AlbumCard.vue";
+
+
+const notification = useNotification();
+
+const sortOptions = [
+  {label: "最新", value: "Latest"},
+  {label: "最多点击", value: "View"},
+  {label: "最多图片", value: "Picture"},
+  {label: "最多爱心", value: "Like"},
+];
+
+const selectedAlbum = defineModel<Album | undefined>("selectedAlbum", {required: true});
+const currentTabName = defineModel<"search" | "chapter">("currentTabName", {required: true});
+
+const searchInput = ref<string>("");
+const sortSelected = ref<SearchSort>("Latest");
+const searchPage = ref<number>(1);
+const searchRespData = ref<SearchRespData>();
+
+const searchPageCount = computed(() => {
+  if (searchRespData.value === undefined) {
+    return 0;
+  }
+  const total = parseInt(searchRespData.value.total);
+  return Math.floor(total / 80) + 1;
+});
+
+async function search(keyword: string, page: number, sort: SearchSort) {
+  console.log(keyword, page, sort);
+  searchPage.value = page;
+  const result = await commands.search(keyword, page, sort);
+  if (result.status === "error") {
+    notification.error({title: "搜索失败", description: result.error});
+    return;
+  }
+  const searchResp = result.data;
+  if ("SearchRespData" in searchResp) {
+    searchRespData.value = searchResp.SearchRespData;
+    console.log(searchResp.SearchRespData);
+  } else if ("Album" in searchResp) {
+    selectedAlbum.value = searchResp.Album;
+    console.log(searchResp.Album);
+    currentTabName.value = "chapter";
+  }
+}
+
+
+</script>
+
+<template>
+  <div class="h-full flex flex-col">
+    <div class="flex flex-col">
+      <div class="grid grid-cols-[4fr_1fr]">
+        <div class="flex">
+          <n-input class="text-align-left"
+                   size="tiny"
+                   v-model:value="searchInput"
+                   placeholder=""
+                   clearable
+                   @keydown.enter="search(searchInput.trim(), 1, sortSelected)">
+            <template #prefix>
+              漫画名:
+            </template>
+          </n-input>
+          <n-button size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">搜索</n-button>
+        </div>
+        <n-select class="flex"
+                  v-model:value="sortSelected"
+                  :options="sortOptions"
+                  :show-checkmark="false"
+                  size="tiny"
+                  @update-value="search(searchInput.trim(), 1, $event)"/>
+      </div>
+    </div>
+
+    <div v-if="searchRespData!==undefined" class="flex flex-col gap-row-1 overflow-auto p-2">
+      <div class="flex flex-col gap-row-2 overflow-auto">
+        <album-card v-for="albumInSearch in searchRespData.content"
+                    :key="albumInSearch.id"
+                    :album-in-search="albumInSearch"
+                    v-model:selected-album="selectedAlbum"
+                    v-model:current-tab-name="currentTabName"/>
+      </div>
+      <n-pagination :page-count="searchPageCount"
+                    :page="searchPage"
+                    @update:page="search(searchInput.trim(), $event, sortSelected)"/>
+    </div>
+  </div>
+</template>

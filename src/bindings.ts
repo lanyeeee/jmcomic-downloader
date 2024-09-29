@@ -35,7 +35,7 @@ async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<S
     else return { status: "error", error: e  as any };
 }
 },
-async getAlbum(aid: number) : Promise<Result<AlbumRespData, CommandError>> {
+async getAlbum(aid: number) : Promise<Result<Album, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_album", { aid }) };
 } catch (e) {
@@ -79,15 +79,16 @@ async getUserProfile() : Promise<Result<UserProfileRespData, CommandError>> {
 
 /** user-defined types **/
 
+export type Album = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
 export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
-export type AlbumRespData = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; series: SeriesRespData[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
 export type CategoryRespData = { id: string; title: string }
 export type CategorySubRespData = { id: string | null; title: string | null }
+export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
 export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
 export type Config = { avs: string }
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
-export type SearchResp = { SearchRespData: SearchRespData } | { AlbumRespData: AlbumRespData }
+export type SearchResp = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
