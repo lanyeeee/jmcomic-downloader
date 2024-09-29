@@ -1,11 +1,13 @@
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
-use image::{GenericImage, GenericImageView};
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use image::{DynamicImage, GenericImage, GenericImageView};
 use reqwest::StatusCode;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::policies::ExponentialBackoff;
@@ -13,16 +15,16 @@ use reqwest_retry::RetryTransientMiddleware;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::runtime::Runtime;
-use tokio::sync::{mpsc, Semaphore};
 use tokio::sync::mpsc::Receiver;
+use tokio::sync::{mpsc, Semaphore};
 use tokio::task::JoinSet;
 
-use crate::{events, utils};
 use crate::config::Config;
 use crate::events::{DownloadSpeedEvent, DownloadSpeedEventPayload};
 use crate::extensions::{AnyhowErrorToStringChain, IgnoreRwLockPoison};
 use crate::jm_client::JmClient;
-use crate::types::ChapterInfo;
+use crate::types::{ChapterInfo, DownloadFormat};
+use crate::{events, utils};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 
@@ -140,6 +142,12 @@ impl DownloadManager {
         let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
         std::fs::create_dir_all(&temp_download_dir)
             .context(format!("创建目录`{temp_download_dir:?}`失败"))?;
+        // 从配置文件获取图片格式
+        let download_format = self
+            .app
+            .state::<RwLock<Config>>()
+            .read_or_panic()
+            .download_format;
 
         let total = urls_with_block_num.len() as u32;
         // 记录总共需要下载的图片数量
@@ -157,14 +165,15 @@ impl DownloadManager {
         for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
             let manager = self.clone();
             let chapter_id = chapter_info.chapter_id;
-            // TODO: 选择图片格式
-            let save_path = temp_download_dir.join(format!("{:03}.webp", i + 1));
+            let ext = download_format.as_str();
+            let save_path = temp_download_dir.join(format!("{:03}.{ext}", i + 1));
             let url = url.clone();
             let downloaded_count = downloaded_count.clone();
             // 创建下载任务
             join_set.spawn(manager.download_image(
                 url,
                 save_path,
+                download_format,
                 chapter_id,
                 block_num,
                 downloaded_count,
@@ -216,6 +225,7 @@ impl DownloadManager {
         self,
         url: String,
         save_path: PathBuf,
+        download_format: DownloadFormat,
         chapter_id: i64,
         block_num: u32,
         downloaded_count: Arc<AtomicU32>,
@@ -243,7 +253,7 @@ impl DownloadManager {
         // 保存图片，因为保存图片可能要进行图片拼接
         // 而图片拼接是CPU密集型操作，所以使用spawn_blocking，避免阻塞worker threads
         let _ = tokio::task::spawn_blocking(move || {
-            if let Err(err) = save_image(&save_path, block_num, &image_data) {
+            if let Err(err) = save_image(&save_path, download_format, block_num, &image_data) {
                 let err = err.context(format!("保存图片`{url}`到`{save_path:?}`失败"));
                 emit_error_event(&self.app, chapter_id, url, err.to_string_chain());
                 return;
@@ -256,7 +266,7 @@ impl DownloadManager {
             let save_path = save_path.to_string_lossy().to_string();
             emit_success_event(&self.app, chapter_id, save_path, downloaded_count);
         })
-            .await;
+        .await;
     }
 
     async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
@@ -298,7 +308,12 @@ fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
     };
 }
 
-fn save_image(save_path: &PathBuf, block_num: u32, image_data: &Bytes) -> anyhow::Result<()> {
+fn save_image(
+    save_path: &PathBuf,
+    download_format: DownloadFormat,
+    block_num: u32,
+    image_data: &Bytes,
+) -> anyhow::Result<()> {
     // 如果block_num为0，直接保存图片就行
     if block_num == 0 {
         std::fs::write(save_path, image_data)?;
@@ -334,7 +349,28 @@ fn save_image(save_path: &PathBuf, block_num: u32, image_data: &Bytes) -> anyhow
             .context("拼接图片失败")?;
     }
     // 保存最终拼接好的图片
-    dst_img.save(&save_path)?;
+    match download_format {
+        DownloadFormat::Jpeg => {
+            let rgb_img = DynamicImage::ImageRgba8(dst_img).to_rgb8();
+            rgb_img.save(save_path)?;
+        }
+        // png图片需要使用最高的压缩质量，否则体积会很大
+        DownloadFormat::Png => {
+            let png_file = std::fs::File::create(save_path)?;
+            let buffered_file_writer = BufWriter::new(png_file);
+            let encoder = PngEncoder::new_with_quality(
+                buffered_file_writer,
+                CompressionType::Best,
+                FilterType::default(),
+            );
+            dst_img.write_with_encoder(encoder)?;
+        }
+        // 其他格式的图片直接用默认参数保存
+        DownloadFormat::Webp => {
+            let rgba_img = DynamicImage::ImageRgba8(dst_img);
+            rgba_img.save(save_path)?;
+        }
+    }
 
     Ok(())
 }
