@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 import {onMounted, ref} from "vue";
-import {events} from "../bindings.ts";
+import {commands, Config, events} from "../bindings.ts";
 import {NProgress, useNotification} from "naive-ui";
 
 type ProgressData = {
@@ -13,6 +13,8 @@ type ProgressData = {
 }
 
 const notification = useNotification();
+
+const config = defineModel<Config>("config", {required: true});
 
 const progresses = ref<Map<number, ProgressData>>(new Map());
 const overallProgress = ref<ProgressData>({
@@ -90,13 +92,13 @@ onMounted(async () => {
 });
 
 async function showDownloadDirInFileManager() {
-  // const downloadDirName = "漫画下载";
-  // const downloadDirExists = await exists(downloadDirName, {baseDir: BaseDirectory.Resource});
-  // if (!downloadDirExists) {
-  //   await mkdir(downloadDirName, {baseDir: BaseDirectory.Resource});
-  // }
-  // const downloadDirPath = await path.join(await resourceDir(), downloadDirName);
-  // await showPathInFileManager(downloadDirPath);
+  if (config.value === undefined) {
+    return;
+  }
+  const result = await commands.showPathInFileManager(config.value.downloadDir);
+  if (result.status === "error") {
+    notification.error({title: "打开下载目录失败", description: result.error});
+  }
 }
 
 </script>

@@ -36,6 +36,8 @@ anyhow = { version = "1" }
 tokio = { version = "1.40.0", features = ["full"] }
 bytes = { version = "1.7.2" }
 image = { version = "0.25.2", default-features = false, features = ["webp"] }
+showfile = { version = "0.1.1" }
+path-slash = { version = "0.2.1" }
 
 [profile.release]
 strip = true

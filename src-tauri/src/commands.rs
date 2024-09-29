@@ -1,6 +1,9 @@
-// TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
+use std::path::PathBuf;
 use std::sync::RwLock;
 
+// TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
+use anyhow::anyhow;
+use path_slash::PathBufExt;
 use tauri::{AppHandle, State};
 
 use crate::config::Config;
@@ -112,5 +115,16 @@ pub async fn download_chapters(
     for chapter_info in chapter_infos {
         download_manager.submit_chapter(chapter_info).await?;
     }
+    Ok(())
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub fn show_path_in_file_manager(path: &str) -> CommandResult<()> {
+    let path = PathBuf::from_slash(path);
+    if !path.exists() {
+        return Err(anyhow!("路径`{path:?}`不存在").into());
+    }
+    showfile::show_path_in_file_manager(path);
     Ok(())
 }
