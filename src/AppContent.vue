@@ -27,14 +27,28 @@ watch(config, async () => {
 }, {deep: true});
 
 watch(() => config.value?.avs, async () => {
-  const result = await commands.getUserProfile();
-  if (result.status === "error") {
-    notification.error({title: "获取用户信息失败", description: result.error});
-    userProfile.value = undefined;
+  const profileResult = await commands.getUserProfile();
+  if (profileResult.status === "ok") {
+    userProfile.value = profileResult.data;
+    message.success("获取用户信息成功");
     return;
   }
-  userProfile.value = result.data;
-  message.success("获取用户信息成功");
+  const profileNotification = notification.error({title: "获取用户信息失败", description: profileResult.error});
+  if (config.value === undefined || config.value.username === "" || config.value.password === "") {
+    return;
+  }
+  const loginMessage = message.loading("获取用户信息失败，正在尝试用配置文件中的用户名和密码登录");
+  const loginResult = await commands.login(config.value.username, config.value.password);
+  if (loginResult.status === "ok") {
+    config.value.avs = loginResult.data.s;
+    loginMessage.content = "登录成功";
+    loginMessage.type = "success";
+    profileNotification.type = "success";
+    profileNotification.title = "获取用户信息成功";
+    profileNotification.description = "使用配置文件中的用户名和密码登录成功";
+    return;
+  }
+  notification.error({title: "登录失败", description: loginResult.error});
 });
 
 onMounted(async () => {
@@ -94,7 +108,7 @@ async function test() {
       <downloading-list class="basis-1/2 overflow-auto" v-model:config="config"></downloading-list>
     </div>
     <n-modal v-model:show="loginDialogShowing">
-      <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile"/>
+      <login-dialog v-model:showing="loginDialogShowing" v-model:config="config"/>
     </n-modal>
   </div>
 </template>
