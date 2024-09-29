@@ -125,6 +125,33 @@ async function selectDownloadDir() {
       </n-input>
       <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
     </div>
+    <n-radio-group v-model:value="config.downloadFormat">
+      下载格式：
+      <n-tooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <n-radio value="Jpeg">jpg</n-radio>
+        </template>
+        1. 有损<span class="text-red">(肉眼看不出)</span><br/>
+        2. 文件体积小<br/>
+        3. 编码速度最快<br/>
+      </n-tooltip>
+      <n-tooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <n-radio value="Png">png</n-radio>
+        </template>
+        1. 无损<br/>
+        2. 文件体积大<span class="text-red">(约为jpg的5倍)</span><br/>
+        3. 编码速度最慢<br/>
+      </n-tooltip>
+      <n-tooltip placement="bottom" trigger="hover">
+        <template #trigger>
+          <n-radio value="Webp">webp</n-radio>
+        </template>
+        1. 无损<br/>
+        2. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
+        3. 编码速度较慢<br/>
+      </n-tooltip>
+    </n-radio-group>
     <div class="grid grid-cols-[1fr_4fr_2fr]">
       <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.title }}</span>
       <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
