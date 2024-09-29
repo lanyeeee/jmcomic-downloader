@@ -10,6 +10,7 @@ declare module 'vue' {
     AlbumCard: typeof import('./src/components/AlbumCard.vue')['default']
     ChapterPane: typeof import('./src/components/ChapterPane.vue')['default']
     DownloadingList: typeof import('./src/components/DownloadingList.vue')['default']
+    FavoritePane: typeof import('./src/components/FavoritePane.vue')['default']
     LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
