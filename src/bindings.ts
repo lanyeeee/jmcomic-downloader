@@ -59,6 +59,14 @@ async getScrambleId(id: number) : Promise<Result<number, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async getFavoriteFolder(folderId: number, page: number, sort: FavoriteSort) : Promise<Result<FavoriteRespData, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_favorite_folder", { folderId, page, sort }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getUserProfile() : Promise<Result<UserProfileRespData, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_user_profile") };
@@ -113,6 +121,7 @@ updateOverallDownloadProgressEvent: "update-overall-download-progress-event"
 /** user-defined types **/
 
 export type Album = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
+export type AlbumInFavoriteRespData = { id: string; author: string; description: string; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
 export type CategoryRespData = { id: string; title: string }
 export type CategorySubRespData = { id: string | null; title: string | null }
@@ -132,6 +141,9 @@ export type DownloadImageSuccessEvent = DownloadImageSuccessEventPayload
 export type DownloadImageSuccessEventPayload = { chapterId: number; url: string; downloadedCount: number }
 export type DownloadSpeedEvent = DownloadSpeedEventPayload
 export type DownloadSpeedEventPayload = { speed: string }
+export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
+export type FavoriteRespData = { list: AlbumInFavoriteRespData[]; folder_list: FavoriteFolderRespData[]; total: string; count: number }
+export type FavoriteSort = "FavoriteTime" | "UpdateTime"
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
 export type SearchRespData = { search_query: string; total: string; content: AlbumInSearchRespData[] }
 export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }

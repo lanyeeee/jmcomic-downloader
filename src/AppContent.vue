@@ -70,9 +70,9 @@ async function showConfigInFileManager() {
 }
 
 async function test() {
-  const result = await commands.getUserProfile();
+  const result = await commands.getFavoriteFolder(0, 1, "FavoriteTime");
   if (result.status === "error") {
-    message.error(result.error);
+    notification.error({title: "出现错误", description: result.error});
     return;
   }
   console.log(result.data);
