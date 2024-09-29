@@ -15,7 +15,7 @@ const sortOptions = [
 ];
 
 const selectedAlbum = defineModel<Album | undefined>("selectedAlbum", {required: true});
-const currentTabName = defineModel<"search" | "chapter">("currentTabName", {required: true});
+const currentTabName = defineModel<"search" | "favorite" | "chapter">("currentTabName", {required: true});
 
 const searchInput = ref<string>("");
 const sortSelected = ref<SearchSort>("Latest");
@@ -48,8 +48,6 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     currentTabName.value = "chapter";
   }
 }
-
-
 </script>
 
 <template>
@@ -82,7 +80,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
       <div class="flex flex-col gap-row-2 overflow-auto">
         <album-card v-for="albumInSearch in searchRespData.content"
                     :key="albumInSearch.id"
-                    :album-in-search="albumInSearch"
+                    :album-info="albumInSearch"
                     v-model:selected-album="selectedAlbum"
                     v-model:current-tab-name="currentTabName"/>
       </div>
