@@ -1,0 +1,51 @@
+name: 反馈 Bug
+description: 反馈遇到的问题
+labels: [bug]
+title: "[Bug] 修改我！"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        为了使我更好地帮助你，请提供以下信息。以及修改上方的标题
+  - type: textarea
+    id: desc
+    attributes:
+      label: 问题描述
+      description: 发生了什么情况？有什么现状？复现条件是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 正常情况下应该发生什么
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际上发生了什么
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: 截图或录屏
+      description: 问题复现时候的截图或录屏
+      placeholder: 点击文本框下面小长条可以上传文件
+  - type: input
+    id: version
+    attributes:
+      label: 工具版本号
+      placeholder: v0.1
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: 其他
+      description: 其他要补充的内容
+      placeholder: 其他要补充的内容
+    validations:
+      required: false
