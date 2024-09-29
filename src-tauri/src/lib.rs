@@ -1,12 +1,16 @@
 use anyhow::Context;
 use tauri::{Manager, Wry};
 
+// TODO: 用prelude来消除警告
 use crate::commands::*;
 use crate::config::Config;
+use crate::events::prelude::*;
 
 mod commands;
 mod config;
+mod download_manager;
 mod errors;
+mod events;
 mod extensions;
 mod jm_client;
 mod responses;
@@ -17,6 +21,7 @@ fn generate_context() -> tauri::Context<Wry> {
     tauri::generate_context!()
 }
 
+// TODO: 添加Panic Doc
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri_specta::Builder::<Wry>::new()
@@ -30,8 +35,17 @@ pub fn run() {
             get_chapter,
             get_scramble_id,
             get_user_profile,
+            download_chapters,
         ])
-        .events(tauri_specta::collect_events![]);
+        .events(tauri_specta::collect_events![
+            DownloadChapterEndEvent,
+            DownloadChapterPendingEvent,
+            DownloadChapterStartEvent,
+            DownloadImageErrorEvent,
+            DownloadImageSuccessEvent,
+            DownloadSpeedEvent,
+            UpdateOverallDownloadProgressEvent,
+        ]);
 
     #[cfg(debug_assertions)]
     builder
@@ -48,6 +62,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
+            builder.mount_events(app);
+
             let app_data_dir = app
                 .path()
                 .app_data_dir()
@@ -58,10 +74,12 @@ pub fn run() {
             println!("app data dir: {app_data_dir:?}");
 
             let config = std::sync::RwLock::new(Config::new(app.handle())?);
-            app.manage(config);
-
             let jm_client = jm_client::JmClient::new(app.handle().clone());
+            let download_manager = download_manager::DownloadManager::new(app.handle().clone());
+
+            app.manage(config);
             app.manage(jm_client);
+            app.manage(download_manager);
 
             Ok(())
         })

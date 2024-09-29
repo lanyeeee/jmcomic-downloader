@@ -5,6 +5,7 @@ import {useMessage, useNotification} from "naive-ui";
 import LoginDialog from "./components/LoginDialog.vue";
 import SearchPane from "./components/SearchPane.vue";
 import ChapterPane from "./components/ChapterPane.vue";
+import DownloadingList from "./components/DownloadingList.vue";
 
 const message = useMessage();
 const notification = useNotification();
@@ -69,8 +70,8 @@ async function test() {
         <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
       </div>
     </div>
-    <div class="flex flex-1 overflow-hidden">
-      <n-tabs class="h-full" v-model:value="currentTabName" type="line" size="small">
+    <div class="flex overflow-hidden">
+      <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
         <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
           <search-pane v-model:selected-album="selectedAlbum" v-model:current-tab-name="currentTabName"/>
         </n-tab-pane>
@@ -78,6 +79,7 @@ async function test() {
           <chapter-pane v-model:selected-album="selectedAlbum"/>
         </n-tab-pane>
       </n-tabs>
+      <downloading-list class="basis-1/2 overflow-auto"></downloading-list>
     </div>
     <n-modal v-model:show="loginDialogShowing">
       <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile"/>

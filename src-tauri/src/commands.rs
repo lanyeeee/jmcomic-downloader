@@ -1,13 +1,15 @@
+// TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use std::sync::RwLock;
 
 use tauri::{AppHandle, State};
 
 use crate::config::Config;
+use crate::download_manager::DownloadManager;
 use crate::errors::CommandResult;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::jm_client::JmClient;
 use crate::responses::{ChapterRespData, SearchResp, UserProfileRespData};
-use crate::types::{Album, SearchSort};
+use crate::types::{Album, ChapterInfo, SearchSort};
 
 #[tauri::command]
 #[specta::specta]
@@ -93,4 +95,16 @@ pub async fn get_chapter(
 pub async fn get_scramble_id(jm_client: State<'_, JmClient>, id: i64) -> CommandResult<i64> {
     let scramble_id = jm_client.get_scramble_id(id).await?;
     Ok(scramble_id)
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn download_chapters(
+    download_manager: State<'_, DownloadManager>,
+    chapter_infos: Vec<ChapterInfo>,
+) -> CommandResult<()> {
+    for chapter_info in chapter_infos {
+        download_manager.submit_chapter(chapter_info).await?;
+    }
+    Ok(())
 }

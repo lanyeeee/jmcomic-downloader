@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
@@ -6,13 +8,17 @@ use tauri::{AppHandle, Manager};
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub avs: String,
+    pub download_dir: PathBuf,
 }
 
 impl Config {
     pub fn new(app: &AppHandle) -> anyhow::Result<Self> {
         let app_data_dir = app.path().app_data_dir()?;
         let config_path = app_data_dir.join("config.json");
-        let default_config = Config { avs: String::new() };
+        let default_config = Config {
+            avs: String::new(),
+            download_dir: app_data_dir.join("漫画下载"),
+        };
         // 如果配置文件存在且能够解析，则使用配置文件中的配置，否则使用默认配置
         let config = if config_path.exists() {
             let config_string = std::fs::read_to_string(config_path)?;
