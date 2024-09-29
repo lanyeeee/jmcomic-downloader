@@ -16,10 +16,10 @@ use tauri::{AppHandle, Manager};
 use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{
-    AlbumRespData, ChapterRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
-    UserProfileRespData,
+    AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
+    SearchRespData, UserProfileRespData,
 };
-use crate::types::SearchSort;
+use crate::types::{FavoriteSort, SearchSort};
 use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
@@ -37,6 +37,7 @@ enum ApiPath {
     Album,
     Chapter,
     ScrambleId,
+    Favorite,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -50,6 +51,7 @@ impl ApiPath {
             ApiPath::Album => "/album",
             ApiPath::Chapter => "/chapter",
             ApiPath::ScrambleId => "/chapter_view_template",
+            ApiPath::Favorite => "/favorite",
         }
     }
 }
@@ -360,6 +362,49 @@ impl JmClient {
             .and_then(|s| s.parse::<i64>().ok())
             .unwrap_or(220980);
         Ok(scramble_id)
+    }
+
+    pub(crate) async fn get_favorite_folder(
+        &self,
+        folder_id: i64,
+        page: i64,
+        sort: FavoriteSort,
+    ) -> anyhow::Result<FavoriteRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({
+            "page": page,
+            "o": sort.as_str(),
+            "folder_id": folder_id,
+        });
+        // 发送获取收藏夹请求
+        let http_resp = self.jm_get(ApiPath::Favorite, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取收藏夹失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取收藏夹失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp
+            .data
+            .as_str()
+            .context(format!("获取收藏夹失败，data字段不是字符串: {jm_resp:?}"))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为FavoriteRespData
+        let favorite = serde_json::from_str::<FavoriteRespData>(&data).context(format!(
+            "将解密后的data字段解析为FavoriteRespData失败: {data}"
+        ))?;
+        Ok(favorite)
     }
 }
 

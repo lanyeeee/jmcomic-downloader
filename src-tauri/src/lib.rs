@@ -34,6 +34,7 @@ pub fn run() {
             get_album,
             get_chapter,
             get_scramble_id,
+            get_favorite_folder,
             get_user_profile,
             download_chapters,
             show_path_in_file_manager,
@@ -60,6 +61,7 @@ pub fn run() {
         .expect("Failed to export typescript bindings");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {

@@ -10,7 +10,7 @@ declare module 'vue' {
     AlbumCard: typeof import('./src/components/AlbumCard.vue')['default']
     ChapterPane: typeof import('./src/components/ChapterPane.vue')['default']
     DownloadingList: typeof import('./src/components/DownloadingList.vue')['default']
-    Greet: typeof import('./src/components/Greet.vue')['default']
+    FavoritePane: typeof import('./src/components/FavoritePane.vue')['default']
     LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
@@ -20,6 +20,7 @@ declare module 'vue' {
     NDivider: typeof import('naive-ui')['NDivider']
     NDropdown: typeof import('naive-ui')['NDropdown']
     NEmpty: typeof import('naive-ui')['NEmpty']
+    NH3: typeof import('naive-ui')['NH3']
     NInput: typeof import('naive-ui')['NInput']
     NMessageProvider: typeof import('naive-ui')['NMessageProvider']
     NModal: typeof import('naive-ui')['NModal']
@@ -29,7 +30,7 @@ declare module 'vue' {
     NSelect: typeof import('naive-ui')['NSelect']
     NTabPane: typeof import('naive-ui')['NTabPane']
     NTabs: typeof import('naive-ui')['NTabs']
-    NText: typeof import('naive-ui')['NText']
+    NTooltip: typeof import('naive-ui')['NTooltip']
     SearchPane: typeof import('./src/components/SearchPane.vue')['default']
   }
 }
