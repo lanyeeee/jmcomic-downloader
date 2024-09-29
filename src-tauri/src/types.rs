@@ -1,9 +1,13 @@
 use std::fmt::Display;
+use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use tauri::{AppHandle, Manager};
 
-use crate::responses::{AlbumRespData, RelatedListRespData};
+use crate::config::Config;
+use crate::extensions::IgnoreRwLockPoison;
+use crate::responses::{AlbumRespData, RelatedListRespData, SearchResp, SearchRespData};
 use crate::utils;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -51,8 +55,8 @@ pub struct Album {
     #[serde(rename = "is_aids")]
     pub is_aids: bool,
 }
-impl From<AlbumRespData> for Album {
-    fn from(album: AlbumRespData) -> Self {
+impl Album {
+    pub fn from_album_resp_data(app: &AppHandle, album: AlbumRespData) -> Self {
         let album_title = utils::filename_filter(&album.name);
         let mut chapter_infos: Vec<ChapterInfo> = album
             .series
@@ -63,12 +67,18 @@ impl From<AlbumRespData> for Album {
                 if !s.name.is_empty() {
                     chapter_title.push_str(&format!(" {}", utils::filename_filter(&s.name)));
                 }
+                let download_dir = app
+                    .state::<RwLock<Config>>()
+                    .read_or_panic()
+                    .download_dir
+                    .join(&album_title)
+                    .join(&chapter_title);
                 let chapter_info = ChapterInfo {
                     album_id: album.id,
                     album_title: album_title.clone(),
                     chapter_id,
                     chapter_title,
-                    is_downloaded: false,
+                    is_downloaded: download_dir.exists(),
                 };
                 Some(chapter_info)
             })
@@ -114,4 +124,24 @@ pub struct ChapterInfo {
     pub album_id: i64,
     pub album_title: String,
     pub is_downloaded: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum SearchResult {
+    SearchRespData(SearchRespData),
+    // 用Box包装AlbumRespData，因为Album比SearchRespData大得多
+    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与AlbumRespData一样大的内存
+    Album(Box<Album>),
+}
+
+impl SearchResult {
+    pub fn from_search_resp(app: &AppHandle, search_resp: SearchResp) -> Self {
+        match search_resp {
+            SearchResp::SearchRespData(search_resp) => SearchResult::SearchRespData(search_resp),
+            SearchResp::AlbumRespData(album_resp) => {
+                let album = Album::from_album_resp_data(app, *album_resp);
+                SearchResult::Album(Box::new(album))
+            }
+        }
+    }
 }

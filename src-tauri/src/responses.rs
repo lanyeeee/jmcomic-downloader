@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::types::Album;
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JmResp {
@@ -145,9 +143,9 @@ pub struct RedirectRespData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum SearchResp {
     SearchRespData(SearchRespData),
-    // 用Box包装Album，因为Album比SearchResult大得多
-    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与Album一样大的内存
-    Album(Box<Album>),
+    // 用Box包装AlbumRespData，因为Album比SearchRespData大得多
+    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与AlbumRespData一样大的内存
+    AlbumRespData(Box<AlbumRespData>),
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

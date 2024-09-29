@@ -34,6 +34,7 @@ async function onClickItem(aid: number) {
            alt=""
            referrerpolicy="no-referrer"/>
       <div class="flex flex-col h-full">
+        <!--   TODO: 解决漫画名字太长导致的排版问题     -->
         <span class="font-bold text-xl">{{ albumInSearch.name }}</span>
         <span class="text-red">作者：{{ albumInSearch.author }}</span>
         <span class="text-gray">分类：{{ albumInSearch.category.title }} {{ albumInSearch.category_sub.title }}</span>
