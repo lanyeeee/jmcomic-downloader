@@ -87,6 +87,9 @@ pnpm tauri build
 - 作者不对使用本工具导致的任何损失、法律纠纷或其他后果负责
 - 作者不对用户使用本工具的行为负责，包括但不限于用户违反法律或任何第三方权益的行为
 # 其他
+哔咔漫画下载器  
+[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=lanyeeee&repo=picacomic-downloader)](https://github.com/lanyeeee/picacomic-downloader)   
 
-任何使用中遇到的问题、任何希望添加的功能，都欢迎提交issue或开discussion交流，我会尽力解决
+任何使用中遇到的问题、任何希望添加的功能，都欢迎提交issue或开discussion交流，我会尽力解决  
+
 
