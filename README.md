@@ -30,6 +30,10 @@
 
 https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 
+# 常见问题
+- [为什么下载过程中CPU占用很高](https://github.com/lanyeeee/jmcomic-downloader/discussions/11)
+
+
 # 关于被杀毒软件误判为病毒
 
 对于个人开发者来说，这个问题几乎是无解的(~~需要购买数字证书给软件签名，甚至给杀毒软件交保护费~~)  
