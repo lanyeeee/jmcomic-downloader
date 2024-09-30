@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "jmcomic-downloader",
+        "title": "禁漫天堂下载器",
         "width": 800,
         "height": 600
       }
@@ -24,12 +24,21 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": [
+          "SimpChinese"
+        ]
+      }
+    }
   }
 }
