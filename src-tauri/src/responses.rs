@@ -178,7 +178,7 @@ pub struct FavoriteRespData {
 pub struct AlbumInFavoriteRespData {
     pub id: String,
     pub author: String,
-    pub description: String,
+    pub description: Option<String>,
     pub name: String,
     #[serde(rename = "latest_ep")]
     pub latest_ep: Option<String>,
