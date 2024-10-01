@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_aux::prelude::*;
 use specta::Type;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -21,6 +22,8 @@ pub struct UserProfileRespData {
     pub fname: String,
     pub gender: String,
     pub message: Option<String>,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub coin: i64,
     #[serde(rename = "album_favorites")]
     pub album_favorites: i64,
     pub s: String,
@@ -49,7 +52,8 @@ pub struct UserProfileRespData {
 pub struct SearchRespData {
     #[serde(rename = "search_query")]
     pub search_query: String,
-    pub total: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub total: i64,
     pub content: Vec<AlbumInSearchRespData>,
 }
 
