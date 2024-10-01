@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {computed, ref} from "vue";
 import {Album, commands, SearchRespData, SearchSort} from "../bindings.ts";
-import {useNotification} from "naive-ui";
+import {useMessage, useNotification} from "naive-ui";
 import AlbumCard from "./AlbumCard.vue";
 
-
+const message = useMessage();
 const notification = useNotification();
 
 const sortOptions = [
@@ -26,7 +26,7 @@ const searchPageCount = computed(() => {
   if (searchRespData.value === undefined) {
     return 0;
   }
-  const total = parseInt(searchRespData.value.total);
+  const total = searchRespData.value.total;
   return Math.floor(total / 80) + 1;
 });
 
@@ -40,11 +40,17 @@ async function search(keyword: string, page: number, sort: SearchSort) {
   }
   const searchResult = result.data;
   if ("SearchRespData" in searchResult) {
-    searchRespData.value = searchResult.SearchRespData;
-    console.log(searchResult.SearchRespData);
+    const respData = searchResult.SearchRespData;
+    if (respData.content.length === 0) {
+      message.warning("什么都没有搜到，请尝试其他关键词");
+      return;
+    }
+    searchRespData.value = respData;
+    console.log(respData);
   } else if ("Album" in searchResult) {
-    selectedAlbum.value = searchResult.Album;
-    console.log(searchResult.Album);
+    const album = searchResult.Album;
+    selectedAlbum.value = album;
+    console.log(album);
     currentTabName.value = "chapter";
   }
 }
