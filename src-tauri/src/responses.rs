@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_aux::prelude::*;
 use specta::Type;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -21,6 +22,8 @@ pub struct UserProfileRespData {
     pub fname: String,
     pub gender: String,
     pub message: Option<String>,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub coin: i64,
     #[serde(rename = "album_favorites")]
     pub album_favorites: i64,
     pub s: String,
@@ -49,7 +52,8 @@ pub struct UserProfileRespData {
 pub struct SearchRespData {
     #[serde(rename = "search_query")]
     pub search_query: String,
-    pub total: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub total: i64,
     pub content: Vec<AlbumInSearchRespData>,
 }
 
@@ -198,4 +202,21 @@ pub struct FavoriteFolderRespData {
     #[serde(rename = "UID")]
     pub uid: String,
     pub name: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleFavoriteResp {
+    pub status: String,
+    pub msg: String,
+    #[serde(rename = "type")]
+    pub toggle_type: ToggleType,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ToggleType {
+    #[default]
+    Add,
+    Remove,
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import {computed, ref, watch} from "vue";
 import {Album, commands, FavoriteRespData, FavoriteSort, UserProfileRespData} from "../bindings.ts";
-import {useNotification} from "naive-ui";
+import {useMessage, useNotification} from "naive-ui";
 import AlbumCard from "./AlbumCard.vue";
 
+const message = useMessage();
 const notification = useNotification();
 
 const props = defineProps<{
@@ -21,7 +22,7 @@ const sortOptions: { label: string, value: string }[] = [
 const favoriteRespData = ref<FavoriteRespData>();
 const sortSelected = ref<FavoriteSort>("FavoriteTime");
 const pageSelected = ref<number>(1);
-const folderSelected = ref<number>(0);
+const folderIdSelected = ref<number>(0);
 
 const favoritePageCount = computed(() => {
   if (favoriteRespData.value === undefined) {
@@ -40,6 +41,7 @@ const folderOptions = computed<{ label: string, value: number }[]>(() => [
 
 async function getFavourite(folderId: number, page: number, sort: FavoriteSort) {
   console.log(folderId, page, sort);
+  folderIdSelected.value = folderId;
   sortSelected.value = sort;
   pageSelected.value = page;
   const result = await commands.getFavoriteFolder(folderId, page, sort);
@@ -50,12 +52,23 @@ async function getFavourite(folderId: number, page: number, sort: FavoriteSort) 
   favoriteRespData.value = result.data;
 }
 
+async function syncFavoriteFolder() {
+  const result = await commands.syncFavoriteFolder();
+  if (result.status === "error") {
+    notification.error({title: "获取收藏失败", description: result.error});
+    return;
+  }
+  await getFavourite(0, 1, "FavoriteTime");
+  message.success("收藏夹已同步");
+}
+
+// TODO: 把这个watch移到上面去
 watch(() => props.userProfile, async () => {
   if (props.userProfile === undefined) {
     favoriteRespData.value = undefined;
     return;
   }
-  await getFavourite(0, 1, sortSelected.value);
+  await getFavourite(0, 1, "FavoriteTime");
 }, {immediate: true});
 
 </script>
@@ -63,7 +76,7 @@ watch(() => props.userProfile, async () => {
 <template>
   <div class="h-full flex flex-col">
     <div class="flex">
-      <n-select v-model:value="folderSelected"
+      <n-select v-model:value="folderIdSelected"
                 :options="folderOptions"
                 :show-checkmark="false"
                 size="tiny"
@@ -72,7 +85,8 @@ watch(() => props.userProfile, async () => {
                 :options="sortOptions"
                 :show-checkmark="false"
                 size="tiny"
-                @update-value="getFavourite(folderSelected, 1, $event)"/>
+                @update-value="getFavourite(folderIdSelected, 1, $event)"/>
+      <n-button size="tiny" type="primary" secondary @click="syncFavoriteFolder">收藏夹不对请点我</n-button>
     </div>
     <div v-if="favoriteRespData!==undefined" class="flex flex-col gap-row-1 overflow-auto p-2">
       <div class="flex flex-col gap-row-2 overflow-auto">
@@ -84,7 +98,7 @@ watch(() => props.userProfile, async () => {
       </div>
       <n-pagination :page-count="favoritePageCount"
                     :page="pageSelected"
-                    @update:page="getFavourite(folderSelected, $event, sortSelected)"/>
+                    @update:page="getFavourite(folderIdSelected, $event, sortSelected)"/>
     </div>
   </div>
 </template>
