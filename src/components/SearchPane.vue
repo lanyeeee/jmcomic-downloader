@@ -64,11 +64,11 @@ async function search(keyword: string, page: number, sort: SearchSort) {
           <n-input class="text-align-left"
                    size="tiny"
                    v-model:value="searchInput"
-                   placeholder=""
+                   placeholder="jm号也可以"
                    clearable
                    @keydown.enter="search(searchInput.trim(), 1, sortSelected)">
             <template #prefix>
-              漫画名:
+              关键词:
             </template>
           </n-input>
           <n-button size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">搜索</n-button>
