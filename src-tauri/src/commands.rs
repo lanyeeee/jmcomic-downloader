@@ -140,3 +140,19 @@ pub fn show_path_in_file_manager(path: &str) -> CommandResult<()> {
     showfile::show_path_in_file_manager(path);
     Ok(())
 }
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn sync_favorite_folder(jm_client: State<'_, JmClient>) -> CommandResult<()> {
+    // 同步收藏夹的方式是随便收藏一个漫画
+    // 调用两次toggle是因为要把新收藏的漫画取消收藏
+    let task1 = jm_client.toggle_favorite_album(468_984);
+    let task2 = jm_client.toggle_favorite_album(468_984);
+    let (resp1, resp2) = tokio::try_join!(task1, task2)?;
+    if resp1.toggle_type == resp2.toggle_type {
+        let toggle_type = resp1.toggle_type;
+        return Err(anyhow!("同步收藏夹失败，两个请求都是`{toggle_type:?}`操作，请重试").into());
+    }
+
+    Ok(())
+}
