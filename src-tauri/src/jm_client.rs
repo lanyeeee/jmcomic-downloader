@@ -2,12 +2,12 @@ use std::fmt::Display;
 use std::sync::RwLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use aes::Aes256;
-use aes::cipher::{BlockDecrypt, KeyInit};
 use aes::cipher::generic_array::GenericArray;
+use aes::cipher::{BlockDecrypt, KeyInit};
+use aes::Aes256;
 use anyhow::{anyhow, Context};
-use base64::Engine;
 use base64::engine::general_purpose;
+use base64::Engine;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
@@ -17,7 +17,7 @@ use crate::config::Config;
 use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{
     AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
-    SearchRespData, UserProfileRespData,
+    SearchRespData, ToggleFavoriteResp, UserProfileRespData,
 };
 use crate::types::{FavoriteSort, SearchSort};
 use crate::utils;
@@ -364,7 +364,7 @@ impl JmClient {
         Ok(scramble_id)
     }
 
-    pub(crate) async fn get_favorite_folder(
+    pub async fn get_favorite_folder(
         &self,
         folder_id: i64,
         page: i64,
@@ -405,6 +405,43 @@ impl JmClient {
             "将解密后的data字段解析为FavoriteRespData失败: {data}"
         ))?;
         Ok(favorite)
+    }
+
+    pub async fn toggle_favorite_album(&self, aid: i64) -> anyhow::Result<ToggleFavoriteResp> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let form = json!({
+            "aid": aid,
+        });
+        // 发送 收藏/取消收藏 请求
+        let http_resp = self
+            .jm_post(ApiPath::Favorite, None, Some(form), ts)
+            .await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "收藏/取消收藏 失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("收藏/取消收藏 失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp.data.as_str().context(format!(
+            "收藏/取消收藏 失败，data字段不是字符串: {jm_resp:?}"
+        ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为ToggleFavoriteResp
+        let toggle_favorite_resp = serde_json::from_str::<ToggleFavoriteResp>(&data).context(
+            format!("将解密后的data字段解析为ToggleFavoriteResp失败: {data}"),
+        )?;
+        Ok(toggle_favorite_resp)
     }
 }
 
