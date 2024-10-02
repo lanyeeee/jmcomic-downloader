@@ -203,3 +203,20 @@ pub struct FavoriteFolderRespData {
     pub uid: String,
     pub name: String,
 }
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleFavoriteResp {
+    pub status: String,
+    pub msg: String,
+    #[serde(rename = "type")]
+    pub toggle_type: ToggleType,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ToggleType {
+    #[default]
+    Add,
+    Remove,
+}
