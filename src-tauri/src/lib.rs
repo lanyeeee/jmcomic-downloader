@@ -38,6 +38,7 @@ pub fn run() {
             get_user_profile,
             download_chapters,
             show_path_in_file_manager,
+            sync_favorite_folder,
         ])
         .events(tauri_specta::collect_events![
             DownloadChapterEndEvent,
