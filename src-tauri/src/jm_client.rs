@@ -27,7 +27,7 @@ const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
 const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
 const APP_VERSION: &str = "1.7.3";
 
-const API_DOMAIN: &str = "www.jmeadpoolcdn.life";
+const API_DOMAIN: &str = "www.cdnxxx-proxy.org";
 
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
