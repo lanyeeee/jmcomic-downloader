@@ -27,7 +27,7 @@ const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
 const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
 const APP_VERSION: &str = "1.7.3";
 
-const API_DOMAIN: &str = "www.jmeadpoolcdn.life";
+const API_DOMAIN: &str = "www.cdnxxx-proxy.org";
 
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
@@ -42,11 +42,10 @@ enum ApiPath {
 impl ApiPath {
     fn as_str(&self) -> &'static str {
         match self {
-            ApiPath::Login => "/login",
             // 没错，就是这么奇葩，获取用户信息也是用的/login
             // 带AVS去请求/login，就能获取用户信息，而不需要用户名密码
-            // 如果AVS无效或过期，就走正常的登录流程s
-            ApiPath::UserProfile => "/login",
+            // 如果AVS无效或过期，就走正常的登录流程
+            ApiPath::Login | ApiPath::UserProfile => "/login",
             ApiPath::Search => "/search",
             ApiPath::Album => "/album",
             ApiPath::Chapter => "/chapter",
@@ -186,8 +185,7 @@ impl JmClient {
     pub async fn get_user_profile(&self) -> anyhow::Result<UserProfileRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         // 发送获取用户信息请求
-        // TODO: 改成ApiPath::UserProfile
-        let http_resp = self.jm_post(ApiPath::Login, None, None, ts).await?;
+        let http_resp = self.jm_post(ApiPath::UserProfile, None, None, ts).await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
