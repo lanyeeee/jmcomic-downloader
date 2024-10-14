@@ -13,10 +13,8 @@ use reqwest::cookie::Jar;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::config::Config;
-use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{
     AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
     SearchRespData, ToggleFavoriteResp, UserProfileRespData,
@@ -188,7 +186,7 @@ impl JmClient {
         let status = http_resp.status();
         let body = http_resp.text().await?;
         if status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(anyhow!("获取用户信息失败，AVS无效或已过期"));
+            return Err(anyhow!("获取用户信息失败，Cookie无效或已过期，请重新登录"));
         } else if status != reqwest::StatusCode::OK {
             return Err(anyhow!(
                 "获取用户信息失败，预料之外的状态码({status}): {body}"
