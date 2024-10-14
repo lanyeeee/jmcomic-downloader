@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref} from "vue";
-import {commands, Config} from "../bindings.ts";
+import {commands, Config, UserProfileRespData} from "../bindings.ts";
 import {useMessage, useNotification} from "naive-ui";
 
 const message = useMessage();
@@ -8,6 +8,7 @@ const notification = useNotification();
 
 const showing = defineModel<boolean>("showing", {required: true});
 const config = defineModel<Config>("config", {required: true});
+const userProfile = defineModel<UserProfileRespData | undefined>("userProfile", {required: true});
 
 const username = ref<string>(config.value.username);
 const password = ref<string>(config.value.password);
@@ -27,8 +28,8 @@ async function onLogin() {
     notification.error({title: "登录失败", description: result.error});
     return;
   }
+  userProfile.value = result.data;
   message.success("登录成功");
-  config.value.avs = result.data.s;
   if (remember.value) {
     config.value.username = username.value;
     config.value.password = password.value;

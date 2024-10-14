@@ -114,7 +114,6 @@ async function selectDownloadDir() {
 
 <template>
   <div class="flex flex-col gap-row-1">
-    <n-h3 class="m-be-0">下载列表</n-h3>
     <div class="flex">
       <n-input v-model:value="config.downloadDir"
                size="tiny"
