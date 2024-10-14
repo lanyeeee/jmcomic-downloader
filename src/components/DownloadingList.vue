@@ -6,7 +6,8 @@ import {open} from "@tauri-apps/plugin-dialog";
 import {NProgress, useNotification} from "naive-ui";
 
 type ProgressData = {
-  title: string;
+  albumTitle: string,
+  chapterTitle: string;
   downloadedCount: number;
   total: number;
   percentage: number;
@@ -19,7 +20,8 @@ const config = defineModel<Config>("config", {required: true});
 
 const progresses = ref<Map<number, ProgressData>>(new Map());
 const overallProgress = ref<ProgressData>({
-  title: "总进度",
+  albumTitle: "总进度",
+  chapterTitle: "总进度",
   downloadedCount: 0,
   total: 0,
   percentage: 0,
@@ -29,7 +31,8 @@ const overallProgress = ref<ProgressData>({
 onMounted(async () => {
   await events.downloadChapterPendingEvent.listen(({payload}) => {
     let progressData: ProgressData = {
-      title: `等待中 ${payload.title}`,
+      albumTitle: payload.albumTitle,
+      chapterTitle: payload.chapterTitle,
       downloadedCount: 0,
       total: 0,
       percentage: 0,
@@ -44,7 +47,6 @@ onMounted(async () => {
       return;
     }
     progressData.total = payload.total;
-    progressData.title = payload.title;
   });
 
   await events.downloadImageSuccessEvent.listen(({payload}) => {
@@ -65,7 +67,7 @@ onMounted(async () => {
       title: "下载图片失败",
       description: payload.url,
       content: payload.errMsg,
-      meta: progressData.title
+      meta: progressData.chapterTitle
     });
   });
 
@@ -75,7 +77,7 @@ onMounted(async () => {
       return;
     }
     if (payload.errMsg !== null) {
-      notification.warning({title: "下载章节失败", content: payload.errMsg, meta: progressData.title});
+      notification.warning({title: "下载章节失败", content: payload.errMsg, meta: progressData.chapterTitle});
     }
     progresses.value.delete(payload.chapterId);
   });
@@ -152,19 +154,21 @@ async function selectDownloadDir() {
         4. 编码速度较慢<br/>
       </n-tooltip>
     </n-radio-group>
-    <div class="grid grid-cols-[1fr_4fr_2fr]">
-      <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.title }}</span>
+    <div class="grid grid-cols-[1fr_4fr_1fr]">
+      <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
       <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
         {{ overallProgress.indicator }}
       </n-progress>
       <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
     </div>
-    <div class="grid grid-cols-[1fr_4fr]"
-         v-for="[chapterId, {title, percentage, downloadedCount, total}] in progresses"
+    <div class="grid grid-cols-[2fr_1fr_3fr]"
+         v-for="[chapterId, {albumTitle,chapterTitle, percentage, downloadedCount, total}] in progresses"
          :key="chapterId">
-      <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ title }}</span>
+      <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ albumTitle }}</span>
+      <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
       <n-progress class="" :percentage="percentage">
-        {{ downloadedCount }}/{{ total }}
+        <div v-if="total===0">等待中</div>
+        <div v-else>{{ downloadedCount }}/{{ total }}</div>
       </n-progress>
     </div>
   </div>

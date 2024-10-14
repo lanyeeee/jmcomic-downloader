@@ -115,6 +115,7 @@ impl DownloadManager {
             &self.app,
             chapter_info.chapter_id,
             chapter_info.chapter_title.clone(),
+            chapter_info.album_title.clone(),
         );
 
         let jm_client = self.app.state::<JmClient>().inner().clone();
@@ -156,12 +157,7 @@ impl DownloadManager {
         let mut join_set = JoinSet::new();
         // 限制同时下载的章节数量
         let permit = self.chapter_sem.acquire().await?;
-        emit_start_event(
-            &self.app,
-            chapter_info.chapter_id,
-            chapter_info.chapter_title.clone(),
-            total,
-        );
+        emit_start_event(&self.app, chapter_info.chapter_id, total);
         for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
             let manager = self.clone();
             let chapter_id = chapter_info.chapter_id;
@@ -375,18 +371,23 @@ fn save_image(
     Ok(())
 }
 
-fn emit_start_event(app: &AppHandle, chapter_id: i64, title: String, total: u32) {
-    let payload = events::DownloadChapterStartEventPayload {
-        chapter_id,
-        title,
-        total,
-    };
+fn emit_start_event(app: &AppHandle, chapter_id: i64, total: u32) {
+    let payload = events::DownloadChapterStartEventPayload { chapter_id, total };
     let event = events::DownloadChapterStartEvent(payload);
     let _ = event.emit(app);
 }
 
-fn emit_pending_event(app: &AppHandle, chapter_id: i64, title: String) {
-    let payload = events::DownloadChapterPendingEventPayload { chapter_id, title };
+fn emit_pending_event(
+    app: &AppHandle,
+    chapter_id: i64,
+    chapter_title: String,
+    album_title: String,
+) {
+    let payload = events::DownloadChapterPendingEventPayload {
+        chapter_id,
+        chapter_title,
+        album_title,
+    };
     let event = events::DownloadChapterPendingEvent(payload);
     let _ = event.emit(app);
 }
