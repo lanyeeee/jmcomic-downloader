@@ -10,7 +10,6 @@ use tauri::{AppHandle, Manager};
 pub struct Config {
     pub username: String,
     pub password: String,
-    pub avs: String,
     pub download_dir: PathBuf,
     pub download_format: DownloadFormat,
 }
@@ -22,7 +21,6 @@ impl Config {
         let default_config = Config {
             username: String::new(),
             password: String::new(),
-            avs: String::new(),
             download_dir: app_data_dir.join("漫画下载"),
             download_format: DownloadFormat::Jpeg,
         };
@@ -43,9 +41,5 @@ impl Config {
         let config_string = serde_json::to_string_pretty(self)?;
         std::fs::write(config_path, config_string)?;
         Ok(())
-    }
-
-    pub fn get_cookie(&self) -> String {
-        format!("AVS={}", self.avs)
     }
 }

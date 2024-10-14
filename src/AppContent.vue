@@ -27,32 +27,6 @@ watch(config, async () => {
   message.success("保存配置成功");
 }, {deep: true});
 
-watch(() => config.value?.avs, async () => {
-  const profileResult = await commands.getUserProfile();
-  if (profileResult.status === "ok") {
-    userProfile.value = profileResult.data;
-    message.success("获取用户信息成功");
-    return;
-  }
-  const profileNotification = notification.error({title: "获取用户信息失败", description: profileResult.error});
-  if (config.value !== undefined && config.value.username !== "" && config.value.password !== "") {
-    const loginMessage = message.loading("获取用户信息失败，正在尝试用配置文件中的用户名和密码登录");
-    const loginResult = await commands.login(config.value.username, config.value.password);
-    if (loginResult.status === "ok") {
-      config.value.avs = loginResult.data.s;
-      loginMessage.content = "登录成功";
-      loginMessage.type = "success";
-      profileNotification.type = "success";
-      profileNotification.title = "获取用户信息成功";
-      profileNotification.description = "使用配置文件中的用户名和密码登录成功";
-      return;
-    }
-    notification.error({title: "登录失败", description: loginResult.error});
-  }
-
-  userProfile.value = undefined;
-});
-
 onMounted(async () => {
   // 屏蔽浏览器右键菜单
   document.oncontextmenu = (event) => {
@@ -60,6 +34,16 @@ onMounted(async () => {
   };
   // 获取配置
   config.value = await commands.getConfig();
+  // 如果username和password不为空，尝试登录
+  if (config.value.username !== "" && config.value.password !== "") {
+    const result = await commands.login(config.value.username, config.value.password);
+    if (result.status === "error") {
+      notification.error({title: "自动登录失败", description: result.error});
+      return;
+    }
+    userProfile.value = result.data;
+    message.success("自动登录成功");
+  }
 });
 
 async function showConfigInFileManager() {
@@ -84,20 +68,6 @@ async function test() {
 
 <template>
   <div v-if="config!==undefined" class="h-screen flex flex-col">
-    <div class="flex">
-      <n-input v-model:value="config.avs" placeholder="" clearable>
-        <template #prefix>
-          AVS：
-        </template>
-      </n-input>
-      <n-button type="primary" @click="loginDialogShowing=true">账号登录</n-button>
-      <n-button @click="showConfigInFileManager">打开配置目录</n-button>
-      <n-button @click="test">测试用</n-button>
-      <div v-if="userProfile!==undefined" class="flex flex-col">
-        <!--    TODO: 显示头像    -->
-        <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
-      </div>
-    </div>
     <div class="flex overflow-hidden">
       <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
         <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
@@ -112,10 +82,21 @@ async function test() {
           <chapter-pane v-model:selected-album="selectedAlbum"/>
         </n-tab-pane>
       </n-tabs>
-      <downloading-list class="basis-1/2 overflow-auto" v-model:config="config"></downloading-list>
+      <div class="basis-1/2 flex flex-col">
+        <div class="flex">
+          <n-button type="primary" @click="loginDialogShowing=true">账号登录</n-button>
+          <n-button @click="showConfigInFileManager">打开配置目录</n-button>
+          <n-button @click="test">测试用</n-button>
+          <div v-if="userProfile!==undefined" class="flex flex-col">
+            <!--    TODO: 显示头像    -->
+            <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
+          </div>
+        </div>
+        <downloading-list class="overflow-auto" v-model:config="config"></downloading-list>
+      </div>
     </div>
     <n-modal v-model:show="loginDialogShowing">
-      <login-dialog v-model:showing="loginDialogShowing" v-model:config="config"/>
+      <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile"/>
     </n-modal>
   </div>
 </template>
