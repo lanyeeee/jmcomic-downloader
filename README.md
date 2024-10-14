@@ -32,6 +32,8 @@ https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 
 # 常见问题
 - [为什么下载过程中CPU占用很高](https://github.com/lanyeeee/jmcomic-downloader/discussions/11)
+- [使用Ubuntu22.04时，搜索结果和收藏夹无法加载封面图](https://github.com/lanyeeee/jmcomic-downloader/discussions/31)
+- [使用Ubuntu24.04时，窗口全白](https://github.com/lanyeeee/jmcomic-downloader/discussions/32)
 
 
 # 关于被杀毒软件误判为病毒
