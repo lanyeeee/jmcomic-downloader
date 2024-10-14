@@ -114,7 +114,6 @@ async function selectDownloadDir() {
 
 <template>
   <div class="flex flex-col gap-row-1">
-    <n-h3 class="m-be-0">下载列表</n-h3>
     <div class="flex">
       <n-input v-model:value="config.downloadDir"
                size="tiny"
@@ -148,8 +147,9 @@ async function selectDownloadDir() {
           <n-radio value="Webp">webp</n-radio>
         </template>
         1. 无损<br/>
-        2. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
-        3. 编码速度较慢<br/>
+        <span class="text-red">2. 这是jm图片原本的格式</span><br/>
+        3. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
+        4. 编码速度较慢<br/>
       </n-tooltip>
     </n-radio-group>
     <div class="grid grid-cols-[1fr_4fr_2fr]">
