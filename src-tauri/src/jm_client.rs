@@ -1,5 +1,6 @@
+// TODO: 删除未使用的import
 use std::fmt::Display;
-use std::sync::RwLock;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use aes::cipher::generic_array::GenericArray;
@@ -8,13 +9,12 @@ use aes::Aes256;
 use anyhow::{anyhow, Context};
 use base64::engine::general_purpose;
 use base64::Engine;
+use reqwest::cookie::Jar;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::config::Config;
-use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{
     AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
     SearchRespData, ToggleFavoriteResp, UserProfileRespData,
@@ -58,20 +58,25 @@ impl ApiPath {
 #[derive(Clone)]
 pub struct JmClient {
     app: AppHandle,
+    jar: Arc<Jar>,
 }
 
 impl JmClient {
     pub fn new(app: AppHandle) -> Self {
-        Self { app }
+        Self {
+            app,
+            jar: Arc::new(Jar::default()),
+        }
     }
 
-    pub fn client() -> ClientWithMiddleware {
+    pub fn client(&self) -> ClientWithMiddleware {
         // TODO: 可以将retry_policy缓存起来，避免每次请求都创建
         let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
             .base(1) // 指数为1，保证重试间隔为1秒不变
             .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
             .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
         let client = reqwest::ClientBuilder::new()
+            .cookie_provider(self.jar.clone())
             .timeout(Duration::from_secs(2)) // 每个请求超过2秒就超时
             .build()
             .unwrap();
@@ -95,22 +100,13 @@ impl JmClient {
         } else {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
         };
-        let cookie = if path == ApiPath::Login && form.is_some() {
-            String::new()
-        } else {
-            self.app
-                .state::<RwLock<Config>>()
-                .read_or_panic()
-                .get_cookie()
-        };
 
         let path = path.as_str();
-        let request = Self::client()
+        let request = self.client()
             .request(method, format!("https://{API_DOMAIN}{path}").as_str())
             .header("token", token)
             .header("tokenparam", tokenparam)
-            .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-            .header("cookie", cookie);
+            .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
 
         let http_resp = match form {
             Some(payload) => request.query(&query).form(&payload).send().await?,
@@ -190,7 +186,7 @@ impl JmClient {
         let status = http_resp.status();
         let body = http_resp.text().await?;
         if status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(anyhow!("获取用户信息失败，AVS无效或已过期"));
+            return Err(anyhow!("获取用户信息失败，Cookie无效或已过期，请重新登录"));
         } else if status != reqwest::StatusCode::OK {
             return Err(anyhow!(
                 "获取用户信息失败，预料之外的状态码({status}): {body}"
