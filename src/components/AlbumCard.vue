@@ -22,6 +22,14 @@ async function onClickItem(aid: number) {
   currentTabName.value = "chapter";
 }
 
+async function downloadAlbum(aid: number) {
+  const result = await commands.downloadAlbum(aid);
+  if (result.status === "error") {
+    notification.error({title: "下载漫画失败", description: result.error});
+    return;
+  }
+}
+
 </script>
 
 <template>
@@ -33,13 +41,16 @@ async function onClickItem(aid: number) {
            alt=""
            referrerpolicy="no-referrer"
            @click="onClickItem(parseInt(albumInfo.id))"/>
-      <div class="flex flex-col h-full">
+      <div class="flex flex-col w-full justify-between">
+        <div class="flex flex-col">
         <span class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
               @click="onClickItem(parseInt(albumInfo.id))">
           {{ albumInfo.name }}
         </span>
-        <span class="text-red">作者：{{ albumInfo.author }}</span>
-        <span class="text-gray">分类：{{ albumInfo.category.title }} {{ albumInfo.category_sub.title }}</span>
+          <span class="text-red">作者：{{ albumInfo.author }}</span>
+          <span class="text-gray">分类：{{ albumInfo.category.title }} {{ albumInfo.category_sub.title }}</span>
+        </div>
+        <n-button size="tiny" class="ml-auto" @click="downloadAlbum(parseInt(albumInfo.id))">一键下载所有章节</n-button>
       </div>
     </div>
   </n-card>
