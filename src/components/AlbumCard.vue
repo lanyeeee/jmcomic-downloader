@@ -25,17 +25,18 @@ async function onClickItem(aid: number) {
 </script>
 
 <template>
-  <n-card class="cursor-pointer"
-          content-style="padding: 0.25rem;"
-          hoverable
-          @click="onClickItem(parseInt(albumInfo.id))">
+  <n-card content-style="padding: 0.25rem;"
+          hoverable>
     <div class="flex">
-      <img class="w-24 object-cover pr-4"
+      <img class="w-24 object-cover mr-4 cursor-pointer"
            :src="`https://cdn-msp3.18comic.vip/media/albums/${albumInfo.id}_3x4.jpg`"
            alt=""
-           referrerpolicy="no-referrer"/>
+           referrerpolicy="no-referrer"
+           @click="onClickItem(parseInt(albumInfo.id))"/>
       <div class="flex flex-col h-full">
-        <span class="font-bold text-xl line-clamp-3">{{ albumInfo.name }}</span>
+        <span class="font-bold text-xl line-clamp-3 cursor-pointer" @click="onClickItem(parseInt(albumInfo.id))">
+          {{ albumInfo.name }}
+        </span>
         <span class="text-red">作者：{{ albumInfo.author }}</span>
         <span class="text-gray">分类：{{ albumInfo.category.title }} {{ albumInfo.category_sub.title }}</span>
       </div>
