@@ -132,6 +132,30 @@ pub async fn download_chapters(
 
 #[tauri::command(async)]
 #[specta::specta]
+pub async fn download_album(
+    app: AppHandle,
+    jm_client: State<'_, JmClient>,
+    download_manager: State<'_, DownloadManager>,
+    aid: i64,
+) -> CommandResult<()> {
+    let album = get_album(app, jm_client, aid).await?;
+    let chapter_infos: Vec<ChapterInfo> = album
+        .chapter_infos
+        .into_iter()
+        .filter(|chapter_info| !chapter_info.is_downloaded)
+        .collect();
+    if chapter_infos.is_empty() {
+        let album_title = album.name;
+        return Err(
+            anyhow!("漫画`{album_title}`的所有章节都已存在于下载目录，无需重复下载").into(),
+        );
+    }
+    download_chapters(download_manager, chapter_infos).await?;
+    Ok(())
+}
+
+#[tauri::command(async)]
+#[specta::specta]
 pub fn show_path_in_file_manager(path: &str) -> CommandResult<()> {
     let path = PathBuf::from_slash(path);
     if !path.exists() {
