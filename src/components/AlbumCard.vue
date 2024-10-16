@@ -43,10 +43,11 @@ async function downloadAlbum(aid: number) {
            @click="onClickItem(parseInt(albumInfo.id))"/>
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-        <span class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
-              @click="onClickItem(parseInt(albumInfo.id))">
+          <!--    TODO:调整标题的最大行数，以确保漫画卡片大小一致       -->
+          <span class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
+                @click="onClickItem(parseInt(albumInfo.id))">
           {{ albumInfo.name }}
-        </span>
+          </span>
           <span class="text-red">作者：{{ albumInfo.author }}</span>
           <span class="text-gray">分类：{{ albumInfo.category.title }} {{ albumInfo.category_sub.title }}</span>
         </div>
