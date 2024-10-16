@@ -77,7 +77,7 @@ impl DownloadManager {
             downloaded_image_count: Arc::new(AtomicU32::new(0)),
             total_image_count: Arc::new(AtomicU32::new(0)),
         };
-
+        // TODO: 改用tauri::async_runtime::spawn
         manager.rt.spawn(manager.clone().log_download_speed());
         manager.rt.spawn(manager.clone().receiver_loop(receiver));
 
@@ -248,6 +248,7 @@ impl DownloadManager {
         drop(permit);
         // 保存图片，因为保存图片可能要进行图片拼接
         // 而图片拼接是CPU密集型操作，所以使用spawn_blocking，避免阻塞worker threads
+        // TODO: 改用rayon + tokio::sync::oneshot
         let _ = tokio::task::spawn_blocking(move || {
             if let Err(err) = save_image(&save_path, download_format, block_num, &image_data) {
                 let err = err.context(format!("保存图片`{url}`到`{save_path:?}`失败"));
@@ -289,6 +290,7 @@ fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf
 }
 
 fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
+    // TODO: 删掉多余的return
     return if id < scramble_id {
         0
     } else if id < 268_850 {
