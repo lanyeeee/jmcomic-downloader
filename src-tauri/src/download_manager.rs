@@ -117,28 +117,10 @@ impl DownloadManager {
             chapter_info.chapter_title.clone(),
             chapter_info.album_title.clone(),
         );
-
-        let jm_client = self.app.state::<JmClient>().inner().clone();
-        // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
-        let scramble_id = jm_client.get_scramble_id(chapter_info.chapter_id).await?;
-        let chapter_resp_data = jm_client.get_chapter(chapter_info.chapter_id).await?;
-        // 构造图片下载链接
-        let urls_with_block_num: Vec<(String, u32)> = chapter_resp_data
-            .images
-            .into_iter()
-            .filter_map(|filename| {
-                let file_path = Path::new(&filename);
-                let ext = file_path.extension()?.to_str()?.to_lowercase();
-                if ext != "webp" {
-                    return None;
-                }
-                let chapter_id = chapter_info.chapter_id;
-                let filename_without_ext = file_path.file_stem()?.to_str()?;
-                let block_num = calculate_block_num(scramble_id, chapter_id, filename_without_ext);
-                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
-                Some((url, block_num))
-            })
-            .collect();
+        // 获取此章节每张图片的下载链接以及对应的block_num
+        let urls_with_block_num = self
+            .get_urls_with_block_num(chapter_info.chapter_id)
+            .await?;
         // 创建临时下载目录
         let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
         std::fs::create_dir_all(&temp_download_dir)
@@ -149,7 +131,7 @@ impl DownloadManager {
             .state::<RwLock<Config>>()
             .read_or_panic()
             .download_format;
-
+        // 总共需要下载的图片数量
         let total = urls_with_block_num.len() as u32;
         // 记录总共需要下载的图片数量
         self.total_image_count.fetch_add(total, Ordering::Relaxed);
@@ -215,6 +197,30 @@ impl DownloadManager {
             emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
         };
         Ok(())
+    }
+
+    async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
+        let jm_client = self.app.state::<JmClient>().inner().clone();
+        // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
+        let scramble_id = jm_client.get_scramble_id(chapter_id).await?;
+        let chapter_resp_data = jm_client.get_chapter(chapter_id).await?;
+        // 构造图片下载链接
+        let urls_with_block_num: Vec<(String, u32)> = chapter_resp_data
+            .images
+            .into_iter()
+            .filter_map(|filename| {
+                let file_path = Path::new(&filename);
+                let ext = file_path.extension()?.to_str()?.to_lowercase();
+                if ext != "webp" {
+                    return None;
+                }
+                let filename_without_ext = file_path.file_stem()?.to_str()?;
+                let block_num = calculate_block_num(scramble_id, chapter_id, filename_without_ext);
+                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
+                Some((url, block_num))
+            })
+            .collect();
+        Ok(urls_with_block_num)
     }
 
     async fn download_image(
