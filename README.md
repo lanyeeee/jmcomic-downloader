@@ -35,6 +35,8 @@ https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 - [使用Ubuntu22.04时，搜索结果和收藏夹无法加载封面图](https://github.com/lanyeeee/jmcomic-downloader/discussions/31)
 - [使用Ubuntu24.04时，窗口全白](https://github.com/lanyeeee/jmcomic-downloader/discussions/32)
 
+# 哔咔漫画下载器  
+[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=lanyeeee&repo=picacomic-downloader)](https://github.com/lanyeeee/picacomic-downloader)  
 
 # 关于被杀毒软件误判为病毒
 
@@ -91,9 +93,6 @@ pnpm tauri build
 - 作者不对使用本工具导致的任何损失、法律纠纷或其他后果负责
 - 作者不对用户使用本工具的行为负责，包括但不限于用户违反法律或任何第三方权益的行为
 # 其他
-哔咔漫画下载器  
-[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=lanyeeee&repo=picacomic-downloader)](https://github.com/lanyeeee/picacomic-downloader)   
-
 任何使用中遇到的问题、任何希望添加的功能，都欢迎提交issue或开discussion交流，我会尽力解决  
 
 
