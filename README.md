@@ -6,7 +6,7 @@
 
 一个用于 18comic.vip 禁漫天堂 jmcomic 18comic 的多线程下载器，带图形界面，带收藏夹，**免费下载收费的漫画**，下载速度飞快。图形界面基于[Tauri](https://v2.tauri.app/start/)
 
-在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)可以直接下载
+在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)可以直接下载，⭐ **如果觉得本项目对你有帮助，欢迎 Star 支持！** 🌟  
 
 # 图形界面
 ![image](https://github.com/user-attachments/assets/619292c1-d0ab-4b92-8601-0dfb81fd460b)
