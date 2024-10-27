@@ -42,6 +42,7 @@ pub struct DownloadManager {
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
+    urls_with_block_num_sem: Arc<Semaphore>,
     chapter_sem: Arc<Semaphore>,
     img_sem: Arc<Semaphore>,
     byte_per_sec: Arc<AtomicU64>,
@@ -71,8 +72,9 @@ impl DownloadManager {
             app,
             rt: Arc::new(rt),
             sender: Arc::new(sender),
-            chapter_sem: Arc::new(Semaphore::new(3)),
-            img_sem: Arc::new(Semaphore::new(40)),
+            urls_with_block_num_sem: Arc::new(Semaphore::new(10)), // 最多同时获取10个urls_with_block_num
+            chapter_sem: Arc::new(Semaphore::new(3)),              // 最多同时下载3个章节
+            img_sem: Arc::new(Semaphore::new(40)),                 // 最多同时下载40张图片
             byte_per_sec: Arc::new(AtomicU64::new(0)),
             downloaded_image_count: Arc::new(AtomicU32::new(0)),
             total_image_count: Arc::new(AtomicU32::new(0)),
@@ -88,6 +90,7 @@ impl DownloadManager {
         Ok(self.sender.send(chapter_info).await?)
     }
 
+    // TODO: 换个函数名，如emit_download_speed_loop
     #[allow(clippy::cast_precision_loss)]
     async fn log_download_speed(self) {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -117,10 +120,6 @@ impl DownloadManager {
             chapter_info.chapter_title.clone(),
             chapter_info.album_title.clone(),
         );
-        // 获取此章节每张图片的下载链接以及对应的block_num
-        let urls_with_block_num = self
-            .get_urls_with_block_num(chapter_info.chapter_id)
-            .await?;
         // 创建临时下载目录
         let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
         std::fs::create_dir_all(&temp_download_dir)
@@ -131,6 +130,10 @@ impl DownloadManager {
             .state::<RwLock<Config>>()
             .read_or_panic()
             .download_format;
+        // 获取此章节每张图片的下载链接以及对应的block_num
+        let urls_with_block_num = self
+            .get_urls_with_block_num(chapter_info.chapter_id)
+            .await?;
         // 总共需要下载的图片数量
         let total = urls_with_block_num.len() as u32;
         // 记录总共需要下载的图片数量
@@ -201,6 +204,8 @@ impl DownloadManager {
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
         let jm_client = self.app.state::<JmClient>().inner().clone();
+        // 限制同时获取urls_with_block_num的数量
+        let _permit = self.urls_with_block_num_sem.acquire().await?;
         // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
         let scramble_id = jm_client.get_scramble_id(chapter_id).await?;
         let chapter_resp_data = jm_client.get_chapter(chapter_id).await?;
