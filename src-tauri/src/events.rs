@@ -14,7 +14,8 @@ pub mod prelude {
 #[serde(rename_all = "camelCase")]
 pub struct DownloadChapterPendingEventPayload {
     pub chapter_id: i64,
-    pub title: String,
+    pub chapter_title: String,
+    pub album_title: String,
 }
 #[derive(Serialize, Deserialize, Clone, Type, Event)]
 pub struct DownloadChapterPendingEvent(pub DownloadChapterPendingEventPayload);
@@ -23,7 +24,6 @@ pub struct DownloadChapterPendingEvent(pub DownloadChapterPendingEventPayload);
 #[serde(rename_all = "camelCase")]
 pub struct DownloadChapterStartEventPayload {
     pub chapter_id: i64,
-    pub title: String,
     pub total: u32,
 }
 #[derive(Serialize, Deserialize, Clone, Type, Event)]

@@ -71,6 +71,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
               关键词:
             </template>
           </n-input>
+          <!--     TODO: 搜索按钮改个样式，默认样式太不显眼了     -->
           <n-button size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">搜索</n-button>
         </div>
         <n-select class="flex"

@@ -115,6 +115,7 @@ async function downloadChapters() {
   }
 }
 
+// TODO: 实现刷新按钮的功能
 async function refreshChapters() {
 }
 

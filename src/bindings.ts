@@ -83,6 +83,14 @@ async downloadChapters(chapterInfos: ChapterInfo[]) : Promise<Result<null, Comma
     else return { status: "error", error: e  as any };
 }
 },
+async downloadAlbum(aid: number) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_album", { aid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async showPathInFileManager(path: string) : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("show_path_in_file_manager", { path }) };
@@ -140,9 +148,9 @@ export type Config = { username: string; password: string; downloadDir: string; 
 export type DownloadChapterEndEvent = DownloadChapterEndEventPayload
 export type DownloadChapterEndEventPayload = { chapterId: number; errMsg: string | null }
 export type DownloadChapterPendingEvent = DownloadChapterPendingEventPayload
-export type DownloadChapterPendingEventPayload = { chapterId: number; title: string }
+export type DownloadChapterPendingEventPayload = { chapterId: number; chapterTitle: string; albumTitle: string }
 export type DownloadChapterStartEvent = DownloadChapterStartEventPayload
-export type DownloadChapterStartEventPayload = { chapterId: number; title: string; total: number }
+export type DownloadChapterStartEventPayload = { chapterId: number; total: number }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type DownloadImageErrorEvent = DownloadImageErrorEventPayload
 export type DownloadImageErrorEventPayload = { chapterId: number; url: string; errMsg: string }

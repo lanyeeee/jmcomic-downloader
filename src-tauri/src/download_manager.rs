@@ -42,6 +42,7 @@ pub struct DownloadManager {
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
+    urls_with_block_num_sem: Arc<Semaphore>,
     chapter_sem: Arc<Semaphore>,
     img_sem: Arc<Semaphore>,
     byte_per_sec: Arc<AtomicU64>,
@@ -71,13 +72,14 @@ impl DownloadManager {
             app,
             rt: Arc::new(rt),
             sender: Arc::new(sender),
-            chapter_sem: Arc::new(Semaphore::new(3)),
-            img_sem: Arc::new(Semaphore::new(40)),
+            urls_with_block_num_sem: Arc::new(Semaphore::new(10)), // 最多同时获取10个urls_with_block_num
+            chapter_sem: Arc::new(Semaphore::new(3)),              // 最多同时下载3个章节
+            img_sem: Arc::new(Semaphore::new(40)),                 // 最多同时下载40张图片
             byte_per_sec: Arc::new(AtomicU64::new(0)),
             downloaded_image_count: Arc::new(AtomicU32::new(0)),
             total_image_count: Arc::new(AtomicU32::new(0)),
         };
-
+        // TODO: 改用tauri::async_runtime::spawn
         manager.rt.spawn(manager.clone().log_download_speed());
         manager.rt.spawn(manager.clone().receiver_loop(receiver));
 
@@ -88,6 +90,7 @@ impl DownloadManager {
         Ok(self.sender.send(chapter_info).await?)
     }
 
+    // TODO: 换个函数名，如emit_download_speed_loop
     #[allow(clippy::cast_precision_loss)]
     async fn log_download_speed(self) {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -115,29 +118,8 @@ impl DownloadManager {
             &self.app,
             chapter_info.chapter_id,
             chapter_info.chapter_title.clone(),
+            chapter_info.album_title.clone(),
         );
-
-        let jm_client = self.app.state::<JmClient>().inner().clone();
-        // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
-        let scramble_id = jm_client.get_scramble_id(chapter_info.chapter_id).await?;
-        let chapter_resp_data = jm_client.get_chapter(chapter_info.chapter_id).await?;
-        // 构造图片下载链接
-        let urls_with_block_num: Vec<(String, u32)> = chapter_resp_data
-            .images
-            .into_iter()
-            .filter_map(|filename| {
-                let file_path = Path::new(&filename);
-                let ext = file_path.extension()?.to_str()?.to_lowercase();
-                if ext != "webp" {
-                    return None;
-                }
-                let chapter_id = chapter_info.chapter_id;
-                let filename_without_ext = file_path.file_stem()?.to_str()?;
-                let block_num = calculate_block_num(scramble_id, chapter_id, filename_without_ext);
-                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
-                Some((url, block_num))
-            })
-            .collect();
         // 创建临时下载目录
         let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
         std::fs::create_dir_all(&temp_download_dir)
@@ -148,7 +130,11 @@ impl DownloadManager {
             .state::<RwLock<Config>>()
             .read_or_panic()
             .download_format;
-
+        // 获取此章节每张图片的下载链接以及对应的block_num
+        let urls_with_block_num = self
+            .get_urls_with_block_num(chapter_info.chapter_id)
+            .await?;
+        // 总共需要下载的图片数量
         let total = urls_with_block_num.len() as u32;
         // 记录总共需要下载的图片数量
         self.total_image_count.fetch_add(total, Ordering::Relaxed);
@@ -156,12 +142,7 @@ impl DownloadManager {
         let mut join_set = JoinSet::new();
         // 限制同时下载的章节数量
         let permit = self.chapter_sem.acquire().await?;
-        emit_start_event(
-            &self.app,
-            chapter_info.chapter_id,
-            chapter_info.chapter_title.clone(),
-            total,
-        );
+        emit_start_event(&self.app, chapter_info.chapter_id, total);
         for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
             let manager = self.clone();
             let chapter_id = chapter_info.chapter_id;
@@ -221,6 +202,32 @@ impl DownloadManager {
         Ok(())
     }
 
+    async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
+        let jm_client = self.app.state::<JmClient>().inner().clone();
+        // 限制同时获取urls_with_block_num的数量
+        let _permit = self.urls_with_block_num_sem.acquire().await?;
+        // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
+        let scramble_id = jm_client.get_scramble_id(chapter_id).await?;
+        let chapter_resp_data = jm_client.get_chapter(chapter_id).await?;
+        // 构造图片下载链接
+        let urls_with_block_num: Vec<(String, u32)> = chapter_resp_data
+            .images
+            .into_iter()
+            .filter_map(|filename| {
+                let file_path = Path::new(&filename);
+                let ext = file_path.extension()?.to_str()?.to_lowercase();
+                if ext != "webp" {
+                    return None;
+                }
+                let filename_without_ext = file_path.file_stem()?.to_str()?;
+                let block_num = calculate_block_num(scramble_id, chapter_id, filename_without_ext);
+                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
+                Some((url, block_num))
+            })
+            .collect();
+        Ok(urls_with_block_num)
+    }
+
     async fn download_image(
         self,
         url: String,
@@ -252,6 +259,7 @@ impl DownloadManager {
         drop(permit);
         // 保存图片，因为保存图片可能要进行图片拼接
         // 而图片拼接是CPU密集型操作，所以使用spawn_blocking，避免阻塞worker threads
+        // TODO: 改用rayon + tokio::sync::oneshot
         let _ = tokio::task::spawn_blocking(move || {
             if let Err(err) = save_image(&save_path, download_format, block_num, &image_data) {
                 let err = err.context(format!("保存图片`{url}`到`{save_path:?}`失败"));
@@ -293,6 +301,7 @@ fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf
 }
 
 fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
+    // TODO: 删掉多余的return
     return if id < scramble_id {
         0
     } else if id < 268_850 {
@@ -375,18 +384,23 @@ fn save_image(
     Ok(())
 }
 
-fn emit_start_event(app: &AppHandle, chapter_id: i64, title: String, total: u32) {
-    let payload = events::DownloadChapterStartEventPayload {
-        chapter_id,
-        title,
-        total,
-    };
+fn emit_start_event(app: &AppHandle, chapter_id: i64, total: u32) {
+    let payload = events::DownloadChapterStartEventPayload { chapter_id, total };
     let event = events::DownloadChapterStartEvent(payload);
     let _ = event.emit(app);
 }
 
-fn emit_pending_event(app: &AppHandle, chapter_id: i64, title: String) {
-    let payload = events::DownloadChapterPendingEventPayload { chapter_id, title };
+fn emit_pending_event(
+    app: &AppHandle,
+    chapter_id: i64,
+    chapter_title: String,
+    album_title: String,
+) {
+    let payload = events::DownloadChapterPendingEventPayload {
+        chapter_id,
+        chapter_title,
+        album_title,
+    };
     let event = events::DownloadChapterPendingEvent(payload);
     let _ = event.emit(app);
 }
