@@ -109,9 +109,16 @@ impl JmClient {
             .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
 
         let http_resp = match form {
-            Some(payload) => request.query(&query).form(&payload).send().await?,
-            None => request.query(&query).send().await?,
-        };
+            Some(payload) => request.query(&query).form(&payload).send().await,
+            None => request.query(&query).send().await,
+        }
+        .map_err(|e| {
+            if e.is_timeout() {
+                anyhow::Error::from(e).context("连接超时，请使用代理或换条线路重试")
+            } else {
+                anyhow::Error::from(e)
+            }
+        })?;
 
         Ok(http_resp)
     }
