@@ -59,8 +59,8 @@ async function search(keyword: string, page: number, sort: SearchSort) {
 <template>
   <div class="h-full flex flex-col">
     <div class="flex flex-col">
-      <div class="grid grid-cols-[4fr_1fr]">
-        <div class="flex">
+      <div class="grid grid-cols-[4fr_1fr] gap-col-1">
+        <div class="flex gap-col-1">
           <n-input class="text-align-left"
                    size="tiny"
                    v-model:value="searchInput"
@@ -71,8 +71,9 @@ async function search(keyword: string, page: number, sort: SearchSort) {
               关键词:
             </template>
           </n-input>
-          <!--     TODO: 搜索按钮改个样式，默认样式太不显眼了     -->
-          <n-button size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">搜索</n-button>
+          <n-button type="primary" secondary size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">
+            搜索
+          </n-button>
         </div>
         <n-select class="flex"
                   v-model:value="sortSelected"
