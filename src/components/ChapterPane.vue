@@ -115,8 +115,16 @@ async function downloadChapters() {
   }
 }
 
-// TODO: 实现刷新按钮的功能
 async function refreshChapters() {
+  if (selectedAlbum.value === undefined) {
+    return;
+  }
+  const result = await commands.getAlbum(selectedAlbum.value.id);
+  if (result.status === "error") {
+    console.error(result.error);
+    return;
+  }
+  selectedAlbum.value = result.data;
 }
 
 </script>
