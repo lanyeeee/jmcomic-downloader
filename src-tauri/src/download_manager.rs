@@ -23,7 +23,8 @@ use crate::config::Config;
 use crate::events::{DownloadSpeedEvent, DownloadSpeedEventPayload};
 use crate::extensions::{AnyhowErrorToStringChain, IgnoreRwLockPoison};
 use crate::jm_client::JmClient;
-use crate::types::{ChapterInfo, DownloadFormat};
+use crate::save_archive::{save_image_archive, save_pdf_archive};
+use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat};
 use crate::{events, utils};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -183,22 +184,52 @@ impl DownloadManager {
         }
         // 检查此章节的图片是否全部下载成功
         let downloaded_count = downloaded_count.load(Ordering::Relaxed);
-        if downloaded_count == total {
-            // 下载成功，则把临时目录重命名为正式目录
-            if let Some(parent) = temp_download_dir.parent() {
-                let download_dir = parent.join(&chapter_info.chapter_title);
-                std::fs::rename(&temp_download_dir, &download_dir).context(format!(
-                    "将`{temp_download_dir:?}`重命名为`{download_dir:?}`失败"
-                ))?;
-            }
-            emit_end_event(&self.app, chapter_info.chapter_id, None);
-        } else {
-            let chapter_title = &chapter_info.chapter_title;
+        // 此章节的图片未全部下载成功
+        if downloaded_count != total {
             let err_msg = Some(format!(
-                "`{chapter_title}`总共有`{total}`张图片，但只下载了`{downloaded_count}`张"
+                "总共有 {total} 张图片，但只下载了 {downloaded_count} 张"
             ));
             emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
+            return Ok(());
+        }
+        // 此章节的图片全部下载成功
+        // 如果保存图片失败
+        if let Err(err) = self.save_archive(&chapter_info, &temp_download_dir) {
+            let err_msg = Some(err.to_string_chain());
+            emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
+            return Ok(());
         };
+        // 至此，此章节的图片全部下载并保存成功
+        emit_end_event(&self.app, chapter_info.chapter_id, None);
+        Ok(())
+    }
+
+    fn save_archive(
+        &self,
+        chapter_info: &ChapterInfo,
+        temp_download_dir: &PathBuf,
+    ) -> anyhow::Result<()> {
+        let archive_format = self
+            .app
+            .state::<RwLock<Config>>()
+            .read_or_panic()
+            .archive_format
+            .clone();
+
+        let Some(parent) = temp_download_dir.parent() else {
+            let err_msg = Some(format!("无法获取 {temp_download_dir:?} 的父目录"));
+            emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
+            return Ok(());
+        };
+
+        let download_dir = parent.join(&chapter_info.chapter_title);
+
+        match archive_format {
+            ArchiveFormat::Image => save_image_archive(&download_dir, temp_download_dir)?,
+            ArchiveFormat::Pdf => {
+                save_pdf_archive(&download_dir, temp_download_dir, &archive_format)?;
+            }
+        }
         Ok(())
     }
 
