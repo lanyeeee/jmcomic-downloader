@@ -139,12 +139,13 @@ updateOverallDownloadProgressEvent: "update-overall-download-progress-event"
 export type Album = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
 export type AlbumInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
+export type ArchiveFormat = "Image" | "Pdf"
 export type CategoryRespData = { id: string; title: string }
 export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
 export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
-export type Config = { username: string; password: string; downloadDir: string; downloadFormat: DownloadFormat }
+export type Config = { username: string; password: string; downloadDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat }
 export type DownloadChapterEndEvent = DownloadChapterEndEventPayload
 export type DownloadChapterEndEventPayload = { chapterId: number; errMsg: string | null }
 export type DownloadChapterPendingEvent = DownloadChapterPendingEventPayload
