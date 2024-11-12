@@ -127,7 +127,7 @@ async function selectDownloadDir() {
       <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
     </div>
     <n-radio-group v-model:value="config.downloadFormat">
-      下载格式：
+      图片格式：
       <n-tooltip placement="bottom" trigger="hover">
         <template #trigger>
           <n-radio value="Jpeg">jpg</n-radio>
@@ -153,6 +153,11 @@ async function selectDownloadDir() {
         3. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
         4. 编码速度较慢<br/>
       </n-tooltip>
+    </n-radio-group>
+    <n-radio-group v-model:value="config.archiveFormat">
+      保存格式：
+      <n-radio value="Image">文件夹-图片</n-radio>
+      <n-radio value="Pdf">pdf</n-radio>
     </n-radio-group>
     <div class="grid grid-cols-[1fr_4fr_1fr]">
       <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
