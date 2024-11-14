@@ -1,15 +1,14 @@
 use std::path::PathBuf;
-use std::sync::RwLock;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use anyhow::anyhow;
+use parking_lot::RwLock;
 use path_slash::PathBufExt;
 use tauri::{AppHandle, State};
 
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::errors::CommandResult;
-use crate::extensions::IgnoreRwLockPoison;
 use crate::jm_client::JmClient;
 use crate::responses::{ChapterRespData, FavoriteRespData, UserProfileRespData};
 use crate::types::{Album, ChapterInfo, FavoriteSort, SearchResult, SearchSort};
@@ -24,7 +23,7 @@ pub fn greet(name: &str) -> String {
 #[specta::specta]
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_config(config: State<RwLock<Config>>) -> Config {
-    config.read().unwrap().clone()
+    config.read().clone()
 }
 
 #[tauri::command(async)]
@@ -35,7 +34,7 @@ pub fn save_config(
     config_state: State<RwLock<Config>>,
     config: Config,
 ) -> CommandResult<()> {
-    let mut config_state = config_state.write_or_panic();
+    let mut config_state = config_state.write();
     *config_state = config;
     config_state.save(&app)?;
     Ok(())

@@ -79,7 +79,7 @@ pub fn run() {
                 .context(format!("failed to create app data dir: {app_data_dir:?}"))?;
             println!("app data dir: {app_data_dir:?}");
 
-            let config = std::sync::RwLock::new(Config::new(app.handle())?);
+            let config = parking_lot::RwLock::new(Config::new(app.handle())?);
             let jm_client = jm_client::JmClient::new(app.handle().clone());
             let download_manager = download_manager::DownloadManager::new(app.handle().clone());
 

@@ -43,6 +43,7 @@ showfile = { version = "0.1.1" }
 path-slash = { version = "0.2.1" }
 lopdf = { version = "0.34.0" }
 flate2 = { version = "1.0.34" }
+parking_lot = { version = "0.12.3" }
 
 [profile.release]
 strip = true
