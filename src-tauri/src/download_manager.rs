@@ -1,13 +1,14 @@
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::{DynamicImage, GenericImage, GenericImageView};
+use parking_lot::RwLock;
 use reqwest::StatusCode;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::policies::ExponentialBackoff;
@@ -21,7 +22,7 @@ use tokio::task::JoinSet;
 
 use crate::config::Config;
 use crate::events::{DownloadSpeedEvent, DownloadSpeedEventPayload};
-use crate::extensions::{AnyhowErrorToStringChain, IgnoreRwLockPoison};
+use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::save_archive::{save_image_archive, save_pdf_archive};
 use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat};
@@ -126,11 +127,7 @@ impl DownloadManager {
         std::fs::create_dir_all(&temp_download_dir)
             .context(format!("创建目录`{temp_download_dir:?}`失败"))?;
         // 从配置文件获取图片格式
-        let download_format = self
-            .app
-            .state::<RwLock<Config>>()
-            .read_or_panic()
-            .download_format;
+        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
         // 获取此章节每张图片的下载链接以及对应的block_num
         let urls_with_block_num = self
             .get_urls_with_block_num(chapter_info.chapter_id)
@@ -212,7 +209,7 @@ impl DownloadManager {
         let archive_format = self
             .app
             .state::<RwLock<Config>>()
-            .read_or_panic()
+            .read()
             .archive_format
             .clone();
 
@@ -325,7 +322,7 @@ impl DownloadManager {
 
 fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf {
     app.state::<RwLock<Config>>()
-        .read_or_panic()
+        .read()
         .download_dir
         .join(&chapter_info.album_title)
         .join(format!(".下载中-{}", chapter_info.chapter_title)) // 以 `.下载中-` 开头，表示是临时目录

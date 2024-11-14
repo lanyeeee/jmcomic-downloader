@@ -1,12 +1,11 @@
 use std::fmt::Display; // TODO: 删掉这个用不到的import
-use std::sync::RwLock;
 
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
-use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{AlbumRespData, RelatedListRespData, SearchResp, SearchRespData};
 use crate::utils;
 
@@ -113,7 +112,7 @@ impl Album {
 
     fn get_is_downloaded(app: &AppHandle, album_title: &str, chapter_title: &str) -> bool {
         let config = app.state::<RwLock<Config>>();
-        let config = config.read_or_panic();
+        let config = config.read();
         config
             .download_dir
             .join(album_title)
