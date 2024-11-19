@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import {Config} from "../bindings.ts";
+import {computed, ref} from "vue";
 
 const config = defineModel<Config>("config", {required: true});
 const showing = defineModel<boolean>("showing", {required: true});
+
+const proxyHost = ref<string>(config.value.proxyHost);
+
+const disableProxyHostAndPort = computed(() => config.value.proxyMode !== "Custom");
+
 </script>
 
 <template>
@@ -44,6 +50,33 @@ const showing = defineModel<boolean>("showing", {required: true});
         <n-radio value="Image">文件夹-图片</n-radio>
         <n-radio value="Pdf">pdf</n-radio>
       </n-radio-group>
+      <n-radio-group v-model:value="config.proxyMode">
+        代理类型：
+        <n-radio value="System">系统代理</n-radio>
+        <n-radio value="NoProxy">直连</n-radio>
+        <n-radio value="Custom">自定义</n-radio>
+      </n-radio-group>
+      <div class="flex">
+        <n-input :disabled=disableProxyHostAndPort
+                 v-model:value="proxyHost"
+                 size="tiny"
+                 placeholder=""
+                 @blur="config.proxyHost=proxyHost"
+                 @keydown.enter="config.proxyHost=proxyHost">
+          <template #prefix>
+            主机:
+          </template>
+        </n-input>
+        <n-input-number :disabled=disableProxyHostAndPort
+                        v-model:value="config.proxyPort"
+                        size="tiny"
+                        placeholder=""
+                        :parse="(x:string) => parseInt(x)">
+          <template #prefix>
+            端口:
+          </template>
+        </n-input-number>
+      </div>
     </div>
   </n-dialog>
 
