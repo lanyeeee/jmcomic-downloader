@@ -9,17 +9,19 @@ use aes::Aes256;
 use anyhow::{anyhow, Context};
 use base64::engine::general_purpose;
 use base64::Engine;
+use parking_lot::RwLock;
 use reqwest::cookie::Jar;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
+use crate::config::Config;
 use crate::responses::{
     AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
     SearchRespData, ToggleFavoriteResp, UserProfileRespData,
 };
-use crate::types::{FavoriteSort, SearchSort};
+use crate::types::{FavoriteSort, ProxyMode, SearchSort};
 use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
@@ -58,31 +60,26 @@ impl ApiPath {
 #[derive(Clone)]
 pub struct JmClient {
     app: AppHandle,
+    http_client: ClientWithMiddleware,
     jar: Arc<Jar>,
 }
 
 impl JmClient {
     pub fn new(app: AppHandle) -> Self {
+        let jar = Arc::new(Jar::default());
+
+        let http_client = create_http_client(&app, &jar);
+
         Self {
             app,
-            jar: Arc::new(Jar::default()),
+            http_client,
+            jar,
         }
     }
 
-    pub fn client(&self) -> ClientWithMiddleware {
-        // TODO: 可以将retry_policy缓存起来，避免每次请求都创建
-        let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
-            .base(1) // 指数为1，保证重试间隔为1秒不变
-            .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
-            .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
-        let client = reqwest::ClientBuilder::new()
-            .cookie_provider(self.jar.clone())
-            .timeout(Duration::from_secs(2)) // 每个请求超过2秒就超时
-            .build()
-            .unwrap();
-        reqwest_middleware::ClientBuilder::new(client)
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .build()
+    pub fn recreate_http_client(&mut self) {
+        let http_client = create_http_client(&self.app, &self.jar);
+        self.http_client = http_client;
     }
 
     async fn jm_request(
@@ -102,7 +99,7 @@ impl JmClient {
         };
 
         let path = path.as_str();
-        let request = self.client()
+        let request = self.http_client
             .request(method, format!("https://{API_DOMAIN}{path}").as_str())
             .header("token", token)
             .header("tokenparam", tokenparam)
@@ -444,6 +441,35 @@ impl JmClient {
         )?;
         Ok(toggle_favorite_resp)
     }
+}
+
+pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
+    let builder = reqwest::ClientBuilder::new()
+        .cookie_provider(jar.clone())
+        .timeout(Duration::from_secs(2)); // 每个请求超过2秒就超时
+
+    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let builder = match proxy_mode {
+        ProxyMode::System => builder,
+        ProxyMode::NoProxy => builder.no_proxy(),
+        ProxyMode::Custom => {
+            let config = app.state::<RwLock<Config>>();
+            let config = config.read();
+            let proxy_host = &config.proxy_host;
+            let proxy_port = &config.proxy_port;
+            let proxy = reqwest::Proxy::all(format!("http://{proxy_host}:{proxy_port}")).unwrap();
+            builder.proxy(proxy)
+        }
+    };
+
+    let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
+        .base(1) // 指数为1，保证重试间隔为1秒不变
+        .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
+        .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
+
+    reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build()
 }
 
 fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {

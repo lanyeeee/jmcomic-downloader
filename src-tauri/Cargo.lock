@@ -1871,6 +1871,7 @@ dependencies = [
  "image",
  "lopdf",
  "md5",
+ "parking_lot 0.12.3",
  "path-slash",
  "reqwest",
  "reqwest-middleware",
