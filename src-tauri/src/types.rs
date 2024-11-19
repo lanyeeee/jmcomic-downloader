@@ -1,12 +1,11 @@
-use std::fmt::Display;
-use std::sync::RwLock;
+use std::fmt::Display; // TODO: 删掉这个用不到的import
 
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
-use crate::extensions::IgnoreRwLockPoison;
 use crate::responses::{AlbumRespData, RelatedListRespData, SearchResp, SearchRespData};
 use crate::utils;
 
@@ -26,6 +25,14 @@ impl SearchSort {
             SearchSort::Like => "tf",
         }
     }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum ProxyMode {
+    #[default]
+    System,
+    NoProxy,
+    Custom,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -56,6 +63,7 @@ pub struct Album {
     pub is_aids: bool,
 }
 impl Album {
+    // TODO: 重构，一律改用Type::from
     pub fn from_album_resp_data(app: &AppHandle, album: AlbumRespData) -> Self {
         let album_title = utils::filename_filter(&album.name);
         let mut chapter_infos: Vec<ChapterInfo> = album
@@ -67,18 +75,13 @@ impl Album {
                 if !s.name.is_empty() {
                     chapter_title.push_str(&format!(" {}", utils::filename_filter(&s.name)));
                 }
-                let download_dir = app
-                    .state::<RwLock<Config>>()
-                    .read_or_panic()
-                    .download_dir
-                    .join(&album_title)
-                    .join(&chapter_title);
+                let is_downloaded = Self::get_is_downloaded(app, &album_title, &chapter_title);
                 let chapter_info = ChapterInfo {
                     album_id: album.id,
                     album_title: album_title.clone(),
                     chapter_id,
                     chapter_title,
-                    is_downloaded: download_dir.exists(),
+                    is_downloaded,
                 };
                 Some(chapter_info)
             })
@@ -114,6 +117,17 @@ impl Album {
             is_aids: album.is_aids,
         }
     }
+
+    fn get_is_downloaded(app: &AppHandle, album_title: &str, chapter_title: &str) -> bool {
+        let config = app.state::<RwLock<Config>>();
+        let config = config.read();
+        config
+            .download_dir
+            .join(album_title)
+            .join(chapter_title)
+            .with_extension(config.archive_format.extension())
+            .exists()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -133,7 +147,6 @@ pub enum SearchResult {
     // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与AlbumRespData一样大的内存
     Album(Box<Album>),
 }
-
 impl SearchResult {
     pub fn from_search_resp(app: &AppHandle, search_resp: SearchResp) -> Self {
         match search_resp {
@@ -151,7 +164,6 @@ pub enum FavoriteSort {
     FavoriteTime,
     UpdateTime,
 }
-
 impl FavoriteSort {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -167,13 +179,27 @@ pub enum DownloadFormat {
     Png,
     Webp,
 }
-
 impl DownloadFormat {
     pub fn as_str(self) -> &'static str {
         match self {
             DownloadFormat::Jpeg => "jpg",
             DownloadFormat::Png => "png",
             DownloadFormat::Webp => "webp",
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum ArchiveFormat {
+    #[default]
+    Image,
+    Pdf,
+}
+impl ArchiveFormat {
+    pub fn extension(&self) -> &str {
+        match self {
+            ArchiveFormat::Image => "",
+            ArchiveFormat::Pdf => "pdf",
         }
     }
 }

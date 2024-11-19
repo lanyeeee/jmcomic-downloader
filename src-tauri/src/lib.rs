@@ -1,10 +1,13 @@
 use anyhow::Context;
+use parking_lot::RwLock;
 use tauri::{Manager, Wry};
 
 // TODO: 用prelude来消除警告
 use crate::commands::*;
 use crate::config::Config;
+use crate::download_manager::DownloadManager;
 use crate::events::prelude::*;
+use crate::jm_client::JmClient;
 
 mod commands;
 mod config;
@@ -14,6 +17,7 @@ mod events;
 mod extensions;
 mod jm_client;
 mod responses;
+mod save_archive;
 mod types;
 mod utils;
 
@@ -78,12 +82,13 @@ pub fn run() {
                 .context(format!("failed to create app data dir: {app_data_dir:?}"))?;
             println!("app data dir: {app_data_dir:?}");
 
-            let config = std::sync::RwLock::new(Config::new(app.handle())?);
-            let jm_client = jm_client::JmClient::new(app.handle().clone());
-            let download_manager = download_manager::DownloadManager::new(app.handle().clone());
-
+            let config = RwLock::new(Config::new(app.handle())?);
             app.manage(config);
+
+            let jm_client = RwLock::new(JmClient::new(app.handle().clone()));
             app.manage(jm_client);
+
+            let download_manager = RwLock::new(DownloadManager::new(app.handle().clone()));
             app.manage(download_manager);
 
             Ok(())

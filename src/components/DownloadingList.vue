@@ -4,6 +4,7 @@ import {onMounted, ref} from "vue";
 import {commands, Config, events} from "../bindings.ts";
 import {open} from "@tauri-apps/plugin-dialog";
 import {NProgress, useNotification} from "naive-ui";
+import SettingsDialog from "./SettingsDialog.vue";
 
 type ProgressData = {
   albumTitle: string,
@@ -27,6 +28,7 @@ const overallProgress = ref<ProgressData>({
   percentage: 0,
   indicator: ""
 });
+const settingsDialogShowing = ref<boolean>(false);
 
 onMounted(async () => {
   await events.downloadChapterPendingEvent.listen(({payload}) => {
@@ -115,61 +117,39 @@ async function selectDownloadDir() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-row-1">
-    <div class="flex">
-      <n-input v-model:value="config.downloadDir"
-               size="tiny"
-               readonly
-               placeholder="请选择漫画目录"
-               @click="selectDownloadDir">
-        <template #prefix>下载目录：</template>
-      </n-input>
-      <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
+  <div>
+    <div class="flex flex-col gap-row-1">
+      <div class="flex">
+        <n-input v-model:value="config.downloadDir"
+                 size="tiny"
+                 readonly
+                 placeholder="请选择漫画目录"
+                 @click="selectDownloadDir">
+          <template #prefix>下载目录：</template>
+        </n-input>
+        <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
+        <n-button type="primary" secondary size="tiny" @click="settingsDialogShowing=true">更多设置</n-button>
+      </div>
+      <div class="grid grid-cols-[1fr_4fr_1fr]">
+        <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
+        <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
+          {{ overallProgress.indicator }}
+        </n-progress>
+        <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
+      </div>
+      <div class="grid grid-cols-[2fr_1fr_3fr]"
+           v-for="[chapterId, {albumTitle,chapterTitle, percentage, downloadedCount, total}] in progresses"
+           :key="chapterId">
+        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ albumTitle }}</span>
+        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
+        <n-progress class="" :percentage="percentage">
+          <div v-if="total===0">等待中</div>
+          <div v-else>{{ downloadedCount }}/{{ total }}</div>
+        </n-progress>
+      </div>
     </div>
-    <n-radio-group v-model:value="config.downloadFormat">
-      下载格式：
-      <n-tooltip placement="bottom" trigger="hover">
-        <template #trigger>
-          <n-radio value="Jpeg">jpg</n-radio>
-        </template>
-        1. 有损<span class="text-red">(肉眼看不出)</span><br/>
-        2. 文件体积小<br/>
-        3. 编码速度最快<br/>
-      </n-tooltip>
-      <n-tooltip placement="bottom" trigger="hover">
-        <template #trigger>
-          <n-radio value="Png">png</n-radio>
-        </template>
-        1. 无损<br/>
-        2. 文件体积大<span class="text-red">(约为jpg的5倍)</span><br/>
-        3. 编码速度最慢<br/>
-      </n-tooltip>
-      <n-tooltip placement="bottom" trigger="hover">
-        <template #trigger>
-          <n-radio value="Webp">webp</n-radio>
-        </template>
-        1. 无损<br/>
-        <span class="text-red">2. 这是jm图片原本的格式</span><br/>
-        3. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
-        4. 编码速度较慢<br/>
-      </n-tooltip>
-    </n-radio-group>
-    <div class="grid grid-cols-[1fr_4fr_1fr]">
-      <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
-      <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
-        {{ overallProgress.indicator }}
-      </n-progress>
-      <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
-    </div>
-    <div class="grid grid-cols-[2fr_1fr_3fr]"
-         v-for="[chapterId, {albumTitle,chapterTitle, percentage, downloadedCount, total}] in progresses"
-         :key="chapterId">
-      <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ albumTitle }}</span>
-      <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
-      <n-progress class="" :percentage="percentage">
-        <div v-if="total===0">等待中</div>
-        <div v-else>{{ downloadedCount }}/{{ total }}</div>
-      </n-progress>
-    </div>
+    <n-modal v-model:show="settingsDialogShowing">
+      <settings-dialog v-model:showing="settingsDialogShowing" v-model:config="config"/>
+    </n-modal>
   </div>
 </template>
