@@ -23,6 +23,7 @@ watch(config, async () => {
   if (config.value === undefined) {
     return;
   }
+  // TODO: 这里应该检查result是否为error
   await commands.saveConfig(config.value);
   message.success("保存配置成功");
 }, {deep: true});
