@@ -10,7 +10,7 @@ use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::{DynamicImage, GenericImage, GenericImageView};
 use parking_lot::RwLock;
 use reqwest::StatusCode;
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
 use tauri::{AppHandle, Manager};
@@ -25,7 +25,7 @@ use crate::events::{DownloadSpeedEvent, DownloadSpeedEventPayload};
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::save_archive::{save_image_archive, save_pdf_archive};
-use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat};
+use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat, ProxyMode};
 use crate::{events, utils};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -40,7 +40,7 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 /// - 其他字段都被 `Arc` 包裹，这些字段的克隆操作仅仅是增加引用计数。
 #[derive(Clone)]
 pub struct DownloadManager {
-    client: ClientWithMiddleware,
+    http_client: ClientWithMiddleware,
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
@@ -54,11 +54,7 @@ pub struct DownloadManager {
 
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
-        // 创建带重试的client
-        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(2);
-        let client = ClientBuilder::new(reqwest::Client::new())
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .build();
+        let http_client = create_http_client(&app);
         // 创建异步运行时
         let core_count = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
@@ -70,7 +66,7 @@ impl DownloadManager {
             .expect("DownloadManager::new: 创建Runtime失败");
         let (sender, receiver) = mpsc::channel::<ChapterInfo>(32);
         let manager = DownloadManager {
-            client,
+            http_client,
             app,
             rt: Arc::new(rt),
             sender: Arc::new(sender),
@@ -86,6 +82,11 @@ impl DownloadManager {
         manager.rt.spawn(manager.clone().receiver_loop(receiver));
 
         manager
+    }
+
+    pub fn recreate_http_client(&mut self) {
+        let http_client = create_http_client(&self.app);
+        self.http_client = http_client;
     }
 
     pub async fn submit_chapter(&self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
@@ -231,7 +232,7 @@ impl DownloadManager {
     }
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
-        let jm_client = self.app.state::<JmClient>().inner().clone();
+        let jm_client = self.app.state::<RwLock<JmClient>>().read().clone();
         // 限制同时获取urls_with_block_num的数量
         let _permit = self.urls_with_block_num_sem.acquire().await?;
         // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
@@ -306,7 +307,7 @@ impl DownloadManager {
     }
 
     async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
-        let http_res = self.client.get(url).send().await?;
+        let http_res = self.http_client.get(url).send().await?;
 
         let status = http_res.status();
         if status != StatusCode::OK {
@@ -345,6 +346,30 @@ fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
     };
 }
 
+pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {
+    let builder = reqwest::ClientBuilder::new();
+
+    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let builder = match proxy_mode {
+        ProxyMode::System => builder,
+        ProxyMode::NoProxy => builder.no_proxy(),
+        ProxyMode::Custom => {
+            let config = app.state::<RwLock<Config>>();
+            let config = config.read();
+            let proxy_host = &config.proxy_host;
+            let proxy_port = &config.proxy_port;
+            let proxy = reqwest::Proxy::all(format!("http://{proxy_host}:{proxy_port}")).unwrap();
+            builder.proxy(proxy)
+        }
+    };
+
+    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(2);
+
+    reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build()
+}
+
 fn save_image(
     save_path: &PathBuf,
     download_format: DownloadFormat,
@@ -352,6 +377,7 @@ fn save_image(
     image_data: &Bytes,
 ) -> anyhow::Result<()> {
     // 如果block_num为0，直接保存图片就行
+    // FIXME: 不能直接保存，因为应该根据download_format来保存
     if block_num == 0 {
         std::fs::write(save_path, image_data)?;
         return Ok(());

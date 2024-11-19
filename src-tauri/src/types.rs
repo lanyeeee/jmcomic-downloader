@@ -28,6 +28,14 @@ impl SearchSort {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum ProxyMode {
+    #[default]
+    System,
+    NoProxy,
+    Custom,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Album {
     pub id: i64,
