@@ -26,14 +26,6 @@ pub fn save_image_archive(
     Ok(())
 }
 
-const A4_WIDTH: f32 = 595.0;
-const A4_HEIGHT: f32 = 842.0;
-
-struct Transform {
-    position: (f32, f32),
-    size: (f32, f32),
-}
-
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::similar_names)]
 pub fn save_pdf_archive(
@@ -70,7 +62,6 @@ pub fn save_pdf_archive(
         // 获取图像的尺寸
         let (width, height) =
             image::image_dimensions(&path).context(format!("获取 {path:?} 的尺寸失败"))?;
-        let transform = calculate_transform(width, height);
         // 获取图像每个颜色通道的位数
         let bits = color_type.bits_per_pixel() / 3;
         // 根据颜色类型获取PDF中对应的颜色空间
@@ -100,16 +91,18 @@ pub fn save_pdf_archive(
         let img_id = doc.add_object(image_stream);
         // 图像的名称，用于 Do 操作在页面上显示图像
         let img_name = format!("X{}", img_id.0);
+        let (width, height) =
+            image::image_dimensions(&path).context(format!("获取 {path:?} 的尺寸失败"))?;
         // 用于设置图像在页面上的位置和大小
         let cm_operation = Operation::new(
             "cm",
             vec![
-                transform.size.0.into(),
+                width.into(),
                 0.into(),
                 0.into(),
-                transform.size.1.into(),
-                transform.position.0.into(),
-                transform.position.1.into(),
+                height.into(),
+                0.into(),
+                0.into(),
             ],
         );
         // 用于显示图像
@@ -124,6 +117,7 @@ pub fn save_pdf_archive(
             "Type" => "Page",
             "Parent" => pages_id,
             "Contents" => content_id,
+            "MediaBox" => vec![0.into(), 0.into(), width.into(), height.into()],
         });
         // 将图像以 XObject 的形式添加到文档中
         // Do 操作只能引用 XObject(所以前面定义的 Do 操作的参数是 img_name, 而不是 img_id)
@@ -139,7 +133,6 @@ pub fn save_pdf_archive(
                     .map(Object::Reference)
                     .collect::<Vec<_>>(),
         "Count" => count,
-        "MediaBox" => vec![0.into(), 0.into(), A4_WIDTH.into(), A4_HEIGHT.into()],
     };
 
     doc.objects.insert(pages_id, Object::Dictionary(pages));
@@ -161,25 +154,6 @@ pub fn save_pdf_archive(
     Ok(())
 }
 
-#[allow(clippy::cast_precision_loss)]
-fn calculate_transform(img_width: u32, img_height: u32) -> Transform {
-    let img_width = img_width as f32;
-    let img_height = img_height as f32;
-    // 计算缩放比例，保持图像宽高比
-    let scale = if img_width > img_height {
-        A4_WIDTH / img_width
-    } else {
-        A4_HEIGHT / img_height
-    };
-    // 计算图像在 A4 纸上的坐标
-    let x = (A4_WIDTH - img_width * scale) / 2.0;
-    let y = (A4_HEIGHT - img_height * scale) / 2.0;
-    let position = (x, y);
-    // 计算图像在 A4 纸上的大小
-    let size = (img_width * scale, img_height * scale);
-
-    Transform { position, size }
-}
 
 fn compress_pdf(doc: &mut Document) -> anyhow::Result<()> {
     for object in doc.objects.values_mut() {
