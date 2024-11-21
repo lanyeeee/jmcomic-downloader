@@ -358,8 +358,16 @@ pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;
-            let proxy = reqwest::Proxy::all(format!("http://{proxy_host}:{proxy_port}")).unwrap();
-            builder.proxy(proxy)
+            let proxy_url = format!("http://{proxy_host}:{proxy_port}");
+
+            match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
+                Ok(proxy) => builder.proxy(proxy),
+                Err(err) => {
+                    let err = err.context(format!("DownloadManager设置代理 {proxy_url} 失败"));
+                    emit_set_proxy_error_event(app, err.to_string_chain());
+                    builder
+                }
+            }
         }
     };
 
@@ -507,5 +515,11 @@ fn emit_update_overall_progress_event(
 fn emit_download_speed_event(app: &AppHandle, speed: String) {
     let payload = DownloadSpeedEventPayload { speed };
     let event = DownloadSpeedEvent(payload);
+    let _ = event.emit(app);
+}
+
+fn emit_set_proxy_error_event(app: &AppHandle, err_msg: String) {
+    let payload = events::SetProxyErrorEventPayload { err_msg };
+    let event = events::SetProxyErrorEvent(payload);
     let _ = event.emit(app);
 }
