@@ -15,14 +15,15 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
-
+use tauri_specta::Event;
 use crate::config::Config;
+use crate::extensions::AnyhowErrorToStringChain;
 use crate::responses::{
     AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
     SearchRespData, ToggleFavoriteResp, UserProfileRespData,
 };
 use crate::types::{FavoriteSort, ProxyMode, SearchSort};
-use crate::utils;
+use crate::{events, utils};
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -457,8 +458,16 @@ pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewa
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;
-            let proxy = reqwest::Proxy::all(format!("http://{proxy_host}:{proxy_port}")).unwrap();
-            builder.proxy(proxy)
+            let proxy_url = format!("http://{proxy_host}:{proxy_port}");
+
+            match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
+                Ok(proxy) => builder.proxy(proxy),
+                Err(err) => {
+                    let err = err.context(format!("JmClient设置代理 {proxy_url} 失败"));
+                    emit_set_proxy_error_event(app, err.to_string_chain());
+                    builder
+                }
+            }
         }
     };
 
@@ -495,4 +504,10 @@ fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 将解密后的数据转换为UTF-8字符串
     let decrypted_data = String::from_utf8(decrypted_data_without_padding)?;
     Ok(decrypted_data)
+}
+
+fn emit_set_proxy_error_event(app: &AppHandle, err_msg: String) {
+    let payload = events::SetProxyErrorEventPayload { err_msg };
+    let event = events::SetProxyErrorEvent(payload);
+    let _ = event.emit(app);
 }
