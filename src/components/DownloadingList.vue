@@ -94,6 +94,11 @@ onMounted(async () => {
   await events.downloadSpeedEvent.listen(({payload}) => {
     overallProgress.value.indicator = payload.speed;
   });
+
+  await events.setProxyErrorEvent.listen(({payload}) => {
+    notification.error({title: "设置代理失败", description: payload.errMsg});
+  });
+
 });
 
 async function showDownloadDirInFileManager() {

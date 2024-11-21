@@ -7,6 +7,7 @@ use crate::commands::*;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::events::prelude::*;
+use crate::events::SetProxyErrorEvent;
 use crate::jm_client::JmClient;
 
 mod commands;
@@ -53,6 +54,7 @@ pub fn run() {
             DownloadImageSuccessEvent,
             DownloadSpeedEvent,
             UpdateOverallDownloadProgressEvent,
+            SetProxyErrorEvent,
         ]);
 
     #[cfg(debug_assertions)]

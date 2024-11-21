@@ -119,6 +119,7 @@ downloadChapterStartEvent: DownloadChapterStartEvent,
 downloadImageErrorEvent: DownloadImageErrorEvent,
 downloadImageSuccessEvent: DownloadImageSuccessEvent,
 downloadSpeedEvent: DownloadSpeedEvent,
+setProxyErrorEvent: SetProxyErrorEvent,
 updateOverallDownloadProgressEvent: UpdateOverallDownloadProgressEvent
 }>({
 downloadChapterEndEvent: "download-chapter-end-event",
@@ -127,6 +128,7 @@ downloadChapterStartEvent: "download-chapter-start-event",
 downloadImageErrorEvent: "download-image-error-event",
 downloadImageSuccessEvent: "download-image-success-event",
 downloadSpeedEvent: "download-speed-event",
+setProxyErrorEvent: "set-proxy-error-event",
 updateOverallDownloadProgressEvent: "update-overall-download-progress-event"
 })
 
@@ -168,6 +170,8 @@ export type SearchRespData = { search_query: string; total: number; content: Alb
 export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
+export type SetProxyErrorEvent = SetProxyErrorEventPayload
+export type SetProxyErrorEventPayload = { errMsg: string }
 export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload
 export type UpdateOverallDownloadProgressEventPayload = { downloadedImageCount: number; totalImageCount: number; percentage: number }
 export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }

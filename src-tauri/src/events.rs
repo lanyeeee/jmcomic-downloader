@@ -75,3 +75,11 @@ pub struct DownloadSpeedEventPayload {
 }
 #[derive(Serialize, Deserialize, Clone, Type, Event)]
 pub struct DownloadSpeedEvent(pub DownloadSpeedEventPayload);
+
+#[derive(Serialize, Deserialize, Clone, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SetProxyErrorEventPayload {
+    pub err_msg: String,
+}
+#[derive(Serialize, Deserialize, Clone, Type, Event)]
+pub struct SetProxyErrorEvent(pub SetProxyErrorEventPayload);
