@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {commands, Config, events} from "../bindings.ts";
 import {open} from "@tauri-apps/plugin-dialog";
 import {NProgress, useNotification} from "naive-ui";
@@ -29,6 +29,14 @@ const overallProgress = ref<ProgressData>({
   indicator: ""
 });
 const settingsDialogShowing = ref<boolean>(false);
+
+const sortedProgresses = computed(() => {
+  const progressesArray = Array.from(progresses.value.entries());
+  progressesArray.sort((a, b) => {
+    return b[1].total - a[1].total;
+  });
+  return progressesArray;
+});
 
 onMounted(async () => {
   await events.downloadChapterPendingEvent.listen(({payload}) => {
@@ -142,14 +150,14 @@ async function selectDownloadDir() {
         </n-progress>
         <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
       </div>
-      <div class="grid grid-cols-[2fr_1fr_3fr]"
-           v-for="[chapterId, {albumTitle,chapterTitle, percentage, downloadedCount, total}] in progresses"
+      <div class="grid grid-cols-[1fr_1fr_2fr]"
+           v-for="[chapterId, {albumTitle, chapterTitle, percentage, downloadedCount, total}] in sortedProgresses"
            :key="chapterId">
         <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ albumTitle }}</span>
         <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
-        <n-progress class="" :percentage="percentage">
-          <div v-if="total===0">等待中</div>
-          <div v-else>{{ downloadedCount }}/{{ total }}</div>
+        <span v-if="total===0">等待中</span>
+        <n-progress v-else :percentage="percentage">
+          {{ downloadedCount }}/{{ total }}
         </n-progress>
       </div>
     </div>
