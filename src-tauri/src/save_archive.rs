@@ -1,8 +1,4 @@
-use std::{
-    io::{Read, Write},
-    path::Path,
-};
-
+use crate::types::ArchiveFormat;
 use anyhow::Context;
 use flate2::{write::ZlibEncoder, Compression};
 use image::{ColorType, ImageFormat};
@@ -10,8 +6,11 @@ use lopdf::{
     content::{Content, Operation},
     dictionary, Dictionary, Document, Object, Stream,
 };
-
-use crate::types::ArchiveFormat;
+use std::path::PathBuf;
+use std::{
+    io::{Read, Write},
+    path::Path,
+};
 
 pub fn save_image_archive(
     download_dir: &Path,
@@ -35,11 +34,16 @@ pub fn save_pdf_archive(
 ) -> anyhow::Result<()> {
     let pdf_path = download_dir.with_extension(archive_format.extension());
     let mut doc = Document::with_version("1.5");
+    
+    let mut image_paths = std::fs::read_dir(temp_download_dir)?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect::<Vec<PathBuf>>();
+    image_paths.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let pages_id = doc.new_object_id();
     let mut page_ids = vec![];
-    for entry in std::fs::read_dir(temp_download_dir)?.filter_map(Result::ok) {
-        let path = entry.path();
+    for path in image_paths {
         // 把图像文件读取到buffer中
         let file = std::fs::File::open(&path).context(format!("打开 {path:?} 失败"))?;
         let mut reader = std::io::BufReader::new(file);
@@ -153,7 +157,6 @@ pub fn save_pdf_archive(
         .context(format!("删除 {temp_download_dir:?} 失败"))?;
     Ok(())
 }
-
 
 fn compress_pdf(doc: &mut Document) -> anyhow::Result<()> {
     for object in doc.objects.values_mut() {
