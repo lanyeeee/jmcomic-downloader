@@ -77,8 +77,8 @@ pub struct AlbumInSearchRespData {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CategoryRespData {
-    pub id: String,
-    pub title: String,
+    pub id: Option<String>,
+    pub title:  Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
