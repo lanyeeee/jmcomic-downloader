@@ -7,7 +7,6 @@ use crate::commands::*;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::events::prelude::*;
-use crate::events::SetProxyErrorEvent;
 use crate::jm_client::JmClient;
 
 mod commands;
@@ -46,16 +45,7 @@ pub fn run() {
             show_path_in_file_manager,
             sync_favorite_folder,
         ])
-        .events(tauri_specta::collect_events![
-            DownloadChapterEndEvent,
-            DownloadChapterPendingEvent,
-            DownloadChapterStartEvent,
-            DownloadImageErrorEvent,
-            DownloadImageSuccessEvent,
-            DownloadSpeedEvent,
-            UpdateOverallDownloadProgressEvent,
-            SetProxyErrorEvent,
-        ]);
+        .events(tauri_specta::collect_events![DownloadEvent, SetProxyEvent]);
 
     #[cfg(debug_assertions)]
     builder
