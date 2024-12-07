@@ -21,12 +21,11 @@ use tokio::sync::{mpsc, Semaphore};
 use tokio::task::JoinSet;
 
 use crate::config::Config;
-use crate::events::{DownloadSpeedEvent, DownloadSpeedEventPayload};
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::save_archive::{save_image_archive, save_pdf_archive};
 use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat, ProxyMode};
-use crate::{events, utils};
+use crate::{utils, DownloadEvent, SetProxyEvent};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 
@@ -103,7 +102,8 @@ impl DownloadManager {
             let byte_per_sec = self.byte_per_sec.swap(0, Ordering::Relaxed);
             let mega_byte_per_sec = byte_per_sec as f64 / 1024.0 / 1024.0;
             let speed = format!("{mega_byte_per_sec:.2}MB/s");
-            emit_download_speed_event(&self.app, speed);
+            // 发送总进度条下载速度事件
+            let _ = DownloadEvent::OverallSpeed { speed }.emit(&self.app);
         }
     }
 
@@ -117,12 +117,13 @@ impl DownloadManager {
     #[allow(clippy::cast_possible_truncation)]
     //TODO: 这里不能用anyhow::Result<()>和`?`，否则会导致错误信息被忽略
     async fn process_chapter(self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
-        emit_pending_event(
-            &self.app,
-            chapter_info.chapter_id,
-            chapter_info.chapter_title.clone(),
-            chapter_info.album_title.clone(),
-        );
+        // 发送章节排队事件
+        let _ = DownloadEvent::ChapterPending {
+            chapter_id: chapter_info.chapter_id,
+            album_title: chapter_info.album_title.clone(),
+            chapter_title: chapter_info.chapter_title.clone(),
+        }
+        .emit(&self.app);
         // 创建临时下载目录
         let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
         std::fs::create_dir_all(&temp_download_dir)
@@ -141,7 +142,12 @@ impl DownloadManager {
         let mut join_set = JoinSet::new();
         // 限制同时下载的章节数量
         let permit = self.chapter_sem.acquire().await?;
-        emit_start_event(&self.app, chapter_info.chapter_id, total);
+        // 发送下载开始事件
+        let _ = DownloadEvent::ChapterStart {
+            chapter_id: chapter_info.chapter_id,
+            total,
+        }
+        .emit(&self.app);
         for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
             let manager = self.clone();
             let chapter_id = chapter_info.chapter_id;
@@ -166,11 +172,14 @@ impl DownloadManager {
             let downloaded_image_count = self.downloaded_image_count.load(Ordering::Relaxed);
             let total_image_count = self.total_image_count.load(Ordering::Relaxed);
             // 更新下载进度
-            emit_update_overall_progress_event(
-                &self.app,
+            let percentage = downloaded_image_count as f64 / total_image_count as f64 * 100.0;
+            // 发送总进度条更新事件
+            let _ = DownloadEvent::OverallUpdate {
                 downloaded_image_count,
                 total_image_count,
-            );
+                percentage,
+            }
+            .emit(&self.app);
         }
         drop(permit);
         // 如果DownloadManager所有图片全部都已下载(无论成功或失败)，则清空下载进度
@@ -187,18 +196,25 @@ impl DownloadManager {
             let err_msg = Some(format!(
                 "总共有 {total} 张图片，但只下载了 {downloaded_count} 张"
             ));
-            emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
+            // 发送下载结束事件
+            let _ = DownloadEvent::ChapterEnd {
+                chapter_id: chapter_info.chapter_id,
+                err_msg,
+            }
+            .emit(&self.app);
             return Ok(());
         }
         // 此章节的图片全部下载成功
-        // 如果保存图片失败
-        if let Err(err) = self.save_archive(&chapter_info, &temp_download_dir) {
-            let err_msg = Some(err.to_string_chain());
-            emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
-            return Ok(());
+        let err_msg = match self.save_archive(&chapter_info, &temp_download_dir) {
+            Ok(()) => None,
+            Err(err) => Some(err.to_string_chain()),
         };
-        // 至此，此章节的图片全部下载并保存成功
-        emit_end_event(&self.app, chapter_info.chapter_id, None);
+        // 发送下载结束事件
+        let _ = DownloadEvent::ChapterEnd {
+            chapter_id: chapter_info.chapter_id,
+            err_msg,
+        }
+        .emit(&self.app);
         Ok(())
     }
 
@@ -215,9 +231,7 @@ impl DownloadManager {
             .clone();
 
         let Some(parent) = temp_download_dir.parent() else {
-            let err_msg = Some(format!("无法获取 {temp_download_dir:?} 的父目录"));
-            emit_end_event(&self.app, chapter_info.chapter_id, err_msg);
-            return Ok(());
+            return Err(anyhow!("无法获取 {temp_download_dir:?} 的父目录"));
         };
 
         let download_dir = parent.join(&chapter_info.chapter_title);
@@ -271,7 +285,13 @@ impl DownloadManager {
             Ok(permit) => permit,
             Err(err) => {
                 let err = err.context("获取下载图片的semaphore失败");
-                emit_error_event(&self.app, chapter_id, url, err.to_string_chain());
+                // 发送下载图片失败事件
+                let _ = DownloadEvent::ImageError {
+                    chapter_id,
+                    url: url.clone(),
+                    err_msg: err.to_string_chain(),
+                }
+                .emit(&self.app);
                 return;
             }
         };
@@ -280,7 +300,13 @@ impl DownloadManager {
             Ok(data) => data,
             Err(err) => {
                 let err = err.context(format!("下载图片`{url}`失败"));
-                emit_error_event(&self.app, chapter_id, url, err.to_string_chain());
+                // 发送下载图片失败事件
+                let _ = DownloadEvent::ImageError {
+                    chapter_id,
+                    url: url.clone(),
+                    err_msg: err.to_string_chain(),
+                }
+                .emit(&self.app);
                 return;
             }
         };
@@ -292,7 +318,13 @@ impl DownloadManager {
         let _ = tokio::task::spawn_blocking(move || {
             if let Err(err) = save_image(&save_path, download_format, block_num, &image_data) {
                 let err = err.context(format!("保存图片`{url}`到`{save_path:?}`失败"));
-                emit_error_event(&self.app, chapter_id, url, err.to_string_chain());
+                // 发送下载图片失败事件
+                let _ = DownloadEvent::ImageError {
+                    chapter_id,
+                    url,
+                    err_msg: err.to_string_chain(),
+                }
+                .emit(&self.app);
                 return;
             }
             // 记录下载字节数
@@ -301,7 +333,13 @@ impl DownloadManager {
             // 更新章节下载进度
             let downloaded_count = downloaded_count.fetch_add(1, Ordering::Relaxed) + 1;
             let save_path = save_path.to_string_lossy().to_string();
-            emit_success_event(&self.app, chapter_id, save_path, downloaded_count);
+            // 发送下载图片成功事件
+            let _ = DownloadEvent::ImageSuccess {
+                chapter_id,
+                url: save_path,
+                current: downloaded_count,
+            }
+            .emit(&self.app);
         })
         .await;
     }
@@ -364,7 +402,9 @@ pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {
                 Ok(proxy) => builder.proxy(proxy),
                 Err(err) => {
                     let err = err.context(format!("DownloadManager设置代理 {proxy_url} 失败"));
-                    emit_set_proxy_error_event(app, err.to_string_chain());
+                    let err_msg = err.to_string_chain();
+                    // 发送设置代理失败事件
+                    let _ = SetProxyEvent::Error { err_msg }.emit(app);
                     builder
                 }
             }
@@ -444,82 +484,4 @@ fn save_image(
     }
 
     Ok(())
-}
-
-fn emit_start_event(app: &AppHandle, chapter_id: i64, total: u32) {
-    let payload = events::DownloadChapterStartEventPayload { chapter_id, total };
-    let event = events::DownloadChapterStartEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_pending_event(
-    app: &AppHandle,
-    chapter_id: i64,
-    chapter_title: String,
-    album_title: String,
-) {
-    let payload = events::DownloadChapterPendingEventPayload {
-        chapter_id,
-        chapter_title,
-        album_title,
-    };
-    let event = events::DownloadChapterPendingEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_success_event(app: &AppHandle, chapter_id: i64, url: String, downloaded_count: u32) {
-    let payload = events::DownloadImageSuccessEventPayload {
-        chapter_id,
-        url,
-        downloaded_count,
-    };
-    let event = events::DownloadImageSuccessEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_error_event(app: &AppHandle, chapter_id: i64, url: String, err_msg: String) {
-    let payload = events::DownloadImageErrorEventPayload {
-        chapter_id,
-        url,
-        err_msg,
-    };
-    let event = events::DownloadImageErrorEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_end_event(app: &AppHandle, chapter_id: i64, err_msg: Option<String>) {
-    let payload = events::DownloadChapterEndEventPayload {
-        chapter_id,
-        err_msg,
-    };
-    let event = events::DownloadChapterEndEvent(payload);
-    let _ = event.emit(app);
-}
-
-#[allow(clippy::cast_lossless)]
-fn emit_update_overall_progress_event(
-    app: &AppHandle,
-    downloaded_image_count: u32,
-    total_image_count: u32,
-) {
-    let percentage: f64 = downloaded_image_count as f64 / total_image_count as f64 * 100.0;
-    let payload = events::UpdateOverallDownloadProgressEventPayload {
-        downloaded_image_count,
-        total_image_count,
-        percentage,
-    };
-    let event = events::UpdateOverallDownloadProgressEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_download_speed_event(app: &AppHandle, speed: String) {
-    let payload = DownloadSpeedEventPayload { speed };
-    let event = DownloadSpeedEvent(payload);
-    let _ = event.emit(app);
-}
-
-fn emit_set_proxy_error_event(app: &AppHandle, err_msg: String) {
-    let payload = events::SetProxyErrorEventPayload { err_msg };
-    let event = events::SetProxyErrorEvent(payload);
-    let _ = event.emit(app);
 }
