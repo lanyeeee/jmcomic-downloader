@@ -344,6 +344,7 @@ impl DownloadManager {
         .await;
     }
 
+    // TODO: 把下载图片的逻辑移到JmClient中
     async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
         let http_res = self.http_client.get(url).send().await?;
 
@@ -425,7 +426,7 @@ fn save_image(
     image_data: &Bytes,
 ) -> anyhow::Result<()> {
     // 如果block_num为0，直接保存图片就行
-    // FIXME: 不能直接保存，因为应该根据download_format来保存
+    // FIXME: 不能直接保存，应该根据download_format来保存
     if block_num == 0 {
         std::fs::write(save_path, image_data)?;
         return Ok(());

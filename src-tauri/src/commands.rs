@@ -1,10 +1,13 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use anyhow::anyhow;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use path_slash::PathBufExt;
 use tauri::{AppHandle, State};
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
@@ -175,6 +178,97 @@ pub async fn download_album(
         );
     }
     download_chapters(download_manager, chapter_infos).await?;
+    Ok(())
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn update_downloaded_favorite_album(
+    app: AppHandle,
+    jm_client: State<'_, RwLock<JmClient>>,
+    download_manager: State<'_, RwLock<DownloadManager>>,
+) -> CommandResult<()> {
+    let jm_client = jm_client.read().clone();
+    let favorite_albums = Arc::new(Mutex::new(vec![]));
+    // 获取收藏夹第一页
+    let first_page = jm_client
+        .get_favorite_folder(0, 1, FavoriteSort::FavoriteTime)
+        .await?;
+    favorite_albums.lock().extend(first_page.list);
+    // 计算总页数
+    let count = first_page.count;
+    let total = first_page.total.parse::<i64>().map_err(|e| anyhow!(e))?;
+    let page_count = (total / count) + 1;
+    // 获取收藏夹剩余页
+    let mut join_set = JoinSet::new();
+    for page in 2..=page_count {
+        let jm_client = jm_client.clone();
+        let favorite_albums = favorite_albums.clone();
+        join_set.spawn(async move {
+            let page = jm_client
+                .get_favorite_folder(0, page, FavoriteSort::FavoriteTime)
+                .await?;
+            favorite_albums.lock().extend(page.list);
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    // 等待所有请求完成
+    while let Some(Ok(get_favorite_result)) = join_set.join_next().await {
+        // 如果有请求失败，直接返回错误
+        get_favorite_result?;
+    }
+    // 至此，收藏夹已经全部获取完毕
+    let favorite_albums = std::mem::take(&mut *favorite_albums.lock());
+    let albums = Arc::new(Mutex::new(vec![]));
+    // 限制并发数为10
+    let sem = Arc::new(Semaphore::new(10));
+    // 获取收藏夹漫画的详细信息
+    for favorite_album in favorite_albums {
+        let sem = sem.clone();
+        let aid = favorite_album.id.parse::<i64>().map_err(|e| anyhow!(e))?;
+        let jm_client = jm_client.clone();
+        let app = app.clone();
+        let albums = albums.clone();
+        join_set.spawn(async move {
+            let permit = sem.acquire().await?;
+            let album_resp_data = jm_client.get_album(aid).await?;
+            drop(permit);
+            let album = Album::from_album_resp_data(&app, album_resp_data);
+            albums.lock().push(album);
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    // 等待所有请求完成
+    while let Some(Ok(get_album_result)) = join_set.join_next().await {
+        // 如果有请求失败，直接返回错误
+        get_album_result?;
+    }
+    // 至此，收藏夹漫画的详细信息已经全部获取完毕
+    let albums = std::mem::take(&mut *albums.lock());
+    // 过滤出已下载的漫画(至少有一个章节已下载)
+    let downloaded_album = albums
+        .into_iter()
+        .filter(|album| {
+            album
+                .chapter_infos
+                .iter()
+                .any(|chapter_info| chapter_info.is_downloaded)
+        })
+        .collect::<Vec<_>>();
+    // 获取已下载的漫画中的未下载章节
+    let chapters_to_download = downloaded_album
+        .iter()
+        .flat_map(|album| {
+            album
+                .chapter_infos
+                .iter()
+                .filter(|chapter_info| !chapter_info.is_downloaded)
+                .cloned()
+        })
+        .collect::<Vec<_>>();
+    // 下载未下载章节
+    download_chapters(download_manager, chapters_to_download).await?;
+
     Ok(())
 }
 
