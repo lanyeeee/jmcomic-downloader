@@ -42,6 +42,7 @@ pub fn run() {
             get_user_profile,
             download_chapters,
             download_album,
+            update_downloaded_favorite_album,
             show_path_in_file_manager,
             sync_favorite_folder,
         ])
