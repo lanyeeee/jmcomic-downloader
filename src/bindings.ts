@@ -122,10 +122,12 @@ async syncFavoriteFolder() : Promise<Result<null, CommandError>> {
 
 export const events = __makeEvents__<{
 downloadEvent: DownloadEvent,
-setProxyEvent: SetProxyEvent
+setProxyEvent: SetProxyEvent,
+updateDownloadedFavoriteAlbumEvent: UpdateDownloadedFavoriteAlbumEvent
 }>({
 downloadEvent: "download-event",
-setProxyEvent: "set-proxy-event"
+setProxyEvent: "set-proxy-event",
+updateDownloadedFavoriteAlbumEvent: "update-downloaded-favorite-album-event"
 })
 
 /** user-defined constants **/
@@ -156,6 +158,7 @@ export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
 export type SetProxyEvent = { event: "Error"; data: { errMsg: string } }
+export type UpdateDownloadedFavoriteAlbumEvent = { event: "GettingFolders" } | { event: "GettingAlbums"; data: { total: number } } | { event: "AlbumGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/

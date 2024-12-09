@@ -3,7 +3,7 @@ use specta::Type;
 use tauri_specta::Event;
 
 pub mod prelude {
-    pub use crate::events::{DownloadEvent, SetProxyEvent};
+    pub use crate::events::{DownloadEvent, SetProxyEvent, UpdateDownloadedFavoriteAlbumEvent};
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -55,4 +55,20 @@ pub enum DownloadEvent {
 pub enum SetProxyEvent {
     #[serde(rename_all = "camelCase")]
     Error { err_msg: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(tag = "event", content = "data")]
+pub enum UpdateDownloadedFavoriteAlbumEvent {
+    #[serde(rename_all = "camelCase")]
+    GettingFolders,
+
+    #[serde(rename_all = "camelCase")]
+    GettingAlbums { total: i64 },
+
+    #[serde(rename_all = "camelCase")]
+    AlbumGot { current: i64, total: i64 },
+
+    #[serde(rename_all = "camelCase")]
+    DownloadTaskCreated,
 }
