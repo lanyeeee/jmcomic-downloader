@@ -46,7 +46,11 @@ pub fn run() {
             show_path_in_file_manager,
             sync_favorite_folder,
         ])
-        .events(tauri_specta::collect_events![DownloadEvent, SetProxyEvent]);
+        .events(tauri_specta::collect_events![
+            DownloadEvent,
+            SetProxyEvent,
+            UpdateDownloadedFavoriteAlbumEvent,
+        ]);
 
     #[cfg(debug_assertions)]
     builder
