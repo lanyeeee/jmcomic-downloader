@@ -3,83 +3,72 @@ use specta::Type;
 use tauri_specta::Event;
 
 pub mod prelude {
-    pub use crate::events::{
-        DownloadChapterEndEvent, DownloadChapterPendingEvent, DownloadChapterStartEvent,
-        DownloadImageErrorEvent, DownloadImageSuccessEvent, DownloadSpeedEvent,
-        UpdateOverallDownloadProgressEvent,
-    };
+    pub use crate::events::{DownloadEvent, SetProxyEvent, UpdateDownloadedFavoriteAlbumEvent};
 }
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadChapterPendingEventPayload {
-    pub chapter_id: i64,
-    pub chapter_title: String,
-    pub album_title: String,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadChapterPendingEvent(pub DownloadChapterPendingEventPayload);
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(tag = "event", content = "data")]
+pub enum DownloadEvent {
+    #[serde(rename_all = "camelCase")]
+    ChapterPending {
+        chapter_id: i64,
+        album_title: String,
+        chapter_title: String,
+    },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadChapterStartEventPayload {
-    pub chapter_id: i64,
-    pub total: u32,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadChapterStartEvent(pub DownloadChapterStartEventPayload);
+    #[serde(rename_all = "camelCase")]
+    ChapterStart { chapter_id: i64, total: u32 },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadImageSuccessEventPayload {
-    pub chapter_id: i64,
-    pub url: String,
-    pub downloaded_count: u32,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadImageSuccessEvent(pub DownloadImageSuccessEventPayload);
+    #[serde(rename_all = "camelCase")]
+    ChapterEnd {
+        chapter_id: i64,
+        err_msg: Option<String>,
+    },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadImageErrorEventPayload {
-    pub chapter_id: i64,
-    pub url: String,
-    pub err_msg: String,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadImageErrorEvent(pub DownloadImageErrorEventPayload);
+    #[serde(rename_all = "camelCase")]
+    ImageSuccess {
+        chapter_id: i64,
+        url: String,
+        current: u32,
+    },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadChapterEndEventPayload {
-    pub chapter_id: i64,
-    pub err_msg: Option<String>,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadChapterEndEvent(pub DownloadChapterEndEventPayload);
+    #[serde(rename_all = "camelCase")]
+    ImageError {
+        chapter_id: i64,
+        url: String,
+        err_msg: String,
+    },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateOverallDownloadProgressEventPayload {
-    pub downloaded_image_count: u32,
-    pub total_image_count: u32,
-    pub percentage: f64,
-}
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct UpdateOverallDownloadProgressEvent(pub UpdateOverallDownloadProgressEventPayload);
+    #[serde(rename_all = "camelCase")]
+    OverallUpdate {
+        downloaded_image_count: u32,
+        total_image_count: u32,
+        percentage: f64,
+    },
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadSpeedEventPayload {
-    pub speed: String,
+    #[serde(rename_all = "camelCase")]
+    OverallSpeed { speed: String },
 }
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct DownloadSpeedEvent(pub DownloadSpeedEventPayload);
 
-#[derive(Serialize, Deserialize, Clone, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct SetProxyErrorEventPayload {
-    pub err_msg: String,
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(tag = "event", content = "data")]
+pub enum SetProxyEvent {
+    #[serde(rename_all = "camelCase")]
+    Error { err_msg: String },
 }
-#[derive(Serialize, Deserialize, Clone, Type, Event)]
-pub struct SetProxyErrorEvent(pub SetProxyErrorEventPayload);
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(tag = "event", content = "data")]
+pub enum UpdateDownloadedFavoriteAlbumEvent {
+    #[serde(rename_all = "camelCase")]
+    GettingFolders,
+
+    #[serde(rename_all = "camelCase")]
+    GettingAlbums { total: i64 },
+
+    #[serde(rename_all = "camelCase")]
+    AlbumGot { current: i64, total: i64 },
+
+    #[serde(rename_all = "camelCase")]
+    DownloadTaskCreated,
+}

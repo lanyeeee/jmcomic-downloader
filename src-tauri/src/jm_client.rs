@@ -3,6 +3,14 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::config::Config;
+use crate::extensions::AnyhowErrorToStringChain;
+use crate::responses::{
+    AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
+    SearchRespData, ToggleFavoriteResp, UserProfileRespData,
+};
+use crate::types::{FavoriteSort, ProxyMode, SearchSort};
+use crate::{utils, SetProxyEvent};
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockDecrypt, KeyInit};
 use aes::Aes256;
@@ -16,14 +24,6 @@ use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
-use crate::config::Config;
-use crate::extensions::AnyhowErrorToStringChain;
-use crate::responses::{
-    AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
-    SearchRespData, ToggleFavoriteResp, UserProfileRespData,
-};
-use crate::types::{FavoriteSort, ProxyMode, SearchSort};
-use crate::{events, utils};
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -464,7 +464,9 @@ pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewa
                 Ok(proxy) => builder.proxy(proxy),
                 Err(err) => {
                     let err = err.context(format!("JmClient设置代理 {proxy_url} 失败"));
-                    emit_set_proxy_error_event(app, err.to_string_chain());
+                    let err_msg = err.to_string_chain();
+                    // 发送设置代理失败事件
+                    let _ = SetProxyEvent::Error { err_msg }.emit(app);
                     builder
                 }
             }
@@ -504,10 +506,4 @@ fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 将解密后的数据转换为UTF-8字符串
     let decrypted_data = String::from_utf8(decrypted_data_without_padding)?;
     Ok(decrypted_data)
-}
-
-fn emit_set_proxy_error_event(app: &AppHandle, err_msg: String) {
-    let payload = events::SetProxyErrorEventPayload { err_msg };
-    let event = events::SetProxyErrorEvent(payload);
-    let _ = event.emit(app);
 }
