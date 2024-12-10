@@ -91,6 +91,14 @@ async downloadAlbum(aid: number) : Promise<Result<null, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async updateDownloadedFavoriteAlbum() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_favorite_album") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async showPathInFileManager(path: string) : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("show_path_in_file_manager", { path }) };
@@ -113,23 +121,13 @@ async syncFavoriteFolder() : Promise<Result<null, CommandError>> {
 
 
 export const events = __makeEvents__<{
-downloadChapterEndEvent: DownloadChapterEndEvent,
-downloadChapterPendingEvent: DownloadChapterPendingEvent,
-downloadChapterStartEvent: DownloadChapterStartEvent,
-downloadImageErrorEvent: DownloadImageErrorEvent,
-downloadImageSuccessEvent: DownloadImageSuccessEvent,
-downloadSpeedEvent: DownloadSpeedEvent,
-setProxyErrorEvent: SetProxyErrorEvent,
-updateOverallDownloadProgressEvent: UpdateOverallDownloadProgressEvent
+downloadEvent: DownloadEvent,
+setProxyEvent: SetProxyEvent,
+updateDownloadedFavoriteAlbumEvent: UpdateDownloadedFavoriteAlbumEvent
 }>({
-downloadChapterEndEvent: "download-chapter-end-event",
-downloadChapterPendingEvent: "download-chapter-pending-event",
-downloadChapterStartEvent: "download-chapter-start-event",
-downloadImageErrorEvent: "download-image-error-event",
-downloadImageSuccessEvent: "download-image-success-event",
-downloadSpeedEvent: "download-speed-event",
-setProxyErrorEvent: "set-proxy-error-event",
-updateOverallDownloadProgressEvent: "update-overall-download-progress-event"
+downloadEvent: "download-event",
+setProxyEvent: "set-proxy-event",
+updateDownloadedFavoriteAlbumEvent: "update-downloaded-favorite-album-event"
 })
 
 /** user-defined constants **/
@@ -142,25 +140,14 @@ export type Album = { id: number; name: string; addtime: string; description: st
 export type AlbumInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
 export type ArchiveFormat = "Image" | "Pdf"
-export type CategoryRespData = { id: string; title: string }
+export type CategoryRespData = { id: string | null; title: string | null }
 export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
 export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
 export type Config = { username: string; password: string; downloadDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
-export type DownloadChapterEndEvent = DownloadChapterEndEventPayload
-export type DownloadChapterEndEventPayload = { chapterId: number; errMsg: string | null }
-export type DownloadChapterPendingEvent = DownloadChapterPendingEventPayload
-export type DownloadChapterPendingEventPayload = { chapterId: number; chapterTitle: string; albumTitle: string }
-export type DownloadChapterStartEvent = DownloadChapterStartEventPayload
-export type DownloadChapterStartEventPayload = { chapterId: number; total: number }
+export type DownloadEvent = { event: "ChapterPending"; data: { chapterId: number; albumTitle: string; chapterTitle: string } } | { event: "ChapterStart"; data: { chapterId: number; total: number } } | { event: "ChapterEnd"; data: { chapterId: number; errMsg: string | null } } | { event: "ImageSuccess"; data: { chapterId: number; url: string; current: number } } | { event: "ImageError"; data: { chapterId: number; url: string; errMsg: string } } | { event: "OverallUpdate"; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } } | { event: "OverallSpeed"; data: { speed: string } }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
-export type DownloadImageErrorEvent = DownloadImageErrorEventPayload
-export type DownloadImageErrorEventPayload = { chapterId: number; url: string; errMsg: string }
-export type DownloadImageSuccessEvent = DownloadImageSuccessEventPayload
-export type DownloadImageSuccessEventPayload = { chapterId: number; url: string; downloadedCount: number }
-export type DownloadSpeedEvent = DownloadSpeedEventPayload
-export type DownloadSpeedEventPayload = { speed: string }
 export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
 export type FavoriteRespData = { list: AlbumInFavoriteRespData[]; folder_list: FavoriteFolderRespData[]; total: string; count: number }
 export type FavoriteSort = "FavoriteTime" | "UpdateTime"
@@ -170,10 +157,8 @@ export type SearchRespData = { search_query: string; total: number; content: Alb
 export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
-export type SetProxyErrorEvent = SetProxyErrorEventPayload
-export type SetProxyErrorEventPayload = { errMsg: string }
-export type UpdateOverallDownloadProgressEvent = UpdateOverallDownloadProgressEventPayload
-export type UpdateOverallDownloadProgressEventPayload = { downloadedImageCount: number; totalImageCount: number; percentage: number }
+export type SetProxyEvent = { event: "Error"; data: { errMsg: string } }
+export type UpdateDownloadedFavoriteAlbumEvent = { event: "GettingFolders" } | { event: "GettingAlbums"; data: { total: number } } | { event: "AlbumGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/
