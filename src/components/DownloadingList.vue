@@ -39,74 +39,75 @@ const sortedProgresses = computed(() => {
 });
 
 onMounted(async () => {
-  await events.downloadChapterPendingEvent.listen(({payload}) => {
-    let progressData: ProgressData = {
-      albumTitle: payload.albumTitle,
-      chapterTitle: payload.chapterTitle,
-      downloadedCount: 0,
-      total: 0,
-      percentage: 0,
-      indicator: ""
-    };
-    progresses.value.set(payload.chapterId, progressData);
-  });
-
-  await events.downloadChapterStartEvent.listen(({payload}) => {
-    const progressData = progresses.value.get(payload.chapterId) as (ProgressData | undefined);
-    if (progressData === undefined) {
-      return;
+  await events.downloadEvent.listen(({payload: downloadEvent}) => {
+    if (downloadEvent.event == "ChapterPending") {
+      const {chapterId, albumTitle, chapterTitle} = downloadEvent.data;
+      const progressData: ProgressData = {
+        albumTitle,
+        chapterTitle,
+        downloadedCount: 0,
+        total: 0,
+        percentage: 0,
+        indicator: ""
+      };
+      progresses.value.set(chapterId, progressData);
+    } else if (downloadEvent.event == "ChapterStart") {
+      const {chapterId, total} = downloadEvent.data;
+      const progressData = progresses.value.get(chapterId) as (ProgressData | undefined);
+      if (progressData === undefined) {
+        return;
+      }
+      progressData.total = total;
+    } else if (downloadEvent.event == "ChapterEnd") {
+      const {chapterId, errMsg} = downloadEvent.data;
+      const progressData = progresses.value.get(chapterId) as (ProgressData | undefined);
+      if (progressData === undefined) {
+        return;
+      }
+      if (errMsg !== null) {
+        notification.warning({
+          title: "下载章节失败",
+          content: errMsg,
+          meta: `${progressData.albumTitle} - ${progressData.chapterTitle}`
+        });
+      }
+      progresses.value.delete(chapterId);
+    } else if (downloadEvent.event == "ImageSuccess") {
+      const {chapterId, current} = downloadEvent.data;
+      const progressData = progresses.value.get(chapterId) as (ProgressData | undefined);
+      if (progressData === undefined) {
+        return;
+      }
+      progressData.downloadedCount = current;
+      progressData.percentage = Math.round(progressData.downloadedCount / progressData.total * 100);
+    } else if (downloadEvent.event == "ImageError") {
+      const {chapterId, url, errMsg} = downloadEvent.data;
+      const progressData = progresses.value.get(chapterId) as (ProgressData | undefined);
+      if (progressData === undefined) {
+        return;
+      }
+      notification.warning({
+        title: "下载图片失败",
+        description: url,
+        content: errMsg,
+        meta: `${progressData.albumTitle} - ${progressData.chapterTitle}`
+      });
+    } else if (downloadEvent.event == "OverallSpeed") {
+      const {speed} = downloadEvent.data;
+      overallProgress.value.indicator = speed;
+    } else if (downloadEvent.event == "OverallUpdate") {
+      const {percentage, downloadedImageCount, totalImageCount} = downloadEvent.data;
+      overallProgress.value.percentage = percentage;
+      overallProgress.value.downloadedCount = downloadedImageCount;
+      overallProgress.value.total = totalImageCount;
     }
-    progressData.total = payload.total;
   });
 
-  await events.downloadImageSuccessEvent.listen(({payload}) => {
-    const progressData = progresses.value.get(payload.chapterId) as (ProgressData | undefined);
-    if (progressData === undefined) {
-      return;
+  await events.setProxyEvent.listen(({payload}) => {
+    if (payload.event === "Error") {
+      notification.error({title: "设置代理失败", description: payload.data.errMsg});
     }
-    progressData.downloadedCount = payload.downloadedCount;
-    progressData.percentage = Math.round(progressData.downloadedCount / progressData.total * 100);
   });
-
-  await events.downloadImageErrorEvent.listen(({payload}) => {
-    const progressData = progresses.value.get(payload.chapterId) as (ProgressData | undefined);
-    if (progressData === undefined) {
-      return;
-    }
-    notification.warning({
-      title: "下载图片失败",
-      description: payload.url,
-      content: payload.errMsg,
-      meta: progressData.chapterTitle
-    });
-  });
-
-  await events.downloadChapterEndEvent.listen(({payload}) => {
-    const progressData = progresses.value.get(payload.chapterId) as (ProgressData | undefined);
-    if (progressData === undefined) {
-      return;
-    }
-    if (payload.errMsg !== null) {
-      notification.warning({title: "下载章节失败", content: payload.errMsg, meta: progressData.chapterTitle});
-    }
-    progresses.value.delete(payload.chapterId);
-  });
-
-  await events.updateOverallDownloadProgressEvent.listen(({payload}) => {
-    overallProgress.value.percentage = payload.percentage;
-    overallProgress.value.downloadedCount = payload.downloadedImageCount;
-    overallProgress.value.total = payload.totalImageCount;
-    console.log(payload);
-  });
-
-  await events.downloadSpeedEvent.listen(({payload}) => {
-    overallProgress.value.indicator = payload.speed;
-  });
-
-  await events.setProxyErrorEvent.listen(({payload}) => {
-    notification.error({title: "设置代理失败", description: payload.errMsg});
-  });
-
 });
 
 async function showDownloadDirInFileManager() {

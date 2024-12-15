@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {computed, ref, watch} from "vue";
-import {Album, commands, FavoriteRespData, FavoriteSort, UserProfileRespData} from "../bindings.ts";
-import {useMessage, useNotification} from "naive-ui";
+import {computed, onMounted, ref, watch} from "vue";
+import {Album, commands, events, FavoriteRespData, FavoriteSort, UserProfileRespData} from "../bindings.ts";
+import {MessageReactive, useMessage, useNotification} from "naive-ui";
 import AlbumCard from "./AlbumCard.vue";
 
 const message = useMessage();
@@ -62,6 +62,15 @@ async function syncFavoriteFolder() {
   message.success("收藏夹已同步");
 }
 
+async function updateDownloadedFavoriteAlbum() {
+  const result = await commands.updateDownloadedFavoriteAlbum();
+  if (result.status === "error") {
+    updateMessage?.destroy();
+    notification.error({title: "更新收藏夹中已下载的漫画失败", description: result.error});
+    return;
+  }
+}
+
 // TODO: 把这个watch移到上面去
 watch(() => props.userProfile, async () => {
   if (props.userProfile === undefined) {
@@ -70,6 +79,28 @@ watch(() => props.userProfile, async () => {
   }
   await getFavourite(0, 1, "FavoriteTime");
 }, {immediate: true});
+
+let updateMessage: MessageReactive | undefined;
+onMounted(async () => {
+  await events.updateDownloadedFavoriteAlbumEvent.listen(({payload: updateEvent}) => {
+    if (updateEvent.event === "GettingFolders") {
+      updateMessage = message.loading("正在获取收藏夹", {duration: 0});
+    } else if (updateEvent.event === "GettingAlbums" && updateMessage !== undefined) {
+      const {total} = updateEvent.data;
+      updateMessage.content = `正在获取收藏夹中的漫画(0/${total})`;
+    } else if (updateEvent.event === "AlbumGot" && updateMessage !== undefined) {
+      const {current, total} = updateEvent.data;
+      updateMessage.content = `正在获取收藏夹中的漫画(${current}/${total})`;
+    } else if (updateEvent.event === "DownloadTaskCreated" && updateMessage !== undefined) {
+      updateMessage.type = "success";
+      updateMessage.content = "已为需要更新的章节创建下载任务";
+      setTimeout(() => {
+        updateMessage?.destroy();
+        updateMessage = undefined;
+      }, 3000);
+    }
+  });
+});
 
 </script>
 
@@ -86,6 +117,9 @@ watch(() => props.userProfile, async () => {
                 :show-checkmark="false"
                 size="tiny"
                 @update-value="getFavourite(folderIdSelected, 1, $event)"/>
+      <n-button size="tiny" @click="updateDownloadedFavoriteAlbum">
+        更新已下载的漫画
+      </n-button>
       <n-button size="tiny" type="primary" secondary @click="syncFavoriteFolder">收藏夹不对请点我</n-button>
     </div>
     <div v-if="favoriteRespData!==undefined" class="flex flex-col gap-row-1 overflow-auto p-2">
