@@ -25,6 +25,7 @@ const disableProxyHostAndPort = computed(() => config.value.proxyMode !== "Custo
           </template>
           1. 有损<span class="text-red">(肉眼看不出)</span><br/>
           2. 文件体积小<br/>
+          4. 宽高的上限为65534<span class="text-red">(某些条漫可能会超过这个上限导致报错)</span><br/>
           3. 编码速度最快<br/>
         </n-tooltip>
         <n-tooltip placement="top" trigger="hover">
@@ -42,7 +43,8 @@ const disableProxyHostAndPort = computed(() => config.value.proxyMode !== "Custo
           1. 无损<br/>
           <span class="text-red">2. 这是jm图片原本的格式</span><br/>
           3. 文件体积大<span class="text-red">(约为jpg的4倍)</span><br/>
-          4. 编码速度较慢<br/>
+          4. 宽高的上限为16383<span class="text-red">(某些条漫可能会超过这个上限导致报错)</span><br/>
+          5. 编码速度较慢<br/>
         </n-tooltip>
       </n-radio-group>
       <n-radio-group v-model:value="config.archiveFormat">
