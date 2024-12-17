@@ -425,18 +425,49 @@ fn save_image(
     block_num: u32,
     image_data: &Bytes,
 ) -> anyhow::Result<()> {
-    // 如果block_num为0，直接保存图片就行
-    // FIXME: 不能直接保存，应该根据download_format来保存
-    if block_num == 0 {
-        std::fs::write(save_path, image_data)?;
-        return Ok(());
-    }
-    // 如果block_num不为0，需要将图片拼接后再保存
-    // 将image_data中的二进制数据解码为图片
     let mut src_img = image::load_from_memory(image_data).context("解码图片失败")?;
+    // 如果无需拼接，直接根据格式保存图片
+    if block_num == 0 {
+        return save_image_by_format(&src_img, save_path, download_format);
+    }
+    // 否则拼接图片
+    let stitched_image = stitch_image(&mut src_img, block_num)?;
+    save_image_by_format(&stitched_image, save_path, download_format)
+}
+
+/// 根据格式保存图片
+fn save_image_by_format(
+    img: &DynamicImage,
+    save_path: &PathBuf,
+    format: DownloadFormat,
+) -> anyhow::Result<()> {
+    match format {
+        DownloadFormat::Jpeg => {
+            img.to_rgb8().save(save_path)?;
+        }
+        DownloadFormat::Png => {
+            let png_file = std::fs::File::create(save_path)?;
+            let buffered_file_writer = BufWriter::new(png_file);
+            let encoder = PngEncoder::new_with_quality(
+                buffered_file_writer,
+                CompressionType::Best,
+                FilterType::default(),
+            );
+            img.write_with_encoder(encoder)?;
+        }
+        DownloadFormat::Webp => {
+            img.to_rgba8().save(save_path)?;
+        }
+    };
+    Ok(())
+}
+
+/// 拼接图片
+fn stitch_image(src_img: &mut DynamicImage, block_num: u32) -> anyhow::Result<DynamicImage> {
+    // 如果block_num不为0，需要将图片拼接后再保存
     let (width, height) = src_img.dimensions();
     // 创建一张空的图片，尺寸与原图相同，用于拼接分块
-    let mut dst_img = image::ImageBuffer::new(width, height);
+    let mut stitched_image = image::ImageBuffer::new(width, height);
     // 计算原图像的高度除以num的余数
     let remainder_height = height % block_num;
     // 将图片切分为block_num块并拼接
@@ -456,33 +487,10 @@ fn save_image(
         // 从原图裁剪出当前块
         let cropped_block = src_img.crop(0, src_img_y_start, width, block_height);
         // 将裁剪出的当前块复制到新图的对应位置
-        dst_img
+        stitched_image
             .copy_from(&cropped_block, 0, dst_img_y_start)
             .context("拼接图片失败")?;
     }
-    // 保存最终拼接好的图片
-    match download_format {
-        DownloadFormat::Jpeg => {
-            let rgb_img = DynamicImage::ImageRgba8(dst_img).to_rgb8();
-            rgb_img.save(save_path)?;
-        }
-        // png图片需要使用最高的压缩质量，否则体积会很大
-        DownloadFormat::Png => {
-            let png_file = std::fs::File::create(save_path)?;
-            let buffered_file_writer = BufWriter::new(png_file);
-            let encoder = PngEncoder::new_with_quality(
-                buffered_file_writer,
-                CompressionType::Best,
-                FilterType::default(),
-            );
-            dst_img.write_with_encoder(encoder)?;
-        }
-        // 其他格式的图片直接用默认参数保存
-        DownloadFormat::Webp => {
-            let rgba_img = DynamicImage::ImageRgba8(dst_img);
-            rgba_img.save(save_path)?;
-        }
-    }
 
-    Ok(())
+    Ok(DynamicImage::ImageRgba8(stitched_image))
 }
