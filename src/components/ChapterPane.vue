@@ -131,14 +131,14 @@ async function refreshChapters() {
 
 <template>
   <div class="h-full flex flex-col">
-    <div class="flex flex-justify-around">
+    <div class="flex flex-justify-around select-none">
       <span>总章数：{{ selectedAlbum?.chapterInfos.length }}</span>
       <n-divider vertical></n-divider>
       <span>已下载：{{ selectedAlbum?.chapterInfos.filter(c => c.isDownloaded).length }}</span>
       <n-divider vertical></n-divider>
       <span>已勾选：{{ checkedIds.length }}</span>
     </div>
-    <div class="flex justify-between">
+    <div class="flex justify-between select-none">
       左键拖动进行框选，右键打开菜单
       <n-button size="tiny" :disabled="selectedAlbum===undefined" @click="refreshChapters" class="w-1/6">刷新</n-button>
       <n-button size="tiny" :disabled="selectedAlbum===undefined" type="primary" @click="downloadChapters"
@@ -150,7 +150,7 @@ async function refreshChapters() {
     </n-empty>
     <SelectionArea v-else
                    ref="selectionAreaRef"
-                   class="selection-container"
+                   class="selection-container flex-1"
                    :options="{selectables: '.selectable'} as SelectionOptions"
                    @contextmenu="onContextMenu"
                    @mousedown="onMouseDown"
@@ -169,6 +169,21 @@ async function refreshChapters() {
       </n-checkbox-group>
     </SelectionArea>
 
+    <div v-if="selectedAlbum!==undefined" class="flex">
+      <img
+          class="w-24"
+          :src="`https://cdn-msp3.18comic.vip/media/albums/${selectedAlbum.id}_3x4.jpg`"
+          alt=""
+          referrerpolicy="no-referrer"/>
+      <div class="flex flex-col w-full justify-between">
+        <div class="flex flex-col">
+          <span class="font-bold text-xl line-clamp-2">{{ selectedAlbum.name }}</span>
+          <span class="text-red">作者：{{ selectedAlbum.author }}</span>
+          <span class="text-gray">标签：{{ selectedAlbum.tags }}</span>
+        </div>
+      </div>
+    </div>
+
     <n-dropdown
         placement="bottom-start"
         trigger="manual"
@@ -184,7 +199,7 @@ async function refreshChapters() {
 
 <style scoped>
 .selection-container {
-  @apply user-select-none overflow-auto;
+  @apply select-none overflow-auto;
 }
 
 .selection-container .selected {

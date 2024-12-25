@@ -69,7 +69,7 @@ async function test() {
 
 <template>
   <div v-if="config!==undefined" class="h-screen flex flex-col">
-    <div class="flex overflow-hidden">
+    <div class="h-full flex overflow-hidden">
       <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
         <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
           <search-pane v-model:selected-album="selectedAlbum" v-model:current-tab-name="currentTabName"/>
