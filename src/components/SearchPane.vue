@@ -59,7 +59,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
 <template>
   <div class="h-full flex flex-col">
     <div class="flex flex-col">
-      <div class="grid grid-cols-[4fr_1fr] gap-col-1">
+      <div class="grid grid-cols-[7fr_2fr] gap-col-1">
         <div class="flex gap-col-1">
           <n-input class="text-align-left"
                    size="tiny"
