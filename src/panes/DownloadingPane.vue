@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { commands, Config, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
 import { NProgress, useNotification } from 'naive-ui'
-import SettingsDialog from './SettingsDialog.vue'
+import SettingsDialog from '../components/SettingsDialog.vue'
 
 type ProgressData = {
   albumTitle: string

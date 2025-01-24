@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { Album, commands, SearchRespData, SearchSort } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
-import AlbumCard from './AlbumCard.vue'
+import AlbumCard from '../components/AlbumCard.vue'
 
 const message = useMessage()
 const notification = useNotification()

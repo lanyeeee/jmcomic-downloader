@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { Album, commands, events, FavoriteRespData, FavoriteSort, UserProfileRespData } from '../bindings.ts'
 import { MessageReactive, useMessage, useNotification } from 'naive-ui'
-import AlbumCard from './AlbumCard.vue'
+import AlbumCard from '../components/AlbumCard.vue'
 
 const message = useMessage()
 const notification = useNotification()

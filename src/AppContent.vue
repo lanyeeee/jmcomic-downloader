@@ -3,12 +3,12 @@ import { onMounted, ref, watch } from 'vue'
 import { Album, commands, Config, UserProfileRespData } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
-import SearchPane from './components/SearchPane.vue'
-import ChapterPane from './components/ChapterPane.vue'
-import DownloadingList from './components/DownloadingList.vue'
+import SearchPane from './panes/SearchPane.vue'
+import ChapterPane from './panes/ChapterPane.vue'
+import DownloadingPane from './panes/DownloadingPane.vue'
 import { appDataDir } from '@tauri-apps/api/path'
 import { path } from '@tauri-apps/api'
-import FavoritePane from './components/FavoritePane.vue'
+import FavoritePane from './panes/FavoritePane.vue'
 
 const message = useMessage()
 const notification = useNotification()
@@ -29,7 +29,7 @@ watch(
     await commands.saveConfig(config.value)
     message.success('保存配置成功')
   },
-  { deep: true },
+  { deep: true }
 )
 
 onMounted(async () => {
@@ -97,7 +97,7 @@ async function test() {
             <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
           </div>
         </div>
-        <downloading-list class="overflow-auto" v-model:config="config"></downloading-list>
+        <downloading-pane class="overflow-auto" v-model:config="config"></downloading-pane>
       </div>
     </div>
     <n-modal v-model:show="loginDialogShowing">

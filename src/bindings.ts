@@ -3,312 +3,220 @@
 
 /** user-defined commands **/
 
+
 export const commands = {
-  async greet(name: string): Promise<string> {
-    return await TAURI_INVOKE('greet', { name })
-  },
-  async getConfig(): Promise<Config> {
-    return await TAURI_INVOKE('get_config')
-  },
-  async saveConfig(config: Config): Promise<Result<null, CommandError>> {
+async greet(name: string) : Promise<string> {
+    return await TAURI_INVOKE("greet", { name });
+},
+async getConfig() : Promise<Config> {
+    return await TAURI_INVOKE("get_config");
+},
+async saveConfig(config: Config) : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('save_config', { config }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async login(username: string, password: string): Promise<Result<UserProfileRespData, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("save_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async login(username: string, password: string) : Promise<Result<UserProfileRespData, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('login', { username, password }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async search(keyword: string, page: number, sort: SearchSort): Promise<Result<SearchResult, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("login", { username, password }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async search(keyword: string, page: number, sort: SearchSort) : Promise<Result<SearchResult, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('search', { keyword, page, sort }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async getAlbum(aid: number): Promise<Result<Album, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("search", { keyword, page, sort }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getAlbum(aid: number) : Promise<Result<Album, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('get_album', { aid }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async getChapter(id: number): Promise<Result<ChapterRespData, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("get_album", { aid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getChapter(id: number) : Promise<Result<ChapterRespData, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('get_chapter', { id }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async getScrambleId(id: number): Promise<Result<number, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("get_chapter", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getScrambleId(id: number) : Promise<Result<number, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('get_scramble_id', { id }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async getFavoriteFolder(
-    folderId: number,
-    page: number,
-    sort: FavoriteSort,
-  ): Promise<Result<FavoriteRespData, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("get_scramble_id", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getFavoriteFolder(folderId: number, page: number, sort: FavoriteSort) : Promise<Result<FavoriteRespData, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('get_favorite_folder', { folderId, page, sort }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async getUserProfile(): Promise<Result<UserProfileRespData, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("get_favorite_folder", { folderId, page, sort }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getUserProfile() : Promise<Result<UserProfileRespData, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('get_user_profile') }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async downloadChapters(chapterInfos: ChapterInfo[]): Promise<Result<null, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("get_user_profile") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async downloadChapters(chapterInfos: ChapterInfo[]) : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('download_chapters', { chapterInfos }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async downloadAlbum(aid: number): Promise<Result<null, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("download_chapters", { chapterInfos }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async downloadAlbum(aid: number) : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('download_album', { aid }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async updateDownloadedFavoriteAlbum(): Promise<Result<null, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("download_album", { aid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateDownloadedFavoriteAlbum() : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('update_downloaded_favorite_album') }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async showPathInFileManager(path: string): Promise<Result<null, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_favorite_album") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async showPathInFileManager(path: string) : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('show_path_in_file_manager', { path }) }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
-  async syncFavoriteFolder(): Promise<Result<null, CommandError>> {
+    return { status: "ok", data: await TAURI_INVOKE("show_path_in_file_manager", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async syncFavoriteFolder() : Promise<Result<null, CommandError>> {
     try {
-      return { status: 'ok', data: await TAURI_INVOKE('sync_favorite_folder') }
-    } catch (e) {
-      if (e instanceof Error) throw e
-      else return { status: 'error', error: e as any }
-    }
-  },
+    return { status: "ok", data: await TAURI_INVOKE("sync_favorite_folder") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+}
 }
 
 /** user-defined events **/
 
+
 export const events = __makeEvents__<{
-  downloadEvent: DownloadEvent
-  setProxyEvent: SetProxyEvent
-  updateDownloadedFavoriteAlbumEvent: UpdateDownloadedFavoriteAlbumEvent
+downloadEvent: DownloadEvent,
+setProxyEvent: SetProxyEvent,
+updateDownloadedFavoriteAlbumEvent: UpdateDownloadedFavoriteAlbumEvent
 }>({
-  downloadEvent: 'download-event',
-  setProxyEvent: 'set-proxy-event',
-  updateDownloadedFavoriteAlbumEvent: 'update-downloaded-favorite-album-event',
+downloadEvent: "download-event",
+setProxyEvent: "set-proxy-event",
+updateDownloadedFavoriteAlbumEvent: "update-downloaded-favorite-album-event"
 })
 
 /** user-defined constants **/
 
+
+
 /** user-defined types **/
 
-export type Album = {
-  id: number
-  name: string
-  addtime: string
-  description: string
-  total_views: string
-  likes: string
-  chapterInfos: ChapterInfo[]
-  series_id: string
-  comment_total: string
-  author: string[]
-  tags: string[]
-  works: string[]
-  actors: string[]
-  related_list: RelatedListRespData[]
-  liked: boolean
-  is_favorite: boolean
-  is_aids: boolean
-}
-export type AlbumInFavoriteRespData = {
-  id: string
-  author: string
-  description: string | null
-  name: string
-  latest_ep: string | null
-  latest_ep_aid: string | null
-  image: string
-  category: CategoryRespData
-  category_sub: CategorySubRespData
-}
-export type AlbumInSearchRespData = {
-  id: string
-  author: string
-  name: string
-  image: string
-  category: CategoryRespData
-  category_sub: CategorySubRespData
-  liked: boolean
-  is_favorite: boolean
-  update_at: number
-}
-export type ArchiveFormat = 'Image' | 'Pdf'
+export type Album = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
+export type AlbumInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
+export type AlbumInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
+export type ArchiveFormat = "Image" | "Pdf"
 export type CategoryRespData = { id: string | null; title: string | null }
 export type CategorySubRespData = { id: string | null; title: string | null }
-export type ChapterInfo = {
-  chapterId: number
-  chapterTitle: string
-  albumId: number
-  albumTitle: string
-  isDownloaded: boolean
-}
-export type ChapterRespData = {
-  id: number
-  series: SeriesRespData[]
-  tags: string
-  name: string
-  images: string[]
-  addtime: string
-  series_id: string
-  is_favorite: boolean
-  liked: boolean
-}
+export type ChapterInfo = { chapterId: number; chapterTitle: string; albumId: number; albumTitle: string; isDownloaded: boolean }
+export type ChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type CommandError = string
-export type Config = {
-  username: string
-  password: string
-  downloadDir: string
-  downloadFormat: DownloadFormat
-  archiveFormat: ArchiveFormat
-  proxyMode: ProxyMode
-  proxyHost: string
-  proxyPort: number
-}
-export type DownloadEvent =
-  | { event: 'ChapterPending'; data: { chapterId: number; albumTitle: string; chapterTitle: string } }
-  | { event: 'ChapterStart'; data: { chapterId: number; total: number } }
-  | { event: 'ChapterEnd'; data: { chapterId: number; errMsg: string | null } }
-  | { event: 'ImageSuccess'; data: { chapterId: number; url: string; current: number } }
-  | { event: 'ImageError'; data: { chapterId: number; url: string; errMsg: string } }
-  | { event: 'OverallUpdate'; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } }
-  | { event: 'OverallSpeed'; data: { speed: string } }
-export type DownloadFormat = 'Jpeg' | 'Png' | 'Webp'
+export type Config = { username: string; password: string; downloadDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
+export type DownloadEvent = { event: "ChapterPending"; data: { chapterId: number; albumTitle: string; chapterTitle: string } } | { event: "ChapterStart"; data: { chapterId: number; total: number } } | { event: "ChapterEnd"; data: { chapterId: number; errMsg: string | null } } | { event: "ImageSuccess"; data: { chapterId: number; url: string; current: number } } | { event: "ImageError"; data: { chapterId: number; url: string; errMsg: string } } | { event: "OverallUpdate"; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } } | { event: "OverallSpeed"; data: { speed: string } }
+export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
-export type FavoriteRespData = {
-  list: AlbumInFavoriteRespData[]
-  folder_list: FavoriteFolderRespData[]
-  total: string
-  count: number
-}
-export type FavoriteSort = 'FavoriteTime' | 'UpdateTime'
-export type ProxyMode = 'System' | 'NoProxy' | 'Custom'
+export type FavoriteRespData = { list: AlbumInFavoriteRespData[]; folder_list: FavoriteFolderRespData[]; total: string; count: number }
+export type FavoriteSort = "FavoriteTime" | "UpdateTime"
+export type ProxyMode = "System" | "NoProxy" | "Custom"
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
 export type SearchRespData = { search_query: string; total: number; content: AlbumInSearchRespData[] }
 export type SearchResult = { SearchRespData: SearchRespData } | { Album: Album }
-export type SearchSort = 'Latest' | 'View' | 'Picture' | 'Like'
+export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
-export type SetProxyEvent = { event: 'Error'; data: { errMsg: string } }
-export type UpdateDownloadedFavoriteAlbumEvent =
-  | { event: 'GettingFolders' }
-  | { event: 'GettingAlbums'; data: { total: number } }
-  | { event: 'AlbumGot'; data: { current: number; total: number } }
-  | { event: 'DownloadTaskCreated' }
-export type UserProfileRespData = {
-  uid: string
-  username: string
-  email: string
-  emailverified: string
-  photo: string
-  fname: string
-  gender: string
-  message: string | null
-  coin: number
-  album_favorites: number
-  s: string
-  level_name: string
-  level: number
-  nextLevelExp: number
-  exp: string
-  expPercent: number
-  album_favorites_max: number
-  ad_free: boolean
-  charge: string
-  jar: string
-  invitation_qrcode: string
-  invitation_url: string
-  invited_cnt: string
-}
+export type SetProxyEvent = { event: "Error"; data: { errMsg: string } }
+export type UpdateDownloadedFavoriteAlbumEvent = { event: "GettingFolders" } | { event: "GettingAlbums"; data: { total: number } } | { event: "AlbumGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
+export type UserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 
 /** tauri-specta globals **/
 
-import { invoke as TAURI_INVOKE, Channel as TAURI_CHANNEL } from '@tauri-apps/api/core'
-import * as TAURI_API_EVENT from '@tauri-apps/api/event'
-import { type WebviewWindow as __WebviewWindow__ } from '@tauri-apps/api/webviewWindow'
+import {
+	invoke as TAURI_INVOKE,
+	Channel as TAURI_CHANNEL,
+} from "@tauri-apps/api/core";
+import * as TAURI_API_EVENT from "@tauri-apps/api/event";
+import { type WebviewWindow as __WebviewWindow__ } from "@tauri-apps/api/webviewWindow";
 
 type __EventObj__<T> = {
-  listen: (cb: TAURI_API_EVENT.EventCallback<T>) => ReturnType<typeof TAURI_API_EVENT.listen<T>>
-  once: (cb: TAURI_API_EVENT.EventCallback<T>) => ReturnType<typeof TAURI_API_EVENT.once<T>>
-  emit: null extends T
-    ? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
-    : (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>
-}
+	listen: (
+		cb: TAURI_API_EVENT.EventCallback<T>,
+	) => ReturnType<typeof TAURI_API_EVENT.listen<T>>;
+	once: (
+		cb: TAURI_API_EVENT.EventCallback<T>,
+	) => ReturnType<typeof TAURI_API_EVENT.once<T>>;
+	emit: null extends T
+		? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
+		: (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>;
+};
 
-export type Result<T, E> = { status: 'ok'; data: T } | { status: 'error'; error: E }
+export type Result<T, E> =
+	| { status: "ok"; data: T }
+	| { status: "error"; error: E };
 
-function __makeEvents__<T extends Record<string, any>>(mappings: Record<keyof T, string>) {
-  return new Proxy(
-    {} as unknown as {
-      [K in keyof T]: __EventObj__<T[K]> & {
-        (handle: __WebviewWindow__): __EventObj__<T[K]>
-      }
-    },
-    {
-      get: (_, event) => {
-        const name = mappings[event as keyof T]
+function __makeEvents__<T extends Record<string, any>>(
+	mappings: Record<keyof T, string>,
+) {
+	return new Proxy(
+		{} as unknown as {
+			[K in keyof T]: __EventObj__<T[K]> & {
+				(handle: __WebviewWindow__): __EventObj__<T[K]>;
+			};
+		},
+		{
+			get: (_, event) => {
+				const name = mappings[event as keyof T];
 
-        return new Proxy((() => {}) as any, {
-          apply: (_, __, [window]: [__WebviewWindow__]) => ({
-            listen: (arg: any) => window.listen(name, arg),
-            once: (arg: any) => window.once(name, arg),
-            emit: (arg: any) => window.emit(name, arg),
-          }),
-          get: (_, command: keyof __EventObj__<any>) => {
-            switch (command) {
-              case 'listen':
-                return (arg: any) => TAURI_API_EVENT.listen(name, arg)
-              case 'once':
-                return (arg: any) => TAURI_API_EVENT.once(name, arg)
-              case 'emit':
-                return (arg: any) => TAURI_API_EVENT.emit(name, arg)
-            }
-          },
-        })
-      },
-    },
-  )
+				return new Proxy((() => {}) as any, {
+					apply: (_, __, [window]: [__WebviewWindow__]) => ({
+						listen: (arg: any) => window.listen(name, arg),
+						once: (arg: any) => window.once(name, arg),
+						emit: (arg: any) => window.emit(name, arg),
+					}),
+					get: (_, command: keyof __EventObj__<any>) => {
+						switch (command) {
+							case "listen":
+								return (arg: any) => TAURI_API_EVENT.listen(name, arg);
+							case "once":
+								return (arg: any) => TAURI_API_EVENT.once(name, arg);
+							case "emit":
+								return (arg: any) => TAURI_API_EVENT.emit(name, arg);
+						}
+					},
+				});
+			},
+		},
+	);
 }
