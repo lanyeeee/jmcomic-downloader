@@ -16,6 +16,7 @@
     "@viselect/vanilla": "^3.5.1",
     "@viselect/vue": "^3.5.1",
     "naive-ui": "^2.40.1",
+    "prettier": "^3.4.2",
     "unocss": "^0.63.0",
     "unplugin-auto-import": "^0.18.3",
     "unplugin-vue-components": "^0.27.4",
