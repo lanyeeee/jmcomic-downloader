@@ -120,7 +120,7 @@ impl DownloadManager {
         // 发送章节排队事件
         let _ = DownloadEvent::ChapterPending {
             chapter_id: chapter_info.chapter_id,
-            album_title: chapter_info.album_title.clone(),
+            comic_title: chapter_info.comic_title.clone(),
             chapter_title: chapter_info.chapter_title.clone(),
         }
         .emit(&self.app);
@@ -364,7 +364,7 @@ fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf
     app.state::<RwLock<Config>>()
         .read()
         .download_dir
-        .join(&chapter_info.album_title)
+        .join(&chapter_info.comic_title)
         .join(format!(".下载中-{}", chapter_info.chapter_title)) // 以 `.下载中-` 开头，表示是临时目录
 }
 

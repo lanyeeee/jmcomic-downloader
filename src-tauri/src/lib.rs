@@ -35,21 +35,21 @@ pub fn run() {
             save_config,
             login,
             search,
-            get_album,
+            get_comic,
             get_chapter,
             get_scramble_id,
             get_favorite_folder,
             get_user_profile,
             download_chapters,
-            download_album,
-            update_downloaded_favorite_album,
+            download_comic,
+            update_downloaded_favorite_comic,
             show_path_in_file_manager,
             sync_favorite_folder,
         ])
         .events(tauri_specta::collect_events![
             DownloadEvent,
             SetProxyEvent,
-            UpdateDownloadedFavoriteAlbumEvent,
+            UpdateDownloadedFavoriteComicEvent,
         ]);
 
     #[cfg(debug_assertions)]

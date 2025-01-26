@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Album, commands, SearchRespData, SearchSort } from '../bindings.ts'
+import { Comic, commands, SearchRespData, SearchSort } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
-import AlbumCard from '../components/AlbumCard.vue'
+import ComicCard from '../components/ComicCard.vue'
 
 const message = useMessage()
 const notification = useNotification()
@@ -11,10 +11,10 @@ const sortOptions = [
   { label: '最新', value: 'Latest' },
   { label: '最多点击', value: 'View' },
   { label: '最多图片', value: 'Picture' },
-  { label: '最多爱心', value: 'Like' },
+  { label: '最多爱心', value: 'Like' }
 ]
 
-const selectedAlbum = defineModel<Album | undefined>('selectedAlbum', { required: true })
+const selectedComic = defineModel<Comic | undefined>('selectedComic', { required: true })
 const currentTabName = defineModel<'search' | 'favorite' | 'chapter'>('currentTabName', { required: true })
 
 const searchInput = ref<string>('')
@@ -47,10 +47,10 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     }
     searchRespData.value = respData
     console.log(respData)
-  } else if ('Album' in searchResult) {
-    const album = searchResult.Album
-    selectedAlbum.value = album
-    console.log(album)
+  } else if ('Comic' in searchResult) {
+    const comic = searchResult.Comic
+    selectedComic.value = comic
+    console.log(comic)
     currentTabName.value = 'chapter'
   }
 }
@@ -86,11 +86,11 @@ async function search(keyword: string, page: number, sort: SearchSort) {
 
     <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-1 overflow-auto p-2">
       <div class="flex flex-col gap-row-2 overflow-auto">
-        <album-card
-          v-for="albumInSearch in searchRespData.content"
-          :key="albumInSearch.id"
-          :album-info="albumInSearch"
-          v-model:selected-album="selectedAlbum"
+        <comic-card
+          v-for="comicInSearch in searchRespData.content"
+          :key="comicInSearch.id"
+          :comic-info="comicInSearch"
+          v-model:selected-comic="selectedComic"
           v-model:current-tab-name="currentTabName" />
       </div>
       <n-pagination

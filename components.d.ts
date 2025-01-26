@@ -7,10 +7,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AlbumCard: typeof import('./src/components/AlbumCard.vue')['default']
-    ChapterPane: typeof import('./src/panes/ChapterPane.vue')['default']
-    DownloadingPane: typeof import('./src/panes/DownloadingPane.vue')['default']
-    FavoritePane: typeof import('./src/panes/FavoritePane.vue')['default']
+    ComicCard: typeof import('./src/components/ComicCard.vue')['default']
     LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
@@ -33,7 +30,6 @@ declare module 'vue' {
     NTabPane: typeof import('naive-ui')['NTabPane']
     NTabs: typeof import('naive-ui')['NTabs']
     NTooltip: typeof import('naive-ui')['NTooltip']
-    SearchPane: typeof import('./src/panes/SearchPane.vue')['default']
     SettingsDialog: typeof import('./src/components/SettingsDialog.vue')['default']
   }
 }

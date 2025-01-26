@@ -6,7 +6,7 @@ import { NProgress, useNotification } from 'naive-ui'
 import SettingsDialog from '../components/SettingsDialog.vue'
 
 type ProgressData = {
-  albumTitle: string
+  comicTitle: string
   chapterTitle: string
   downloadedCount: number
   total: number
@@ -20,12 +20,12 @@ const config = defineModel<Config>('config', { required: true })
 
 const progresses = ref<Map<number, ProgressData>>(new Map())
 const overallProgress = ref<ProgressData>({
-  albumTitle: '总进度',
+  comicTitle: '总进度',
   chapterTitle: '总进度',
   downloadedCount: 0,
   total: 0,
   percentage: 0,
-  indicator: '',
+  indicator: ''
 })
 const settingsDialogShowing = ref<boolean>(false)
 
@@ -40,14 +40,14 @@ const sortedProgresses = computed(() => {
 onMounted(async () => {
   await events.downloadEvent.listen(({ payload: downloadEvent }) => {
     if (downloadEvent.event == 'ChapterPending') {
-      const { chapterId, albumTitle, chapterTitle } = downloadEvent.data
+      const { chapterId, comicTitle: comicTitle, chapterTitle } = downloadEvent.data
       const progressData: ProgressData = {
-        albumTitle,
+        comicTitle,
         chapterTitle,
         downloadedCount: 0,
         total: 0,
         percentage: 0,
-        indicator: '',
+        indicator: ''
       }
       progresses.value.set(chapterId, progressData)
     } else if (downloadEvent.event == 'ChapterStart') {
@@ -67,7 +67,7 @@ onMounted(async () => {
         notification.warning({
           title: '下载章节失败',
           content: errMsg,
-          meta: `${progressData.albumTitle} - ${progressData.chapterTitle}`,
+          meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
         })
       }
       progresses.value.delete(chapterId)
@@ -89,7 +89,7 @@ onMounted(async () => {
         title: '下载图片失败',
         description: url,
         content: errMsg,
-        meta: `${progressData.albumTitle} - ${progressData.chapterTitle}`,
+        meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
       })
     } else if (downloadEvent.event == 'OverallSpeed') {
       const { speed } = downloadEvent.data
@@ -152,9 +152,9 @@ async function selectDownloadDir() {
       </div>
       <div
         class="grid grid-cols-[1fr_1fr_2fr]"
-        v-for="[chapterId, { albumTitle, chapterTitle, percentage, downloadedCount, total }] in sortedProgresses"
+        v-for="[chapterId, { comicTitle, chapterTitle, percentage, downloadedCount, total }] in sortedProgresses"
         :key="chapterId">
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ albumTitle }}</span>
+        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ comicTitle }}</span>
         <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
         <span v-if="total === 0">等待中</span>
         <n-progress v-else :percentage="percentage">{{ downloadedCount }}/{{ total }}</n-progress>
