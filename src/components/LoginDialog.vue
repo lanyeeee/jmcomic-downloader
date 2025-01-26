@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { commands, Config, UserProfileRespData } from '../bindings.ts'
+import { commands, Config, GetUserProfileRespData } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 
 const message = useMessage()
@@ -8,7 +8,7 @@ const notification = useNotification()
 
 const showing = defineModel<boolean>('showing', { required: true })
 const config = defineModel<Config>('config', { required: true })
-const userProfile = defineModel<UserProfileRespData | undefined>('userProfile', { required: true })
+const userProfile = defineModel<GetUserProfileRespData | undefined>('userProfile', { required: true })
 
 const username = ref<string>(config.value.username)
 const password = ref<string>(config.value.password)

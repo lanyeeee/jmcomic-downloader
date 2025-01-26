@@ -3,7 +3,7 @@ use specta::Type;
 use tauri_specta::Event;
 
 pub mod prelude {
-    pub use crate::events::{DownloadEvent, SetProxyEvent, UpdateDownloadedFavoriteAlbumEvent};
+    pub use crate::events::{DownloadEvent, SetProxyEvent, UpdateDownloadedFavoriteComicEvent};
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
@@ -12,7 +12,7 @@ pub enum DownloadEvent {
     #[serde(rename_all = "camelCase")]
     ChapterPending {
         chapter_id: i64,
-        album_title: String,
+        comic_title: String,
         chapter_title: String,
     },
 
@@ -59,15 +59,15 @@ pub enum SetProxyEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[serde(tag = "event", content = "data")]
-pub enum UpdateDownloadedFavoriteAlbumEvent {
+pub enum UpdateDownloadedFavoriteComicEvent {
     #[serde(rename_all = "camelCase")]
     GettingFolders,
 
     #[serde(rename_all = "camelCase")]
-    GettingAlbums { total: i64 },
+    GettingComics { total: i64 },
 
     #[serde(rename_all = "camelCase")]
-    AlbumGot { current: i64, total: i64 },
+    ComicGot { current: i64, total: i64 },
 
     #[serde(rename_all = "camelCase")]
     DownloadTaskCreated,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { Album, commands, Config, UserProfileRespData } from './bindings.ts'
+import { Comic, commands, Config, GetUserProfileRespData } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
@@ -14,10 +14,10 @@ const message = useMessage()
 const notification = useNotification()
 
 const config = ref<Config>()
-const userProfile = ref<UserProfileRespData>()
+const userProfile = ref<GetUserProfileRespData>()
 const loginDialogShowing = ref<boolean>(false)
 const currentTabName = ref<'search' | 'favorite' | 'chapter'>('search')
-const selectedAlbum = ref<Album>()
+const selectedComic = ref<Comic>()
 
 watch(
   config,
@@ -75,16 +75,16 @@ async function test() {
     <div class="h-full flex overflow-hidden">
       <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
         <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
-          <search-pane v-model:selected-album="selectedAlbum" v-model:current-tab-name="currentTabName" />
+          <search-pane v-model:selected-comic="selectedComic" v-model:current-tab-name="currentTabName" />
         </n-tab-pane>
         <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show:lazy">
           <favorite-pane
             :user-profile="userProfile"
-            v-model:selected-album="selectedAlbum"
+            v-model:selected-comic="selectedComic"
             v-model:current-tab-name="currentTabName" />
         </n-tab-pane>
         <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show:lazy">
-          <chapter-pane v-model:selected-album="selectedAlbum" />
+          <chapter-pane v-model:selected-comic="selectedComic" />
         </n-tab-pane>
       </n-tabs>
       <div class="basis-1/2 flex flex-col">

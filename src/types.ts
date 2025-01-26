@@ -1,6 +1,6 @@
 import { CategoryRespData, CategorySubRespData } from './bindings.ts'
 
-export type AlbumInfo = {
+export type ComicInfo = {
   id: string
   author: string
   name: string

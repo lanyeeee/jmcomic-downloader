@@ -6,8 +6,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::responses::{
-    AlbumRespData, ChapterRespData, FavoriteRespData, JmResp, RedirectRespData, SearchResp,
-    SearchRespData, ToggleFavoriteResp, UserProfileRespData,
+    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
+    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteResp,
 };
 use crate::types::{FavoriteSort, ProxyMode, SearchSort};
 use crate::{utils, SetProxyEvent};
@@ -35,12 +35,12 @@ const API_DOMAIN: &str = "www.jmapiproxyxxx.vip";
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
     Login,
-    UserProfile,
+    GetUserProfile,
     Search,
-    Album,
-    Chapter,
-    ScrambleId,
-    Favorite,
+    GetComic,
+    GetChapter,
+    GetScrambleId,
+    GetFavoriteFolder,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -48,12 +48,12 @@ impl ApiPath {
             // 没错，就是这么奇葩，获取用户信息也是用的/login
             // 带AVS去请求/login，就能获取用户信息，而不需要用户名密码
             // 如果AVS无效或过期，就走正常的登录流程
-            ApiPath::Login | ApiPath::UserProfile => "/login",
+            ApiPath::Login | ApiPath::GetUserProfile => "/login",
             ApiPath::Search => "/search",
-            ApiPath::Album => "/album",
-            ApiPath::Chapter => "/chapter",
-            ApiPath::ScrambleId => "/chapter_view_template",
-            ApiPath::Favorite => "/favorite",
+            ApiPath::GetComic => "/album",
+            ApiPath::GetChapter => "/chapter",
+            ApiPath::GetScrambleId => "/chapter_view_template",
+            ApiPath::GetFavoriteFolder => "/favorite",
         }
     }
 }
@@ -93,7 +93,7 @@ impl JmClient {
     ) -> anyhow::Result<reqwest::Response> {
         let tokenparam = format!("{ts},{APP_VERSION}");
         // TODO: 直接用 ==
-        let token = if path != ApiPath::ScrambleId {
+        let token = if path != ApiPath::GetScrambleId {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         } else {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
@@ -146,7 +146,7 @@ impl JmClient {
         &self,
         username: &str,
         password: &str,
-    ) -> anyhow::Result<UserProfileRespData> {
+    ) -> anyhow::Result<GetUserProfileRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let form = json!({
             "username": username,
@@ -175,18 +175,20 @@ impl JmClient {
         ))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为UserProfileRespData
-        let user_profile = serde_json::from_str::<UserProfileRespData>(&data).context(format!(
-            "将解密后的data字段解析为UserProfileRespData失败: {data}"
-        ))?;
+        // 尝试将解密后的data字段解析为GetUserProfileRespData
+        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+            format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
+        )?;
 
         Ok(user_profile)
     }
 
-    pub async fn get_user_profile(&self) -> anyhow::Result<UserProfileRespData> {
+    pub async fn get_user_profile(&self) -> anyhow::Result<GetUserProfileRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         // 发送获取用户信息请求
-        let http_resp = self.jm_post(ApiPath::UserProfile, None, None, ts).await?;
+        let http_resp = self
+            .jm_post(ApiPath::GetUserProfile, None, None, ts)
+            .await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
@@ -211,10 +213,10 @@ impl JmClient {
             .context(format!("获取用户信息失败，data字段不是字符串: {jm_resp:?}"))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为UserProfileRespData
-        let user_profile = serde_json::from_str::<UserProfileRespData>(&data).context(format!(
-            "将解密后的data字段解析为UserProfileRespData失败: {data}"
-        ))?;
+        // 尝试将解密后的data字段解析为GetUserProfileRespData
+        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+            format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
+        )?;
 
         Ok(user_profile)
     }
@@ -256,10 +258,10 @@ impl JmClient {
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的数据解析为 RedirectRespData
         if let Ok(redirect_resp_data) = serde_json::from_str::<RedirectRespData>(&data) {
-            let album_resp_data = self
-                .get_album(redirect_resp_data.redirect_aid.parse()?)
+            let comic_resp_data = self
+                .get_comic(redirect_resp_data.redirect_aid.parse()?)
                 .await?;
-            return Ok(SearchResp::AlbumRespData(Box::new(album_resp_data)));
+            return Ok(SearchResp::ComicRespData(Box::new(comic_resp_data)));
         }
         // 尝试将解密后的data字段解析为 SearchRespData
         if let Ok(search_resp_data) = serde_json::from_str::<SearchRespData>(&data) {
@@ -270,11 +272,11 @@ impl JmClient {
         ))
     }
 
-    pub async fn get_album(&self, aid: i64) -> anyhow::Result<AlbumRespData> {
+    pub async fn get_comic(&self, aid: i64) -> anyhow::Result<GetComicRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let query = json!({"id": aid,});
         // 发送获取漫画请求
-        let http_resp = self.jm_get(ApiPath::Album, Some(query), ts).await?;
+        let http_resp = self.jm_get(ApiPath::GetComic, Some(query), ts).await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
@@ -295,17 +297,18 @@ impl JmClient {
             .context(format!("获取漫画失败，data字段不是字符串: {jm_resp:?}"))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为AlbumRespData
-        let album = serde_json::from_str::<AlbumRespData>(&data)
-            .context(format!("将解密后的data字段解析为AlbumRespData失败: {data}"))?;
-        Ok(album)
+        // 尝试将解密后的data字段解析为GetComicRespData
+        let comic = serde_json::from_str::<GetComicRespData>(&data).context(format!(
+            "将解密后的data字段解析为GetComicRespData失败: {data}"
+        ))?;
+        Ok(comic)
     }
 
-    pub async fn get_chapter(&self, id: i64) -> anyhow::Result<ChapterRespData> {
+    pub async fn get_chapter(&self, id: i64) -> anyhow::Result<GetChapterRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let query = json!({"id": id,});
         // 发送获取章节请求
-        let http_resp = self.jm_get(ApiPath::Chapter, Some(query), ts).await?;
+        let http_resp = self.jm_get(ApiPath::GetChapter, Some(query), ts).await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
@@ -326,9 +329,9 @@ impl JmClient {
             .context(format!("获取章节失败，data字段不是字符串: {jm_resp:?}"))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为ChapterRespData
-        let chapter = serde_json::from_str::<ChapterRespData>(&data).context(format!(
-            "将解密后的data字段解析为ChapterRespData失败: {data}"
+        // 尝试将解密后的data字段解析为GetChapterRespData
+        let chapter = serde_json::from_str::<GetChapterRespData>(&data).context(format!(
+            "将解密后的data字段解析为GetChapterRespData失败: {data}"
         ))?;
         Ok(chapter)
     }
@@ -344,7 +347,7 @@ impl JmClient {
             "express": "off",
         });
         // 发送获取scramble_id请求
-        let http_resp = self.jm_get(ApiPath::ScrambleId, Some(query), ts).await?;
+        let http_resp = self.jm_get(ApiPath::GetScrambleId, Some(query), ts).await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
@@ -368,7 +371,7 @@ impl JmClient {
         folder_id: i64,
         page: i64,
         sort: FavoriteSort,
-    ) -> anyhow::Result<FavoriteRespData> {
+    ) -> anyhow::Result<GetFavoriteRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let query = json!({
             "page": page,
@@ -376,7 +379,9 @@ impl JmClient {
             "folder_id": folder_id,
         });
         // 发送获取收藏夹请求
-        let http_resp = self.jm_get(ApiPath::Favorite, Some(query), ts).await?;
+        let http_resp = self
+            .jm_get(ApiPath::GetFavoriteFolder, Some(query), ts)
+            .await?;
         // 检查http响应状态码
         let status = http_resp.status();
         let body = http_resp.text().await?;
@@ -399,21 +404,21 @@ impl JmClient {
             .context(format!("获取收藏夹失败，data字段不是字符串: {jm_resp:?}"))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为FavoriteRespData
-        let favorite = serde_json::from_str::<FavoriteRespData>(&data).context(format!(
-            "将解密后的data字段解析为FavoriteRespData失败: {data}"
+        // 尝试将解密后的data字段解析为GetFavoriteRespData
+        let favorite = serde_json::from_str::<GetFavoriteRespData>(&data).context(format!(
+            "将解密后的data字段解析为GetFavoriteRespData失败: {data}"
         ))?;
         Ok(favorite)
     }
 
-    pub async fn toggle_favorite_album(&self, aid: i64) -> anyhow::Result<ToggleFavoriteResp> {
+    pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteResp> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let form = json!({
             "aid": aid,
         });
         // 发送 收藏/取消收藏 请求
         let http_resp = self
-            .jm_post(ApiPath::Favorite, None, Some(form), ts)
+            .jm_post(ApiPath::GetFavoriteFolder, None, Some(form), ts)
             .await?;
         // 检查http响应状态码
         let status = http_resp.status();
