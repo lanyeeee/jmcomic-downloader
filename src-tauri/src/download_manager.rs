@@ -24,7 +24,7 @@ use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::save_archive::{save_image_archive, save_pdf_archive};
-use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat, ProxyMode};
+use crate::types::{ArchiveFormat, AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
 use crate::{utils, DownloadEvent, SetProxyEvent};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -39,7 +39,7 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 /// - 其他字段都被 `Arc` 包裹，这些字段的克隆操作仅仅是增加引用计数。
 #[derive(Clone)]
 pub struct DownloadManager {
-    http_client: ClientWithMiddleware,
+    http_client: Arc<AsyncRwLock<ClientWithMiddleware>>,
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
@@ -54,6 +54,7 @@ pub struct DownloadManager {
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
         let http_client = create_http_client(&app);
+        let http_client = Arc::new(AsyncRwLock::new(http_client));
         // 创建异步运行时
         let core_count = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
@@ -83,9 +84,9 @@ impl DownloadManager {
         manager
     }
 
-    pub fn recreate_http_client(&mut self) {
+    pub async fn recreate_http_client(&self) {
         let http_client = create_http_client(&self.app);
-        self.http_client = http_client;
+        *self.http_client.write().await = http_client;
     }
 
     pub async fn submit_chapter(&self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
@@ -346,7 +347,7 @@ impl DownloadManager {
 
     // TODO: 把下载图片的逻辑移到JmClient中
     async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
-        let http_res = self.http_client.get(url).send().await?;
+        let http_res = self.http_client.read().await.get(url).send().await?;
 
         let status = http_res.status();
         if status != StatusCode::OK {

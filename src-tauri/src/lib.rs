@@ -85,7 +85,7 @@ pub fn run() {
             let jm_client = JmClient::new(app.handle().clone());
             app.manage(jm_client);
 
-            let download_manager = RwLock::new(DownloadManager::new(app.handle().clone()));
+            let download_manager = DownloadManager::new(app.handle().clone());
             app.manage(download_manager);
 
             Ok(())
