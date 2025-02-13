@@ -37,7 +37,7 @@ pub fn get_config(config: State<RwLock<Config>>) -> Config {
 #[allow(clippy::needless_pass_by_value)]
 pub fn save_config(
     app: AppHandle,
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     download_manager: State<'_, RwLock<DownloadManager>>,
     config_state: State<RwLock<Config>>,
     config: Config,
@@ -55,7 +55,7 @@ pub fn save_config(
     drop(config_state);
 
     if need_recreate {
-        jm_client.write().recreate_http_client();
+        jm_client.recreate_http_client();
         download_manager.write().recreate_http_client();
     }
     Ok(())
@@ -64,11 +64,10 @@ pub fn save_config(
 #[tauri::command]
 #[specta::specta]
 pub async fn login(
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     username: String,
     password: String,
 ) -> CommandResult<GetUserProfileRespData> {
-    let jm_client = jm_client.read().clone();
     let user_profile = jm_client.login(&username, &password).await?;
     Ok(user_profile)
 }
@@ -76,9 +75,8 @@ pub async fn login(
 #[tauri::command]
 #[specta::specta]
 pub async fn get_user_profile(
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
 ) -> CommandResult<GetUserProfileRespData> {
-    let jm_client = jm_client.read().clone();
     let user_profile = jm_client.get_user_profile().await?;
     Ok(user_profile)
 }
@@ -87,12 +85,11 @@ pub async fn get_user_profile(
 #[specta::specta]
 pub async fn search(
     app: AppHandle,
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     keyword: String,
     page: i64,
     sort: SearchSort,
 ) -> CommandResult<SearchResult> {
-    let jm_client = jm_client.read().clone();
     let search_resp = jm_client.search(&keyword, page, sort).await?;
     let search_result = SearchResult::from_search_resp(&app, search_resp);
     Ok(search_result)
@@ -102,10 +99,9 @@ pub async fn search(
 #[specta::specta]
 pub async fn get_comic(
     app: AppHandle,
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     aid: i64,
 ) -> CommandResult<Comic> {
-    let jm_client = jm_client.read().clone();
     let comic_resp_data = jm_client.get_comic(aid).await?;
     let comic = Comic::from_comic_resp_data(&app, comic_resp_data);
     Ok(comic)
@@ -114,10 +110,9 @@ pub async fn get_comic(
 #[tauri::command]
 #[specta::specta]
 pub async fn get_chapter(
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     id: i64,
 ) -> CommandResult<GetChapterRespData> {
-    let jm_client = jm_client.read().clone();
     // TODO: 变量名改为chapter_resp_data
     let chapter = jm_client.get_chapter(id).await?;
     Ok(chapter)
@@ -125,11 +120,7 @@ pub async fn get_chapter(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_scramble_id(
-    jm_client: State<'_, RwLock<JmClient>>,
-    id: i64,
-) -> CommandResult<i64> {
-    let jm_client = jm_client.read().clone();
+pub async fn get_scramble_id(jm_client: State<'_, JmClient>, id: i64) -> CommandResult<i64> {
     let scramble_id = jm_client.get_scramble_id(id).await?;
     Ok(scramble_id)
 }
@@ -137,12 +128,11 @@ pub async fn get_scramble_id(
 #[tauri::command(async)]
 #[specta::specta]
 pub async fn get_favorite_folder(
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     folder_id: i64,
     page: i64,
     sort: FavoriteSort,
 ) -> CommandResult<GetFavoriteRespData> {
-    let jm_client = jm_client.read().clone();
     let favorite_resp_data = jm_client.get_favorite_folder(folder_id, page, sort).await?;
     Ok(favorite_resp_data)
 }
@@ -164,7 +154,7 @@ pub async fn download_chapters(
 #[specta::specta]
 pub async fn download_comic(
     app: AppHandle,
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     download_manager: State<'_, RwLock<DownloadManager>>,
     aid: i64,
 ) -> CommandResult<()> {
@@ -189,10 +179,10 @@ pub async fn download_comic(
 #[specta::specta]
 pub async fn update_downloaded_favorite_comic(
     app: AppHandle,
-    jm_client: State<'_, RwLock<JmClient>>,
+    jm_client: State<'_, JmClient>,
     download_manager: State<'_, RwLock<DownloadManager>>,
 ) -> CommandResult<()> {
-    let jm_client = jm_client.read().clone();
+    let jm_client = jm_client.inner().clone();
     let favorite_comics = Arc::new(Mutex::new(vec![]));
     // 发送正在获取收藏夹事件
     let _ = UpdateDownloadedFavoriteComicEvent::GettingFolders.emit(&app);
@@ -301,10 +291,9 @@ pub fn show_path_in_file_manager(path: &str) -> CommandResult<()> {
 
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn sync_favorite_folder(jm_client: State<'_, RwLock<JmClient>>) -> CommandResult<()> {
+pub async fn sync_favorite_folder(jm_client: State<'_, JmClient>) -> CommandResult<()> {
     // 同步收藏夹的方式是随便收藏一个漫画
     // 调用两次toggle是因为要把新收藏的漫画取消收藏
-    let jm_client = jm_client.read().clone();
     let task1 = jm_client.toggle_favorite_comic(468_984);
     let task2 = jm_client.toggle_favorite_comic(468_984);
     let (resp1, resp2) = tokio::try_join!(task1, task2)?;

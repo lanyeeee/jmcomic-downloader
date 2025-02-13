@@ -61,7 +61,7 @@ impl ApiPath {
 #[derive(Clone)]
 pub struct JmClient {
     app: AppHandle,
-    http_client: ClientWithMiddleware,
+    http_client: Arc<RwLock<ClientWithMiddleware>>,
     jar: Arc<Jar>,
 }
 
@@ -70,6 +70,7 @@ impl JmClient {
         let jar = Arc::new(Jar::default());
 
         let http_client = create_http_client(&app, &jar);
+        let http_client = Arc::new(RwLock::new(http_client));
 
         Self {
             app,
@@ -78,9 +79,9 @@ impl JmClient {
         }
     }
 
-    pub fn recreate_http_client(&mut self) {
+    pub fn recreate_http_client(&self) {
         let http_client = create_http_client(&self.app, &self.jar);
-        self.http_client = http_client;
+        *self.http_client.write() = http_client;
     }
 
     async fn jm_request(
@@ -100,7 +101,9 @@ impl JmClient {
         };
 
         let path = path.as_str();
-        let request = self.http_client
+        let request = self
+            .http_client
+            .read()
             .request(method, format!("https://{API_DOMAIN}{path}").as_str())
             .header("token", token)
             .header("tokenparam", tokenparam)

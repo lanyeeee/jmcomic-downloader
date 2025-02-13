@@ -82,7 +82,7 @@ pub fn run() {
             let config = RwLock::new(Config::new(app.handle())?);
             app.manage(config);
 
-            let jm_client = RwLock::new(JmClient::new(app.handle().clone()));
+            let jm_client = JmClient::new(app.handle().clone());
             app.manage(jm_client);
 
             let download_manager = RwLock::new(DownloadManager::new(app.handle().clone()));

@@ -246,7 +246,7 @@ impl DownloadManager {
     }
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
-        let jm_client = self.app.state::<RwLock<JmClient>>().read().clone();
+        let jm_client = self.app.state::<JmClient>();
         // 限制同时获取urls_with_block_num的数量
         let _permit = self.urls_with_block_num_sem.acquire().await?;
         // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
