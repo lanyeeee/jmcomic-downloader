@@ -9,6 +9,8 @@ use crate::config::Config;
 use crate::responses::{GetComicRespData, RelatedListRespData, SearchResp, SearchRespData};
 use crate::utils;
 
+pub type AsyncRwLock<T> = tokio::sync::RwLock<T>;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum SearchSort {
     Latest,

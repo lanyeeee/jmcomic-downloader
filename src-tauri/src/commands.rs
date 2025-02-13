@@ -35,11 +35,11 @@ pub fn get_config(config: State<RwLock<Config>>) -> Config {
 #[tauri::command(async)]
 #[specta::specta]
 #[allow(clippy::needless_pass_by_value)]
-pub fn save_config(
+pub async fn save_config(
     app: AppHandle,
     jm_client: State<'_, JmClient>,
-    download_manager: State<'_, RwLock<DownloadManager>>,
-    config_state: State<RwLock<Config>>,
+    download_manager: State<'_, DownloadManager>,
+    config_state: State<'_, RwLock<Config>>,
     config: Config,
 ) -> CommandResult<()> {
     let need_recreate = {
@@ -49,14 +49,15 @@ pub fn save_config(
             || config_state.proxy_port != config.proxy_port
     };
 
-    let mut config_state = config_state.write();
-    *config_state = config;
-    config_state.save(&app)?;
-    drop(config_state);
+    {
+        let mut config_state = config_state.write();
+        *config_state = config;
+        config_state.save(&app)?;
+    }
 
     if need_recreate {
         jm_client.recreate_http_client();
-        download_manager.write().recreate_http_client();
+        download_manager.recreate_http_client().await;
     }
     Ok(())
 }
@@ -140,10 +141,9 @@ pub async fn get_favorite_folder(
 #[tauri::command(async)]
 #[specta::specta]
 pub async fn download_chapters(
-    download_manager: State<'_, RwLock<DownloadManager>>,
+    download_manager: State<'_, DownloadManager>,
     chapter_infos: Vec<ChapterInfo>,
 ) -> CommandResult<()> {
-    let download_manager = download_manager.read().clone();
     for chapter_info in chapter_infos {
         download_manager.submit_chapter(chapter_info).await?;
     }
@@ -155,7 +155,7 @@ pub async fn download_chapters(
 pub async fn download_comic(
     app: AppHandle,
     jm_client: State<'_, JmClient>,
-    download_manager: State<'_, RwLock<DownloadManager>>,
+    download_manager: State<'_, DownloadManager>,
     aid: i64,
 ) -> CommandResult<()> {
     let comic = get_comic(app, jm_client, aid).await?;
@@ -180,7 +180,7 @@ pub async fn download_comic(
 pub async fn update_downloaded_favorite_comic(
     app: AppHandle,
     jm_client: State<'_, JmClient>,
-    download_manager: State<'_, RwLock<DownloadManager>>,
+    download_manager: State<'_, DownloadManager>,
 ) -> CommandResult<()> {
     let jm_client = jm_client.inner().clone();
     let favorite_comics = Arc::new(Mutex::new(vec![]));
