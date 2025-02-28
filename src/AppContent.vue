@@ -9,6 +9,7 @@ import DownloadingPane from './panes/DownloadingPane.vue'
 import { appDataDir } from '@tauri-apps/api/path'
 import { path } from '@tauri-apps/api'
 import FavoritePane from './panes/FavoritePane.vue'
+import AboutDialog from './components/AboutDialog.vue'
 
 const message = useMessage()
 const notification = useNotification()
@@ -16,6 +17,7 @@ const notification = useNotification()
 const config = ref<Config>()
 const userProfile = ref<GetUserProfileRespData>()
 const loginDialogShowing = ref<boolean>(false)
+const aboutDialogShowing = ref<boolean>(false)
 const currentTabName = ref<'search' | 'favorite' | 'chapter'>('search')
 const selectedComic = ref<Comic>()
 
@@ -60,14 +62,6 @@ async function showConfigInFileManager() {
   }
 }
 
-async function test() {
-  const result = await commands.getFavoriteFolder(0, 1, 'FavoriteTime')
-  if (result.status === 'error') {
-    notification.error({ title: '出现错误', description: result.error })
-    return
-  }
-  console.log(result.data)
-}
 </script>
 
 <template>
@@ -91,7 +85,7 @@ async function test() {
         <div class="flex">
           <n-button type="primary" @click="loginDialogShowing = true">账号登录</n-button>
           <n-button @click="showConfigInFileManager">打开配置目录</n-button>
-          <n-button @click="test">测试用</n-button>
+          <n-button @click="aboutDialogShowing = true">关于</n-button>
           <div v-if="userProfile !== undefined" class="flex flex-col">
             <!--    TODO: 显示头像    -->
             <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
@@ -103,5 +97,6 @@ async function test() {
     <n-modal v-model:show="loginDialogShowing">
       <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile" />
     </n-modal>
+    <about-dialog v-model:showing="aboutDialogShowing" />
   </div>
 </template>
