@@ -6,8 +6,10 @@ use specta::Type;
 use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
-use crate::responses::{AlbumRespData, RelatedListRespData, SearchResp, SearchRespData};
+use crate::responses::{GetComicRespData, RelatedListRespData, SearchResp, SearchRespData};
 use crate::utils;
+
+pub type AsyncRwLock<T> = tokio::sync::RwLock<T>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum SearchSort {
@@ -37,7 +39,7 @@ pub enum ProxyMode {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct Album {
+pub struct Comic {
     pub id: i64,
     pub name: String,
     pub addtime: String,
@@ -62,11 +64,11 @@ pub struct Album {
     #[serde(rename = "is_aids")]
     pub is_aids: bool,
 }
-impl Album {
+impl Comic {
     // TODO: 重构，一律改用Type::from
-    pub fn from_album_resp_data(app: &AppHandle, album: AlbumRespData) -> Self {
-        let album_title = utils::filename_filter(&album.name);
-        let mut chapter_infos: Vec<ChapterInfo> = album
+    pub fn from_comic_resp_data(app: &AppHandle, comic: GetComicRespData) -> Self {
+        let comic_title = utils::filename_filter(&comic.name);
+        let mut chapter_infos: Vec<ChapterInfo> = comic
             .series
             .into_iter()
             .filter_map(|s| {
@@ -75,10 +77,10 @@ impl Album {
                 if !s.name.is_empty() {
                     chapter_title.push_str(&format!(" {}", utils::filename_filter(&s.name)));
                 }
-                let is_downloaded = Self::get_is_downloaded(app, &album_title, &chapter_title);
+                let is_downloaded = Self::get_is_downloaded(app, &comic_title, &chapter_title);
                 let chapter_info = ChapterInfo {
-                    album_id: album.id,
-                    album_title: album_title.clone(),
+                    comic_id: comic.id,
+                    comic_title: comic_title.clone(),
                     chapter_id,
                     chapter_title,
                     is_downloaded,
@@ -89,41 +91,41 @@ impl Album {
         // 如果没有章节信息，就添加一个默认的章节信息
         if chapter_infos.is_empty() {
             chapter_infos.push(ChapterInfo {
-                album_id: album.id,
-                album_title: album_title.clone(),
-                chapter_id: album.id,
+                comic_id: comic.id,
+                comic_title: comic_title.clone(),
+                chapter_id: comic.id,
                 chapter_title: "第1话".to_owned(),
                 is_downloaded: false,
             });
         }
 
         Self {
-            id: album.id,
-            name: album.name,
-            addtime: album.addtime,
-            description: album.description,
-            total_views: album.total_views,
-            likes: album.likes,
+            id: comic.id,
+            name: comic.name,
+            addtime: comic.addtime,
+            description: comic.description,
+            total_views: comic.total_views,
+            likes: comic.likes,
             chapter_infos,
-            series_id: album.series_id,
-            comment_total: album.comment_total,
-            author: album.author,
-            tags: album.tags,
-            works: album.works,
-            actors: album.actors,
-            related_list: album.related_list,
-            liked: album.liked,
-            is_favorite: album.is_favorite,
-            is_aids: album.is_aids,
+            series_id: comic.series_id,
+            comment_total: comic.comment_total,
+            author: comic.author,
+            tags: comic.tags,
+            works: comic.works,
+            actors: comic.actors,
+            related_list: comic.related_list,
+            liked: comic.liked,
+            is_favorite: comic.is_favorite,
+            is_aids: comic.is_aids,
         }
     }
 
-    fn get_is_downloaded(app: &AppHandle, album_title: &str, chapter_title: &str) -> bool {
+    fn get_is_downloaded(app: &AppHandle, comic_title: &str, chapter_title: &str) -> bool {
         let config = app.state::<RwLock<Config>>();
         let config = config.read();
         config
             .download_dir
-            .join(album_title)
+            .join(comic_title)
             .join(chapter_title)
             .with_extension(config.archive_format.extension())
             .exists()
@@ -135,25 +137,25 @@ impl Album {
 pub struct ChapterInfo {
     pub chapter_id: i64,
     pub chapter_title: String,
-    pub album_id: i64,
-    pub album_title: String,
+    pub comic_id: i64,
+    pub comic_title: String,
     pub is_downloaded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum SearchResult {
     SearchRespData(SearchRespData),
-    // 用Box包装AlbumRespData，因为Album比SearchRespData大得多
-    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与AlbumRespData一样大的内存
-    Album(Box<Album>),
+    // 用Box包装Comic，因为Comic比SearchRespData大得多
+    // 如果不用Box包装，即使SearchResult的类型是SearchRespData，也会占用与Comic一样大的内存
+    Comic(Box<Comic>),
 }
 impl SearchResult {
     pub fn from_search_resp(app: &AppHandle, search_resp: SearchResp) -> Self {
         match search_resp {
             SearchResp::SearchRespData(search_resp) => SearchResult::SearchRespData(search_resp),
-            SearchResp::AlbumRespData(album_resp) => {
-                let album = Album::from_album_resp_data(app, *album_resp);
-                SearchResult::Album(Box::new(album))
+            SearchResp::ComicRespData(get_comic_resp) => {
+                let comic = Comic::from_comic_resp_data(app, *get_comic_resp);
+                SearchResult::Comic(Box::new(comic))
             }
         }
     }

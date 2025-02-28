@@ -35,21 +35,21 @@ pub fn run() {
             save_config,
             login,
             search,
-            get_album,
+            get_comic,
             get_chapter,
             get_scramble_id,
             get_favorite_folder,
             get_user_profile,
             download_chapters,
-            download_album,
-            update_downloaded_favorite_album,
+            download_comic,
+            update_downloaded_favorite_comic,
             show_path_in_file_manager,
             sync_favorite_folder,
         ])
         .events(tauri_specta::collect_events![
             DownloadEvent,
             SetProxyEvent,
-            UpdateDownloadedFavoriteAlbumEvent,
+            UpdateDownloadedFavoriteComicEvent,
         ]);
 
     #[cfg(debug_assertions)]
@@ -82,10 +82,10 @@ pub fn run() {
             let config = RwLock::new(Config::new(app.handle())?);
             app.manage(config);
 
-            let jm_client = RwLock::new(JmClient::new(app.handle().clone()));
+            let jm_client = JmClient::new(app.handle().clone());
             app.manage(jm_client);
 
-            let download_manager = RwLock::new(DownloadManager::new(app.handle().clone()));
+            let download_manager = DownloadManager::new(app.handle().clone());
             app.manage(download_manager);
 
             Ok(())

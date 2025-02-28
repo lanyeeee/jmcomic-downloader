@@ -13,7 +13,7 @@ pub struct JmResp {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct UserProfileRespData {
+pub struct GetUserProfileRespData {
     pub uid: String,
     pub username: String,
     pub email: String,
@@ -54,12 +54,12 @@ pub struct SearchRespData {
     pub search_query: String,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub total: i64,
-    pub content: Vec<AlbumInSearchRespData>,
+    pub content: Vec<ComicInSearchRespData>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct AlbumInSearchRespData {
+pub struct ComicInSearchRespData {
     pub id: String,
     pub author: String,
     pub name: String,
@@ -78,7 +78,7 @@ pub struct AlbumInSearchRespData {
 #[serde(rename_all = "camelCase")]
 pub struct CategoryRespData {
     pub id: Option<String>,
-    pub title:  Option<String>,
+    pub title: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -90,7 +90,7 @@ pub struct CategorySubRespData {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct AlbumRespData {
+pub struct GetComicRespData {
     pub id: i64,
     pub name: String,
     pub addtime: String,
@@ -146,14 +146,14 @@ pub struct RedirectRespData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum SearchResp {
     SearchRespData(SearchRespData),
-    // 用Box包装AlbumRespData，因为Album比SearchRespData大得多
-    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与AlbumRespData一样大的内存
-    AlbumRespData(Box<AlbumRespData>),
+    // 用Box包装GetComicRespData，因为GetComicRespData比SearchRespData大得多
+    // 如果不用Box包装，即使SearchResp的类型是SearchRespData，也会占用与GetComicRespData一样大的内存
+    ComicRespData(Box<GetComicRespData>),
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ChapterRespData {
+pub struct GetChapterRespData {
     pub id: i64,
     pub series: Vec<SeriesRespData>,
     pub tags: String,
@@ -169,8 +169,8 @@ pub struct ChapterRespData {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct FavoriteRespData {
-    pub list: Vec<AlbumInFavoriteRespData>,
+pub struct GetFavoriteRespData {
+    pub list: Vec<ComicInFavoriteRespData>,
     #[serde(rename = "folder_list")]
     pub folder_list: Vec<FavoriteFolderRespData>,
     pub total: String,
@@ -179,7 +179,7 @@ pub struct FavoriteRespData {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct AlbumInFavoriteRespData {
+pub struct ComicInFavoriteRespData {
     pub id: String,
     pub author: String,
     pub description: Option<String>,

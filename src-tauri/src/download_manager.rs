@@ -24,7 +24,7 @@ use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::save_archive::{save_image_archive, save_pdf_archive};
-use crate::types::{ArchiveFormat, ChapterInfo, DownloadFormat, ProxyMode};
+use crate::types::{ArchiveFormat, AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
 use crate::{utils, DownloadEvent, SetProxyEvent};
 
 const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -39,7 +39,7 @@ const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 /// - 其他字段都被 `Arc` 包裹，这些字段的克隆操作仅仅是增加引用计数。
 #[derive(Clone)]
 pub struct DownloadManager {
-    http_client: ClientWithMiddleware,
+    http_client: Arc<AsyncRwLock<ClientWithMiddleware>>,
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
@@ -54,6 +54,7 @@ pub struct DownloadManager {
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
         let http_client = create_http_client(&app);
+        let http_client = Arc::new(AsyncRwLock::new(http_client));
         // 创建异步运行时
         let core_count = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
@@ -83,9 +84,9 @@ impl DownloadManager {
         manager
     }
 
-    pub fn recreate_http_client(&mut self) {
+    pub async fn recreate_http_client(&self) {
         let http_client = create_http_client(&self.app);
-        self.http_client = http_client;
+        *self.http_client.write().await = http_client;
     }
 
     pub async fn submit_chapter(&self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
@@ -120,7 +121,7 @@ impl DownloadManager {
         // 发送章节排队事件
         let _ = DownloadEvent::ChapterPending {
             chapter_id: chapter_info.chapter_id,
-            album_title: chapter_info.album_title.clone(),
+            comic_title: chapter_info.comic_title.clone(),
             chapter_title: chapter_info.chapter_title.clone(),
         }
         .emit(&self.app);
@@ -246,7 +247,7 @@ impl DownloadManager {
     }
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
-        let jm_client = self.app.state::<RwLock<JmClient>>().read().clone();
+        let jm_client = self.app.state::<JmClient>();
         // 限制同时获取urls_with_block_num的数量
         let _permit = self.urls_with_block_num_sem.acquire().await?;
         // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
@@ -346,7 +347,7 @@ impl DownloadManager {
 
     // TODO: 把下载图片的逻辑移到JmClient中
     async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
-        let http_res = self.http_client.get(url).send().await?;
+        let http_res = self.http_client.read().await.get(url).send().await?;
 
         let status = http_res.status();
         if status != StatusCode::OK {
@@ -364,7 +365,7 @@ fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf
     app.state::<RwLock<Config>>()
         .read()
         .download_dir
-        .join(&chapter_info.album_title)
+        .join(&chapter_info.comic_title)
         .join(format!(".下载中-{}", chapter_info.chapter_title)) // 以 `.下载中-` 开头，表示是临时目录
 }
 
