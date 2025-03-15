@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/fe827cec-5179-4215-913c-a05b660a9a0f" style="align-self: center"/>
+    <img src="https://github.com/user-attachments/assets/9d164ecc-e6ae-4e50-a497-b3ca79344ccf" style="align-self: center"/>
 </p>
 
 # 📚 禁漫天堂下载器
