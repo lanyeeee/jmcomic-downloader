@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { commands, Config, GetUserProfileRespData } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
+import FloatLabelInput from './FloatLabelInput.vue'
 
 const message = useMessage()
 const notification = useNotification()
@@ -44,31 +45,29 @@ function clearUsernameAndPasswordInConfig() {
 </script>
 
 <template>
-  <n-dialog
-    :showIcon="false"
-    title="账号登录"
-    positive-text="登录"
-    @positive-click="onLogin"
-    @close="showing = false"
-    @keydown.enter="onLogin">
-    <div class="flex flex-col gap-row-2">
-      <n-input v-model:value="username" placeholder="">
-        <template #prefix>用户名:</template>
-      </n-input>
-      <n-input v-model:value="password" type="password" placeholder="" show-password-on="mousedown">
-        <template #prefix>密码:</template>
-      </n-input>
-      <div class="flex justify-between">
-        <n-tooltip>
-          用户名和密码将以明文保存在配置文件中
-          <template #trigger>
-            <n-checkbox v-model:checked="remember">记住我</n-checkbox>
-          </template>
-        </n-tooltip>
-        <n-button type="primary" size="tiny" secondary @click="clearUsernameAndPasswordInConfig">
-          清除配置文件中的用户名和密码
-        </n-button>
+  <n-modal v-model:show="showing">
+    <n-dialog
+      :showIcon="false"
+      title="账号登录"
+      positive-text="登录"
+      @positive-click="onLogin"
+      @close="showing = false"
+      @keydown.enter="onLogin">
+      <div class="flex flex-col gap-2">
+        <FloatLabelInput label="用户名" v-model:value="username" />
+        <FloatLabelInput label="密码" v-model:value="password" type="password" />
+        <div class="flex justify-between">
+          <n-tooltip>
+            用户名和密码将以明文保存在配置文件中
+            <template #trigger>
+              <n-checkbox v-model:checked="remember">记住我</n-checkbox>
+            </template>
+          </n-tooltip>
+          <n-button type="primary" size="tiny" secondary @click="clearUsernameAndPasswordInConfig">
+            清除配置文件中的用户名和密码
+          </n-button>
+        </div>
       </div>
-    </div>
-  </n-dialog>
+    </n-dialog>
+  </n-modal>
 </template>

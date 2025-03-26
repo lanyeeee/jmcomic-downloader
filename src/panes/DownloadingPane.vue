@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { commands, Config, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
 import { NProgress, useNotification } from 'naive-ui'
-import SettingsDialog from '../components/SettingsDialog.vue'
+import { FolderOpenOutlined } from '@vicons/antd'
 
 type ProgressData = {
   comicTitle: string
@@ -25,9 +25,8 @@ const overallProgress = ref<ProgressData>({
   downloadedCount: 0,
   total: 0,
   percentage: 0,
-  indicator: ''
+  indicator: '',
 })
-const settingsDialogShowing = ref<boolean>(false)
 
 const sortedProgresses = computed(() => {
   const progressesArray = Array.from(progresses.value.entries())
@@ -47,7 +46,7 @@ onMounted(async () => {
         downloadedCount: 0,
         total: 0,
         percentage: 0,
-        indicator: ''
+        indicator: '',
       }
       progresses.value.set(chapterId, progressData)
     } else if (downloadEvent.event == 'ChapterStart') {
@@ -67,7 +66,7 @@ onMounted(async () => {
         notification.warning({
           title: '下载章节失败',
           content: errMsg,
-          meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
+          meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`,
         })
       }
       progresses.value.delete(chapterId)
@@ -89,7 +88,7 @@ onMounted(async () => {
         title: '下载图片失败',
         description: url,
         content: errMsg,
-        meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
+        meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`,
       })
     } else if (downloadEvent.event == 'OverallSpeed') {
       const { speed } = downloadEvent.data
@@ -129,27 +128,26 @@ async function selectDownloadDir() {
 </script>
 
 <template>
-  <div>
-    <div class="flex flex-col gap-row-1">
-      <div class="flex">
-        <n-input
-          v-model:value="config.downloadDir"
-          size="tiny"
-          readonly
-          placeholder="请选择漫画目录"
-          @click="selectDownloadDir">
-          <template #prefix>下载目录：</template>
-        </n-input>
-        <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
-        <n-button type="primary" secondary size="tiny" @click="settingsDialogShowing = true">更多设置</n-button>
-      </div>
-      <div class="grid grid-cols-[1fr_4fr_1fr]">
-        <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
-        <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
-          {{ overallProgress.indicator }}
-        </n-progress>
-        <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
-      </div>
+  <div class="flex flex-col gap-2 flex-1 overflow-auto">
+    <n-input-group class="box-border px-2 pt-2">
+      <n-input-group-label size="small">下载目录</n-input-group-label>
+      <n-input v-model:value="config.downloadDir" size="small" readonly @click="selectDownloadDir" />
+      <n-button size="small" @click="showDownloadDirInFileManager">
+        <template #icon>
+          <n-icon>
+            <FolderOpenOutlined />
+          </n-icon>
+        </template>
+      </n-button>
+    </n-input-group>
+    <div class="grid grid-cols-[1fr_4fr_1fr]">
+      <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
+      <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
+        {{ overallProgress.indicator }}
+      </n-progress>
+      <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
+    </div>
+    <div class="h-full overflow-auto">
       <div
         class="grid grid-cols-[1fr_1fr_2fr]"
         v-for="[chapterId, { comicTitle, chapterTitle, percentage, downloadedCount, total }] in sortedProgresses"
@@ -160,8 +158,5 @@ async function selectDownloadDir() {
         <n-progress v-else :percentage="percentage">{{ downloadedCount }}/{{ total }}</n-progress>
       </div>
     </div>
-    <n-modal v-model:show="settingsDialogShowing">
-      <settings-dialog v-model:showing="settingsDialogShowing" v-model:config="config" />
-    </n-modal>
   </div>
 </template>
