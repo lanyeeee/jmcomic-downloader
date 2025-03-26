@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { Comic, commands } from '../bindings.ts'
 import { useNotification } from 'naive-ui'
-import { ComicInfo } from '../types.ts'
+import { ComicInfo, CurrentTabName } from '../types.ts'
 
 defineProps<{
   comicInfo: ComicInfo
 }>()
 
-const selectedComic = defineModel<Comic | undefined>('selectedComic', { required: true })
-const currentTabName = defineModel<'search' | 'favorite' | 'chapter'>('currentTabName', { required: true })
+const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
+const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
 
 const notification = useNotification()
 
@@ -18,7 +18,7 @@ async function onClickItem(aid: number) {
     notification.error({ title: '获取漫画失败', description: result.error })
     return
   }
-  selectedComic.value = result.data
+  pickedComic.value = result.data
   currentTabName.value = 'chapter'
 }
 
@@ -42,7 +42,6 @@ async function downloadComic(aid: number) {
         @click="onClickItem(parseInt(comicInfo.id))" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-          <!--    TODO:调整标题的最大行数，以确保漫画卡片大小一致       -->
           <span
             class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
             @click="onClickItem(parseInt(comicInfo.id))">
