@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::config::Config;
+use crate::download_manager::IMAGE_DOMAIN;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::responses::{
     GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
@@ -179,9 +180,10 @@ impl JmClient {
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为GetUserProfileRespData
-        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+        let mut user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
             format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
         )?;
+        user_profile.photo = format!("https://{IMAGE_DOMAIN}/media/users/{}", user_profile.photo);
 
         Ok(user_profile)
     }
@@ -217,9 +219,10 @@ impl JmClient {
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为GetUserProfileRespData
-        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+        let mut user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
             format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
         )?;
+        user_profile.photo = format!("https://{IMAGE_DOMAIN}/media/users/{}", user_profile.photo);
 
         Ok(user_profile)
     }

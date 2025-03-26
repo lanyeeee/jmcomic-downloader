@@ -3,39 +3,53 @@ import { computed, ref } from 'vue'
 import { Comic, commands, SearchRespData, SearchSort } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
+import FloatLabelInput from '../components/FloatLabelInput.vue'
+import { SearchOutlined } from '@vicons/antd'
+import { SelectProps } from 'naive-ui'
+import { CurrentTabName } from '../types.ts'
 
 const message = useMessage()
 const notification = useNotification()
 
-const sortOptions = [
+const sortOptions: SelectProps['options'] = [
   { label: '最新', value: 'Latest' },
   { label: '最多点击', value: 'View' },
   { label: '最多图片', value: 'Picture' },
-  { label: '最多爱心', value: 'Like' }
+  { label: '最多爱心', value: 'Like' },
 ]
 
-const selectedComic = defineModel<Comic | undefined>('selectedComic', { required: true })
-const currentTabName = defineModel<'search' | 'favorite' | 'chapter'>('currentTabName', { required: true })
+const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
+const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
 
 const searchInput = ref<string>('')
+const searching = ref<boolean>(false)
 const sortSelected = ref<SearchSort>('Latest')
 const searchPage = ref<number>(1)
 const searchRespData = ref<SearchRespData>()
 
 const searchPageCount = computed(() => {
+  const PAGE_SIZE = 80
   if (searchRespData.value === undefined) {
     return 0
   }
   const total = searchRespData.value.total
-  return Math.floor(total / 80) + 1
+  return Math.ceil(total / PAGE_SIZE)
 })
 
 async function search(keyword: string, page: number, sort: SearchSort) {
+  if (searching.value) {
+    message.warning('有搜索正在进行，请稍后再试')
+    return
+  }
+
+  searching.value = true
   console.log(keyword, page, sort)
   searchPage.value = page
+
   const result = await commands.search(keyword, page, sort)
   if (result.status === 'error') {
     notification.error({ title: '搜索失败', description: result.error })
+    searching.value = false
     return
   }
   const searchResult = result.data
@@ -43,60 +57,66 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     const respData = searchResult.SearchRespData
     if (respData.content.length === 0) {
       message.warning('什么都没有搜到，请尝试其他关键词')
+      searching.value = false
       return
     }
     searchRespData.value = respData
     console.log(respData)
   } else if ('Comic' in searchResult) {
     const comic = searchResult.Comic
-    selectedComic.value = comic
+    pickedComic.value = comic
     console.log(comic)
     currentTabName.value = 'chapter'
   }
+
+  searching.value = false
 }
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <div class="flex flex-col">
-      <div class="grid grid-cols-[7fr_2fr] gap-col-1">
-        <div class="flex gap-col-1">
-          <n-input
-            class="text-align-left"
-            size="tiny"
-            v-model:value="searchInput"
-            placeholder="jm号也可以"
-            clearable
-            @keydown.enter="search(searchInput.trim(), 1, sortSelected)">
-            <template #prefix>关键词:</template>
-          </n-input>
-          <n-button type="primary" secondary size="tiny" @click="search(searchInput.trim(), 1, sortSelected)">
-            搜索
-          </n-button>
-        </div>
-        <n-select
-          class="flex"
-          v-model:value="sortSelected"
-          :options="sortOptions"
-          :show-checkmark="false"
-          size="tiny"
-          @update-value="search(searchInput.trim(), 1, $event)" />
-      </div>
+  <div class="h-full flex flex-col gap-2">
+    <n-input-group class="box-border px-2 pt-2">
+      <FloatLabelInput
+        label="关键词(jm号也可以)"
+        size="small"
+        v-model:value="searchInput"
+        clearable
+        @keydown.enter="search(searchInput.trim(), 1, sortSelected)" />
+      <n-select
+        class="w-45%"
+        v-model:value="sortSelected"
+        :options="sortOptions"
+        :show-checkmark="false"
+        size="small"
+        @update-value="search(searchInput.trim(), 1, $event)" />
+      <n-button
+        :loading="searching"
+        type="primary"
+        size="small"
+        class="w-15%"
+        @click="search(searchInput.trim(), 1, sortSelected)">
+        <template #icon>
+          <n-icon size="22">
+            <SearchOutlined />
+          </n-icon>
+        </template>
+      </n-button>
+    </n-input-group>
+
+    <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
+      <comic-card
+        v-for="comicInSearch in searchRespData.content"
+        :key="comicInSearch.id"
+        :comic-info="comicInSearch"
+        v-model:picked-comic="pickedComic"
+        v-model:current-tab-name="currentTabName" />
     </div>
 
-    <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-1 overflow-auto p-2">
-      <div class="flex flex-col gap-row-2 overflow-auto">
-        <comic-card
-          v-for="comicInSearch in searchRespData.content"
-          :key="comicInSearch.id"
-          :comic-info="comicInSearch"
-          v-model:selected-comic="selectedComic"
-          v-model:current-tab-name="currentTabName" />
-      </div>
-      <n-pagination
-        :page-count="searchPageCount"
-        :page="searchPage"
-        @update:page="search(searchInput.trim(), $event, sortSelected)" />
-    </div>
+    <n-pagination
+      v-if="searchPageCount > 0"
+      class="box-border p-2 pt-0 mt-auto"
+      :page-count="searchPageCount"
+      :page="searchPage"
+      @update:page="search(searchInput.trim(), $event, sortSelected)" />
   </div>
 </template>

@@ -28,7 +28,7 @@ use crate::save_archive::{save_image_archive, save_pdf_archive};
 use crate::types::{ArchiveFormat, AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
 use crate::{utils, DownloadEvent, SetProxyEvent};
 
-const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
+pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 
 /// 用于管理下载任务
 ///
