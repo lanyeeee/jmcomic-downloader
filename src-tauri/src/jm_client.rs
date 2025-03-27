@@ -8,7 +8,7 @@ use crate::download_manager::IMAGE_DOMAIN;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::responses::{
     GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
-    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteResp,
+    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
 };
 use crate::types::{FavoriteSort, ProxyMode, SearchSort};
 use crate::{utils, SetProxyEvent};
@@ -417,7 +417,7 @@ impl JmClient {
         Ok(favorite)
     }
 
-    pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteResp> {
+    pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let form = json!({
             "aid": aid,
@@ -447,11 +447,12 @@ impl JmClient {
         ))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为ToggleFavoriteResp
-        let toggle_favorite_resp = serde_json::from_str::<ToggleFavoriteResp>(&data).context(
-            format!("将解密后的data字段解析为ToggleFavoriteResp失败: {data}"),
-        )?;
-        Ok(toggle_favorite_resp)
+        // 尝试将解密后的data字段解析为ToggleFavoriteRespData
+        let toggle_favorite_resp_data = serde_json::from_str::<ToggleFavoriteRespData>(&data)
+            .context(format!(
+                "将解密后的data字段解析为ToggleFavoriteRespData失败: {data}"
+            ))?;
+        Ok(toggle_favorite_resp_data)
     }
 }
 
