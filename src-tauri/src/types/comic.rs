@@ -1,41 +1,15 @@
-use std::fmt::Display; // TODO: 删掉这个用不到的import
-
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
 
-use crate::config::Config;
-use crate::responses::{GetComicRespData, RelatedListRespData, SearchResp, SearchRespData};
-use crate::utils;
+use crate::{
+    config::Config,
+    responses::{GetComicRespData, RelatedListRespData},
+    utils,
+};
 
-pub type AsyncRwLock<T> = tokio::sync::RwLock<T>;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum SearchSort {
-    Latest,
-    View,
-    Picture,
-    Like,
-}
-impl SearchSort {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SearchSort::Latest => "mr",
-            SearchSort::View => "mv",
-            SearchSort::Picture => "mp",
-            SearchSort::Like => "tf",
-        }
-    }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum ProxyMode {
-    #[default]
-    System,
-    NoProxy,
-    Custom,
-}
+use super::ChapterInfo;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -64,8 +38,8 @@ pub struct Comic {
     #[serde(rename = "is_aids")]
     pub is_aids: bool,
 }
+
 impl Comic {
-    // TODO: 重构，一律改用Type::from
     pub fn from_comic_resp_data(app: &AppHandle, comic: GetComicRespData) -> Self {
         let comic_title = utils::filename_filter(&comic.name);
         let mut chapter_infos: Vec<ChapterInfo> = comic
@@ -129,79 +103,5 @@ impl Comic {
             .join(chapter_title)
             .with_extension(config.archive_format.extension())
             .exists()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ChapterInfo {
-    pub chapter_id: i64,
-    pub chapter_title: String,
-    pub comic_id: i64,
-    pub comic_title: String,
-    pub is_downloaded: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum SearchResult {
-    SearchRespData(SearchRespData),
-    // 用Box包装Comic，因为Comic比SearchRespData大得多
-    // 如果不用Box包装，即使SearchResult的类型是SearchRespData，也会占用与Comic一样大的内存
-    Comic(Box<Comic>),
-}
-impl SearchResult {
-    pub fn from_search_resp(app: &AppHandle, search_resp: SearchResp) -> Self {
-        match search_resp {
-            SearchResp::SearchRespData(search_resp) => SearchResult::SearchRespData(search_resp),
-            SearchResp::ComicRespData(get_comic_resp) => {
-                let comic = Comic::from_comic_resp_data(app, *get_comic_resp);
-                SearchResult::Comic(Box::new(comic))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum FavoriteSort {
-    FavoriteTime,
-    UpdateTime,
-}
-impl FavoriteSort {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FavoriteSort::FavoriteTime => "mr",
-            FavoriteSort::UpdateTime => "mp",
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum DownloadFormat {
-    Jpeg,
-    Png,
-    Webp,
-}
-impl DownloadFormat {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            DownloadFormat::Jpeg => "jpg",
-            DownloadFormat::Png => "png",
-            DownloadFormat::Webp => "webp",
-        }
-    }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-pub enum ArchiveFormat {
-    #[default]
-    Image,
-    Pdf,
-}
-impl ArchiveFormat {
-    pub fn extension(&self) -> &str {
-        match self {
-            ArchiveFormat::Image => "",
-            ArchiveFormat::Pdf => "pdf",
-        }
     }
 }
