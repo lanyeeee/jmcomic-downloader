@@ -161,7 +161,7 @@ pub async fn download_comic(
     let chapter_infos: Vec<ChapterInfo> = comic
         .chapter_infos
         .into_iter()
-        .filter(|chapter_info| !chapter_info.is_downloaded)
+        .filter(|chapter_info| chapter_info.is_downloaded != Some(true))
         .collect();
     if chapter_infos.is_empty() {
         let comic_title = comic.name;
@@ -255,7 +255,7 @@ pub async fn update_downloaded_favorite_comic(
             comic
                 .chapter_infos
                 .iter()
-                .any(|chapter_info| chapter_info.is_downloaded)
+                .any(|chapter_info| chapter_info.is_downloaded == Some(true))
         })
         .collect::<Vec<_>>();
     // 获取已下载的漫画中的未下载章节
@@ -265,7 +265,7 @@ pub async fn update_downloaded_favorite_comic(
             comic
                 .chapter_infos
                 .iter()
-                .filter(|chapter_info| !chapter_info.is_downloaded)
+                .filter(|chapter_info| chapter_info.is_downloaded != Some(true))
                 .cloned()
         })
         .collect::<Vec<_>>();
@@ -277,6 +277,7 @@ pub async fn update_downloaded_favorite_comic(
     Ok(())
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
 pub fn show_path_in_file_manager(app: AppHandle, path: &str) -> CommandResult<()> {
@@ -298,6 +299,33 @@ pub async fn sync_favorite_folder(jm_client: State<'_, JmClient>) -> CommandResu
         let toggle_type = resp1.toggle_type;
         return Err(anyhow!("同步收藏夹失败，两个请求都是`{toggle_type:?}`操作，请重试").into());
     }
+
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn save_metadata(app: AppHandle, mut comic: Comic) -> CommandResult<()> {
+    // 将Comic的is_downloaded字段设置为None，这样能使is_downloaded字段在序列化时被忽略
+    comic.is_downloaded = None;
+    // 将所有ChapterInfo的is_downloaded字段设置为None，这样能使is_downloaded字段在序列化时被忽略
+    for chapter in &mut comic.chapter_infos {
+        chapter.is_downloaded = None;
+    }
+
+    let comic_title = comic.name.clone();
+    let comic_json = serde_json::to_string_pretty(&comic).context(format!(
+        "`{comic_title}`的元数据保存失败，将Comic序列化为json失败"
+    ))?;
+    let comic_download_dir = Comic::get_comic_download_dir(&app, &comic_title);
+    let metadata_path = comic_download_dir.join("元数据.json");
+
+    std::fs::create_dir_all(&comic_download_dir)
+        .context(format!("创建目录`{comic_download_dir:?}`失败"))?;
+
+    std::fs::write(&metadata_path, comic_json)
+        .context(format!("写入文件`{metadata_path:?}`失败"))?;
 
     Ok(())
 }
