@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -6,7 +8,7 @@ use tauri::{AppHandle, Manager};
 use crate::{
     config::Config,
     responses::{GetComicRespData, RelatedListRespData},
-    utils,
+    utils::{self, filename_filter},
 };
 
 use super::ChapterInfo;
@@ -37,6 +39,8 @@ pub struct Comic {
     pub is_favorite: bool,
     #[serde(rename = "is_aids")]
     pub is_aids: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_downloaded: Option<bool>,
 }
 
 impl Comic {
@@ -47,17 +51,21 @@ impl Comic {
             .into_iter()
             .filter_map(|s| {
                 let chapter_id = s.id.parse().ok()?;
-                let mut chapter_title = format!("第{}话", s.sort);
+                let order = s.sort.parse().ok()?;
+                let mut chapter_title = format!("第{order}话");
                 if !s.name.is_empty() {
                     chapter_title.push_str(&format!(" {}", utils::filename_filter(&s.name)));
                 }
-                let is_downloaded = Self::get_is_downloaded(app, &comic_title, &chapter_title);
+                let is_downloaded =
+                    ChapterInfo::get_is_downloaded(app, &comic_title, &chapter_title);
                 let chapter_info = ChapterInfo {
                     comic_id: comic.id,
                     comic_title: comic_title.clone(),
                     chapter_id,
                     chapter_title,
-                    is_downloaded,
+                    author: comic.author.clone(),
+                    is_downloaded: Some(is_downloaded),
+                    order,
                 };
                 Some(chapter_info)
             })
@@ -69,9 +77,13 @@ impl Comic {
                 comic_title: comic_title.clone(),
                 chapter_id: comic.id,
                 chapter_title: "第1话".to_owned(),
-                is_downloaded: false,
+                author: comic.author.clone(),
+                is_downloaded: Some(false),
+                order: 1,
             });
         }
+
+        let is_downloaded = Self::get_is_downloaded(app, &comic.name);
 
         Self {
             id: comic.id,
@@ -91,17 +103,24 @@ impl Comic {
             liked: comic.liked,
             is_favorite: comic.is_favorite,
             is_aids: comic.is_aids,
+            is_downloaded: Some(is_downloaded),
         }
     }
 
-    fn get_is_downloaded(app: &AppHandle, comic_title: &str, chapter_title: &str) -> bool {
-        let config = app.state::<RwLock<Config>>();
-        let config = config.read();
-        config
+    fn get_is_downloaded(app: &AppHandle, comic_title: &str) -> bool {
+        Self::get_comic_download_dir(app, comic_title).exists()
+    }
+
+    // 这里脱裤子放屁，是为了后期方便扩展，例如给漫画目录加上作者名、id等
+    pub fn get_comic_download_dir(app: &AppHandle, comic_title: &str) -> PathBuf {
+        let comic_dir_name = Self::comic_dir_name(app, comic_title);
+        app.state::<RwLock<Config>>()
+            .read()
             .download_dir
-            .join(comic_title)
-            .join(chapter_title)
-            .with_extension(config.archive_format.extension())
-            .exists()
+            .join(comic_dir_name)
+    }
+
+    fn comic_dir_name(_app: &AppHandle, comic_title: &str) -> String {
+        filename_filter(comic_title)
     }
 }

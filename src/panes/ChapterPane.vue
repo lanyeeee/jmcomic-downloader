@@ -40,7 +40,7 @@ function extractIds(elements: Element[]): number[] {
       if (chapterInfo === undefined) {
         return false
       }
-      return !chapterInfo.isDownloaded
+      return chapterInfo.isDownloaded !== true
     })
 }
 
@@ -87,7 +87,7 @@ function onDropdownSelect(key: 'check' | 'uncheck' | 'check all' | 'uncheck all'
   } else if (key === 'check all') {
     // 只有未锁定的才会被勾选
     pickedComic.value?.chapterInfos
-      ?.filter((c) => !c.isDownloaded && !checkedIds.value.includes(c.chapterId))
+      ?.filter((c) => c.isDownloaded !== true && !checkedIds.value.includes(c.chapterId))
       .forEach((c) => checkedIds.value.push(c.chapterId))
   } else if (key === 'uncheck all') {
     checkedIds.value.length = 0
@@ -104,7 +104,7 @@ async function onContextMenu(e: MouseEvent) {
 
 async function downloadChapters() {
   const chapterToDownload = pickedComic.value?.chapterInfos.filter(
-    (c) => !c.isDownloaded && checkedIds.value.includes(c.chapterId),
+    (c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId),
   )
   if (chapterToDownload === undefined) {
     return
@@ -160,7 +160,7 @@ async function refreshChapters() {
           :value="chapterId"
           :label="chapterTitle"
           :disabled="isDownloaded"
-          :class="{ selected: selectedIds.has(chapterId), downloaded: isDownloaded }" />
+          :class="{ selected: selectedIds.has(chapterId), downloaded: isDownloaded === true }" />
       </n-checkbox-group>
     </SelectionArea>
 

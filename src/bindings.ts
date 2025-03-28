@@ -114,6 +114,14 @@ async syncFavoriteFolder() : Promise<Result<null, CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async saveMetadata(comic: Comic) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_metadata", { comic }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -139,8 +147,8 @@ updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 export type ArchiveFormat = "Image" | "Pdf"
 export type CategoryRespData = { id: string | null; title: string | null }
 export type CategorySubRespData = { id: string | null; title: string | null }
-export type ChapterInfo = { chapterId: number; chapterTitle: string; comicId: number; comicTitle: string; isDownloaded: boolean }
-export type Comic = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean }
+export type ChapterInfo = { chapterId: number; chapterTitle: string; comicId: number; comicTitle: string; author: string[]; isDownloaded?: boolean | null; order: number }
+export type Comic = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean; isDownloaded?: boolean | null }
 export type ComicInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type ComicInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
 export type CommandError = string
