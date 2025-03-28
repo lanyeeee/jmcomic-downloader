@@ -1,12 +1,11 @@
-use std::path::PathBuf;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use parking_lot::{Mutex, RwLock};
-use path_slash::PathBufExt;
 use tauri::{AppHandle, State};
+use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
@@ -280,12 +279,10 @@ pub async fn update_downloaded_favorite_comic(
 
 #[tauri::command(async)]
 #[specta::specta]
-pub fn show_path_in_file_manager(path: &str) -> CommandResult<()> {
-    let path = PathBuf::from_slash(path);
-    if !path.exists() {
-        return Err(anyhow!("路径`{path:?}`不存在").into());
-    }
-    showfile::show_path_in_file_manager(path);
+pub fn show_path_in_file_manager(app: AppHandle, path: &str) -> CommandResult<()> {
+    app.opener()
+        .reveal_item_in_dir(path)
+        .context(format!("在文件管理器中打开`{path}`失败"))?;
     Ok(())
 }
 
