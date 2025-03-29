@@ -30,7 +30,7 @@ const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
 const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
 const APP_VERSION: &str = "1.7.5";
 
-const API_DOMAIN: &str = "www.cdnuc.cc";
+const API_DOMAIN: &str = "www.cdnblackmyth.club";
 
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
