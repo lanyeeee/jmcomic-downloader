@@ -2,7 +2,7 @@ use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
@@ -13,6 +13,7 @@ use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::RetryTransientMiddleware;
+use serde_json::json;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::runtime::Runtime;
@@ -356,7 +357,31 @@ impl DownloadManager {
             return Err(err);
         }
 
-        let image_data = http_res.bytes().await?;
+        let mut image_data = http_res.bytes().await?;
+
+        if image_data.is_empty() {
+            // 如果图片为空，说明jm那边缓存失效了，带上时间戳再次请求，以避免缓存
+            let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            let query = json!({"ts": ts});
+            let http_res = self
+                .http_client
+                .read()
+                .await
+                .get(url)
+                .query(&query)
+                .send()
+                .await?;
+
+            let status = http_res.status();
+            if status != StatusCode::OK {
+                let text = http_res.text().await?;
+                let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
+                return Err(err);
+            }
+
+            image_data = http_res.bytes().await?;
+        }
+
         Ok(image_data)
     }
 }
