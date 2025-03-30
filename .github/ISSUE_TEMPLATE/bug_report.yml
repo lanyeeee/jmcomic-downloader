@@ -11,7 +11,7 @@ body:
     id: desc
     attributes:
       label: 问题描述
-      description: 发生了什么情况？有什么现状？复现条件是什么？
+      description: 发生了什么情况？有什么现状？复现条件是什么(哪部漫画，哪个章节)？
     validations:
       required: true
   - type: textarea
