@@ -329,3 +329,37 @@ pub fn save_metadata(app: AppHandle, mut comic: Comic) -> CommandResult<()> {
 
     Ok(())
 }
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn get_downloaded_comics(
+    app: AppHandle,
+    config: State<RwLock<Config>>,
+) -> CommandResult<Vec<Comic>> {
+    let download_dir = config.read().download_dir.clone();
+    // 遍历下载目录，获取所有元数据文件的路径和修改时间
+    let mut metadata_path_with_modify_time = std::fs::read_dir(&download_dir)
+        .context(format!(
+            "获取已下载的漫画失败，读取下载目录`{download_dir:?}`失败"
+        ))?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let metadata_path = entry.path().join("元数据.json");
+            if !metadata_path.exists() {
+                return None;
+            }
+            let modify_time = metadata_path.metadata().ok()?.modified().ok()?;
+            Some((metadata_path, modify_time))
+        })
+        .collect::<Vec<_>>();
+    // 按照文件修改时间排序，最新的排在最前面
+    metadata_path_with_modify_time.sort_by(|(_, a), (_, b)| b.cmp(a));
+    let downloaded_comics = metadata_path_with_modify_time
+        .iter()
+        // TODO: 如果读取元数据失败，应该发送错误Event通知前端，然后才跳过
+        .filter_map(|(metadata_path, _)| Comic::from_metadata(&app, metadata_path).ok())
+        .collect::<Vec<_>>();
+
+    Ok(downloaded_comics)
+}

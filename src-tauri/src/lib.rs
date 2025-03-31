@@ -46,6 +46,7 @@ pub fn run() {
             show_path_in_file_manager,
             sync_favorite_folder,
             save_metadata,
+            get_downloaded_comics,
         ])
         .events(tauri_specta::collect_events![
             DownloadEvent,
