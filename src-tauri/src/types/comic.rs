@@ -1,5 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -105,6 +106,23 @@ impl Comic {
             is_aids: comic.is_aids,
             is_downloaded: Some(is_downloaded),
         }
+    }
+
+    pub fn from_metadata(app: &AppHandle, metadata_path: &Path) -> anyhow::Result<Comic> {
+        let comic_json = std::fs::read_to_string(metadata_path).context(format!(
+            "从元数据转为Comic失败，读取元数据文件 {metadata_path:?} 失败"
+        ))?;
+        let mut comic = serde_json::from_str::<Comic>(&comic_json).context(format!(
+            "从元数据转为Comic失败，将 {metadata_path:?} 反序列化为Comic失败"
+        ))?;
+        // 这个comic中的is_downloaded字段是None，需要重新计算
+        for chapter_info in &mut comic.chapter_infos {
+            let comic_title = &comic.name;
+            let chapter_title = &chapter_info.chapter_title;
+            let is_downloaded = ChapterInfo::get_is_downloaded(app, comic_title, chapter_title);
+            chapter_info.is_downloaded = Some(is_downloaded);
+        }
+        Ok(comic)
     }
 
     fn get_is_downloaded(app: &AppHandle, comic_title: &str) -> bool {
