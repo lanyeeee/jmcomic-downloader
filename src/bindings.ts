@@ -130,6 +130,14 @@ async getDownloadedComics() : Promise<Result<Comic[], CommandError>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async exportCbz(comic: Comic) : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_cbz", { comic }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -138,10 +146,12 @@ async getDownloadedComics() : Promise<Result<Comic[], CommandError>> {
 
 export const events = __makeEvents__<{
 downloadEvent: DownloadEvent,
+exportCbzEvent: ExportCbzEvent,
 setProxyEvent: SetProxyEvent,
 updateDownloadedFavoriteComicEvent: UpdateDownloadedFavoriteComicEvent
 }>({
 downloadEvent: "download-event",
+exportCbzEvent: "export-cbz-event",
 setProxyEvent: "set-proxy-event",
 updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 })
@@ -160,9 +170,10 @@ export type Comic = { id: number; name: string; addtime: string; description: st
 export type ComicInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type ComicInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
 export type CommandError = string
-export type Config = { username: string; password: string; downloadDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
 export type DownloadEvent = { event: "ChapterPending"; data: { chapterId: number; comicTitle: string; chapterTitle: string } } | { event: "ChapterStart"; data: { chapterId: number; total: number } } | { event: "ChapterEnd"; data: { chapterId: number; errMsg: string | null } } | { event: "ImageSuccess"; data: { chapterId: number; url: string; current: number } } | { event: "ImageError"; data: { chapterId: number; url: string; errMsg: string } } | { event: "OverallUpdate"; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } } | { event: "OverallSpeed"; data: { speed: string } }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
+export type ExportCbzEvent = { event: "Start"; data: { uuid: string; comicTitle: string; total: number } } | { event: "Progress"; data: { uuid: string; current: number } } | { event: "Error"; data: { uuid: string } } | { event: "End"; data: { uuid: string } }
 export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
 export type FavoriteSort = "FavoriteTime" | "UpdateTime"
 export type GetChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
