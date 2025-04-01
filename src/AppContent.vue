@@ -11,6 +11,7 @@ import AboutDialog from './components/AboutDialog.vue'
 import { QuestionCircleOutlined, UserOutlined, SettingOutlined } from '@vicons/antd'
 import SettingsDialog from './components/SettingsDialog.vue'
 import { CurrentTabName } from './types.ts'
+import DownloadedPane from './panes/DownloadedPane.vue'
 
 const message = useMessage()
 const notification = useNotification()
@@ -71,6 +72,9 @@ onMounted(async () => {
           :user-profile="userProfile"
           v-model:picked-comic="pickedComic"
           v-model:current-tab-name="currentTabName" />
+      </n-tab-pane>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="downloaded" tab="本地库存" display-directive="show">
+        <downloaded-pane v-model:picked-comic="pickedComic" v-model:current-tab-name="currentTabName" />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show">
         <chapter-pane v-model:picked-comic="pickedComic" />

@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AboutDialog: typeof import('./src/components/AboutDialog.vue')['default']
     ComicCard: typeof import('./src/components/ComicCard.vue')['default']
+    DownloadedComicCard: typeof import('./src/components/DownloadedComicCard.vue')['default']
     FloatLabelInput: typeof import('./src/components/FloatLabelInput.vue')['default']
     LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
     NA: typeof import('naive-ui')['NA']
