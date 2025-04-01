@@ -138,6 +138,14 @@ impl Comic {
             .join(comic_dir_name)
     }
 
+    pub fn get_comic_export_dir(app: &AppHandle, comic_title: &str) -> PathBuf {
+        let comic_dir_name = Self::comic_dir_name(app, comic_title);
+        app.state::<RwLock<Config>>()
+            .read()
+            .export_dir
+            .join(comic_dir_name)
+    }
+
     fn comic_dir_name(_app: &AppHandle, comic_title: &str) -> String {
         filename_filter(comic_title)
     }

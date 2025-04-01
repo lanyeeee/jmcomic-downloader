@@ -14,6 +14,7 @@ use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::errors::CommandResult;
 use crate::events::UpdateDownloadedFavoriteComicEvent;
+use crate::export;
 use crate::jm_client::JmClient;
 use crate::responses::{GetChapterRespData, GetFavoriteRespData, GetUserProfileRespData};
 use crate::types::{ChapterInfo, Comic, FavoriteSort, SearchResult, SearchSort};
@@ -362,4 +363,13 @@ pub fn get_downloaded_comics(
         .collect::<Vec<_>>();
 
     Ok(downloaded_comics)
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+#[allow(clippy::needless_pass_by_value)]
+pub fn export_cbz(app: AppHandle, comic: Comic) -> CommandResult<()> {
+    let comic_title = &comic.name;
+    export::cbz(&app, &comic).context(format!("漫画`{comic_title}`导出cbz失败"))?;
+    Ok(())
 }
