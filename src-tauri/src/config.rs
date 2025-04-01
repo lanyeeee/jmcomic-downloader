@@ -11,6 +11,7 @@ pub struct Config {
     pub username: String,
     pub password: String,
     pub download_dir: PathBuf,
+    pub export_dir: PathBuf,
     pub download_format: DownloadFormat,
     pub archive_format: ArchiveFormat,
     pub proxy_mode: ProxyMode,
@@ -27,6 +28,7 @@ impl Config {
             username: String::new(),
             password: String::new(),
             download_dir: app_data_dir.join("漫画下载"),
+            export_dir: app_data_dir.join("漫画导出"),
             download_format: DownloadFormat::Jpeg, // TODO: 给DownloadFormat实现 Default trait
             archive_format: ArchiveFormat::default(),
             proxy_mode: ProxyMode::default(),

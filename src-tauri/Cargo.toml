@@ -21,7 +21,7 @@ tauri-plugin-dialog = { version = "2" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
-serde-aux = { version = "4.5.0" }
+yaserde = { version = "0.12.0", features = ["yaserde_derive"] }
 
 specta = { version = "2.0.0-rc" }
 tauri-specta = { version = "2.0.0-rc", features = ["derive", "typescript"] }
@@ -42,6 +42,9 @@ image = { version = "0.25.2", default-features = false, features = ["jpeg", "png
 lopdf = { version = "0.34.0" }
 flate2 = { version = "1.0.34" }
 parking_lot = { version = "0.12.3", features = ["send_guard"] }
+rayon = { version = "1.10.0" }
+uuid = { version = "1.15.1", features = ["v4"] }
+zip = { version = "2.2.3", default-features = false }
 
 [profile.release]
 strip = true

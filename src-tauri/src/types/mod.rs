@@ -1,6 +1,7 @@
 mod archive_format;
 mod chapter_info;
 mod comic;
+mod comic_info;
 mod download_format;
 mod favorite_sort;
 mod proxy_mode;
@@ -10,6 +11,7 @@ mod search_sort;
 pub use archive_format::*;
 pub use chapter_info::*;
 pub use comic::*;
+pub use comic_info::*;
 pub use download_format::*;
 pub use favorite_sort::*;
 pub use proxy_mode::*;

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
@@ -25,5 +27,12 @@ impl ChapterInfo {
 
         let chapter_title = filename_filter(chapter_title);
         comic_download_dir.join(chapter_title).exists()
+    }
+
+    pub fn get_chapter_download_dir(&self, app: &AppHandle) -> PathBuf {
+        let comic_download_dir = Comic::get_comic_download_dir(app, &self.comic_title);
+
+        let chapter_title = filename_filter(&self.chapter_title);
+        comic_download_dir.join(chapter_title)
     }
 }
