@@ -1,6 +1,6 @@
 import { CategoryRespData, CategorySubRespData } from './bindings.ts'
 
-export type CurrentTabName = 'search' | 'favorite' | 'chapter'
+export type CurrentTabName = 'search' | 'favorite' | 'downloaded' | 'chapter'
 
 export type ComicInfo = {
   id: string
