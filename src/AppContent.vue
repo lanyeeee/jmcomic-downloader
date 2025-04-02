@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { commands } from './bindings.ts'
+import { commands, events, LogEvent } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
@@ -31,7 +31,7 @@ watch(
 
     const result = await commands.saveConfig(store.config)
     if (result.status === 'error') {
-      notification.error({ title: '保存配置失败', description: result.error })
+      console.error(result.error)
       return
     }
     message.success('保存配置成功')
@@ -50,13 +50,42 @@ onMounted(async () => {
   if (store.config.username !== '' && store.config.password !== '') {
     const result = await commands.login(store.config.username, store.config.password)
     if (result.status === 'error') {
-      notification.error({ title: '自动登录失败', description: result.error })
+      console.error(result.error)
       return
     }
     store.userProfile = result.data
     message.success('自动登录成功')
   }
 })
+
+onMounted(async () => {
+  type LogRecord = LogEvent & { id: number; formatedLog: string }
+  const logRecords = ref<LogRecord[]>([])
+  let nextLogRecordId = 0
+  await events.logEvent.listen(async ({ payload: logEvent }) => {
+    logRecords.value.push({
+      ...logEvent,
+      id: nextLogRecordId++,
+      formatedLog: formatLogEvent(logEvent),
+    })
+    const { level, fields } = logEvent
+    if (level === 'ERROR') {
+      notification.error({
+        title: fields['err_title'] as string,
+        description: fields['message'] as string,
+        duration: 0,
+      })
+    }
+  })
+})
+
+function formatLogEvent(logEvent: LogEvent): string {
+  const { timestamp, level, fields, target, filename, line_number } = logEvent
+  const fields_str = Object.entries(fields)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(' ')
+  return `${timestamp} ${level} ${target}: ${filename}:${line_number} ${fields_str}`
+}
 </script>
 
 <template>

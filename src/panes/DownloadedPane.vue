@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Comic, commands, events } from '../bindings.ts'
 import { computed, ref, watch, onMounted } from 'vue'
-import { useNotification, MessageReactive, useMessage } from 'naive-ui'
+import { MessageReactive, useMessage } from 'naive-ui'
 import DownloadedComicCard from '../components/DownloadedComicCard.vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import { FolderOpenOutlined } from '@vicons/antd'
@@ -16,7 +16,6 @@ interface ProgressData {
   progressMessage: MessageReactive
 }
 
-const notification = useNotification()
 const message = useMessage()
 
 const { currentPage, pageCount, currentPageComics } = useDownloadedComics()
@@ -49,7 +48,7 @@ function useDownloadedComics() {
 
       const result = await commands.getDownloadedComics()
       if (result.status === 'error') {
-        notification.error({ title: '获取本地库存失败', description: result.error })
+        console.error(result.error)
         return
       }
       downloadedComics.value = result.data
@@ -227,7 +226,7 @@ async function showExportDirInFileManager() {
   }
   const result = await commands.showPathInFileManager(store.config.exportDir)
   if (result.status === 'error') {
-    notification.error({ title: '打开下载目录失败', description: result.error })
+    console.error(result.error)
   }
 }
 </script>
