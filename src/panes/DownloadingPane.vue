@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { commands, Config, events } from '../bindings.ts'
+import { commands, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
 import { NProgress, useNotification } from 'naive-ui'
 import { FolderOpenOutlined } from '@vicons/antd'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 type ProgressData = {
   comicTitle: string
@@ -15,8 +18,6 @@ type ProgressData = {
 }
 
 const notification = useNotification()
-
-const config = defineModel<Config>('config', { required: true })
 
 const progresses = ref<Map<number, ProgressData>>(new Map())
 const overallProgress = ref<ProgressData>({
@@ -109,29 +110,34 @@ onMounted(async () => {
 })
 
 async function showDownloadDirInFileManager() {
-  if (config.value === undefined) {
+  if (store.config === undefined) {
     return
   }
-  const result = await commands.showPathInFileManager(config.value.downloadDir)
+  const result = await commands.showPathInFileManager(store.config.downloadDir)
   if (result.status === 'error') {
     notification.error({ title: '打开下载目录失败', description: result.error })
   }
 }
 
 async function selectDownloadDir() {
+  if (store.config === undefined) {
+    return
+  }
+
   const selectedDirPath = await open({ directory: true })
   if (selectedDirPath === null) {
     return
   }
-  config.value.downloadDir = selectedDirPath
+
+  store.config.downloadDir = selectedDirPath
 }
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 flex-1 overflow-auto">
+  <div v-if="store.config !== undefined" class="flex flex-col gap-2 flex-1 overflow-auto">
     <n-input-group class="box-border px-2 pt-2">
       <n-input-group-label size="small">下载目录</n-input-group-label>
-      <n-input v-model:value="config.downloadDir" size="small" readonly @click="selectDownloadDir" />
+      <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
       <n-button size="small" @click="showDownloadDirInFileManager">
         <template #icon>
           <n-icon>
