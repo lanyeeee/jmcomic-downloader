@@ -16,6 +16,7 @@ pub struct Config {
     pub proxy_mode: ProxyMode,
     pub proxy_host: String,
     pub proxy_port: u16,
+    pub enable_file_logger: bool,
 }
 
 impl Config {
@@ -32,6 +33,7 @@ impl Config {
             proxy_mode: ProxyMode::default(),
             proxy_host: String::new(),
             proxy_port: 7890,
+            enable_file_logger: true,
         };
         // 如果配置文件存在且能够解析，则使用配置文件中的配置，否则使用默认配置
         let config = if config_path.exists() {

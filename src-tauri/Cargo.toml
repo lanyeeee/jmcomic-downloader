@@ -23,7 +23,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 yaserde = { version = "0.12.0", features = ["yaserde_derive"] }
 
-specta = { version = "2.0.0-rc" }
+specta = { version = "2.0.0-rc", features = ["serde_json"] }
 tauri-specta = { version = "2.0.0-rc", features = ["derive", "typescript"] }
 specta-typescript = { version = "0.0.7" }
 
@@ -45,6 +45,10 @@ parking_lot = { version = "0.12.3", features = ["send_guard"] }
 rayon = { version = "1.10.0" }
 uuid = { version = "1.15.1", features = ["v4"] }
 zip = { version = "2.2.3", default-features = false }
+tracing = { version = "0.1.41" }
+tracing-subscriber = { version = "0.3.19", features = ["json", "time", "local-time"] }
+tracing-appender = { version = "0.2.3" }
+notify = { version = "8.0.0" }
 
 [profile.release]
 strip = true

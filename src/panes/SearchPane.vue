@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { commands, SearchRespData, SearchSort } from '../bindings.ts'
-import { useMessage, useNotification } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import FloatLabelInput from '../components/FloatLabelInput.vue'
 import { SearchOutlined } from '@vicons/antd'
@@ -11,7 +11,6 @@ import { useStore } from '../store.ts'
 const store = useStore()
 
 const message = useMessage()
-const notification = useNotification()
 
 const sortOptions: SelectProps['options'] = [
   { label: '最新', value: 'Latest' },
@@ -47,7 +46,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
 
   const result = await commands.search(keyword, page, sort)
   if (result.status === 'error') {
-    notification.error({ title: '搜索失败', description: result.error })
+    console.error(result.error)
     searching.value = false
     return
   }

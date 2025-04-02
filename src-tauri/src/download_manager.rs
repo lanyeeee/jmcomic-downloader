@@ -25,7 +25,7 @@ use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::types::{AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
-use crate::{utils, DownloadEvent, SetProxyEvent};
+use crate::{utils, DownloadEvent};
 
 pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 
@@ -411,10 +411,9 @@ pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {
             match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
                 Ok(proxy) => builder.proxy(proxy),
                 Err(err) => {
-                    let err = err.context(format!("DownloadManager设置代理 {proxy_url} 失败"));
-                    let err_msg = err.to_string_chain();
-                    // 发送设置代理失败事件
-                    let _ = SetProxyEvent::Error { err_msg }.emit(app);
+                    let err_title = format!("`DownloadManager`设置代理`{proxy_url}`失败");
+                    let string_chain = err.to_string_chain();
+                    tracing::error!(err_title, message = string_chain);
                     builder
                 }
             }
