@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Comic, commands, SearchRespData, SearchSort } from '../bindings.ts'
+import { commands, SearchRespData, SearchSort } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import FloatLabelInput from '../components/FloatLabelInput.vue'
 import { SearchOutlined } from '@vicons/antd'
 import { SelectProps } from 'naive-ui'
-import { CurrentTabName } from '../types.ts'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const message = useMessage()
 const notification = useNotification()
@@ -17,9 +19,6 @@ const sortOptions: SelectProps['options'] = [
   { label: '最多图片', value: 'Picture' },
   { label: '最多爱心', value: 'Like' },
 ]
-
-const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
-const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
 
 const searchInput = ref<string>('')
 const searching = ref<boolean>(false)
@@ -64,9 +63,9 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     console.log(respData)
   } else if ('Comic' in searchResult) {
     const comic = searchResult.Comic
-    pickedComic.value = comic
+    store.pickedComic = comic
     console.log(comic)
-    currentTabName.value = 'chapter'
+    store.currentTabName = 'chapter'
   }
 
   searching.value = false
@@ -104,12 +103,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     </n-input-group>
 
     <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
-      <comic-card
-        v-for="comicInSearch in searchRespData.content"
-        :key="comicInSearch.id"
-        :comic-info="comicInSearch"
-        v-model:picked-comic="pickedComic"
-        v-model:current-tab-name="currentTabName" />
+      <comic-card v-for="comicInSearch in searchRespData.content" :key="comicInSearch.id" :comic-info="comicInSearch" />
     </div>
 
     <n-pagination

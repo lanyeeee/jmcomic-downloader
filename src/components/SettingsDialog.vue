@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { commands, Config } from '../bindings.ts'
+import { commands } from '../bindings.ts'
 import { computed, ref } from 'vue'
 import { path } from '@tauri-apps/api'
 import { appDataDir } from '@tauri-apps/api/path'
 import { useNotification } from 'naive-ui'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const notification = useNotification()
 
-const config = defineModel<Config>('config', { required: true })
 const showing = defineModel<boolean>('showing', { required: true })
 
-const proxyHost = ref<string>(config.value.proxyHost)
+const proxyHost = ref<string>(store.config?.proxyHost ?? '')
 
-const disableProxyHostAndPort = computed(() => config.value.proxyMode !== 'Custom')
+const disableProxyHostAndPort = computed(() => store.config?.proxyMode !== 'Custom')
 
 async function showConfigInFileManager() {
   const configName = 'config.json'
@@ -25,10 +27,10 @@ async function showConfigInFileManager() {
 </script>
 
 <template>
-  <n-modal v-model:show="showing">
+  <n-modal v-if="store.config !== undefined" v-model:show="showing">
     <n-dialog :showIcon="false" title="设置" content-style="" @close="showing = false">
       <div class="flex flex-col gap-row-2">
-        <n-radio-group v-model:value="config.downloadFormat">
+        <n-radio-group v-model:value="store.config.downloadFormat">
           下载格式：
           <n-tooltip placement="top" trigger="hover">
             <template #trigger>
@@ -75,7 +77,7 @@ async function showConfigInFileManager() {
             <br />
           </n-tooltip>
         </n-radio-group>
-        <n-radio-group v-model:value="config.proxyMode">
+        <n-radio-group v-model:value="store.config.proxyMode">
           代理类型：
           <n-radio value="System">系统代理</n-radio>
           <n-radio value="NoProxy">直连</n-radio>
@@ -88,12 +90,12 @@ async function showConfigInFileManager() {
             v-model:value="proxyHost"
             size="small"
             placeholder=""
-            @blur="config.proxyHost = proxyHost"
-            @keydown.enter="config.proxyHost = proxyHost" />
+            @blur="store.config.proxyHost = proxyHost"
+            @keydown.enter="store.config.proxyHost = proxyHost" />
           <n-input-group-label size="small">:</n-input-group-label>
           <n-input-number
             :disabled="disableProxyHostAndPort"
-            v-model:value="config.proxyPort"
+            v-model:value="store.config.proxyPort"
             size="small"
             placeholder=""
             :parse="(x: string) => parseInt(x)" />
