@@ -89,3 +89,27 @@ pub enum ExportCbzEvent {
     #[serde(rename_all = "camelCase")]
     End { uuid: String },
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[serde(tag = "event", content = "data")]
+pub enum ExportPdfEvent {
+    #[serde(rename_all = "camelCase")]
+    CreateStart {
+        uuid: String,
+        comic_title: String,
+        total: u32,
+    },
+    #[serde(rename_all = "camelCase")]
+    CreateProgress { uuid: String, current: u32 },
+    #[serde(rename_all = "camelCase")]
+    CreateError { uuid: String },
+    #[serde(rename_all = "camelCase")]
+    CreateEnd { uuid: String },
+
+    #[serde(rename_all = "camelCase")]
+    MergeStart { uuid: String, comic_title: String },
+    #[serde(rename_all = "camelCase")]
+    MergeError { uuid: String },
+    #[serde(rename_all = "camelCase")]
+    MergeEnd { uuid: String },
+}
