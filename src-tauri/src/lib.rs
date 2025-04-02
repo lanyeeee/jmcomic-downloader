@@ -1,5 +1,5 @@
 use anyhow::Context;
-use events::ExportCbzEvent;
+use events::{ExportCbzEvent, ExportPdfEvent};
 use parking_lot::RwLock;
 use tauri::{Manager, Wry};
 
@@ -50,12 +50,14 @@ pub fn run() {
             save_metadata,
             get_downloaded_comics,
             export_cbz,
+            export_pdf,
         ])
         .events(tauri_specta::collect_events![
             DownloadEvent,
             SetProxyEvent,
             UpdateDownloadedFavoriteComicEvent,
             ExportCbzEvent,
+            ExportPdfEvent,
         ]);
 
     #[cfg(debug_assertions)]
