@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::types::{ArchiveFormat, DownloadFormat, ProxyMode};
+use crate::types::{DownloadFormat, ProxyMode};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
@@ -13,7 +13,6 @@ pub struct Config {
     pub download_dir: PathBuf,
     pub export_dir: PathBuf,
     pub download_format: DownloadFormat,
-    pub archive_format: ArchiveFormat,
     pub proxy_mode: ProxyMode,
     pub proxy_host: String,
     pub proxy_port: u16,
@@ -30,7 +29,6 @@ impl Config {
             download_dir: app_data_dir.join("漫画下载"),
             export_dir: app_data_dir.join("漫画导出"),
             download_format: DownloadFormat::Jpeg, // TODO: 给DownloadFormat实现 Default trait
-            archive_format: ArchiveFormat::default(),
             proxy_mode: ProxyMode::default(),
             proxy_host: String::new(),
             proxy_port: 7890,

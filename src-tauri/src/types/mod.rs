@@ -1,4 +1,3 @@
-mod archive_format;
 mod chapter_info;
 mod comic;
 mod comic_info;
@@ -8,7 +7,6 @@ mod proxy_mode;
 mod search_result;
 mod search_sort;
 
-pub use archive_format::*;
 pub use chapter_info::*;
 pub use comic::*;
 pub use comic_info::*;

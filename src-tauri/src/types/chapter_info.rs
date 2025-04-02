@@ -29,6 +29,13 @@ impl ChapterInfo {
         comic_download_dir.join(chapter_title).exists()
     }
 
+    pub fn get_temp_download_dir(&self, app: &AppHandle) -> PathBuf {
+        let comic_download_dir = Comic::get_comic_download_dir(app, &self.comic_title);
+
+        let chapter_title = filename_filter(&self.chapter_title);
+        comic_download_dir.join(format!(".下载中-{chapter_title}")) // 以 `.下载中-` 开头，表示是临时目录
+    }
+
     pub fn get_chapter_download_dir(&self, app: &AppHandle) -> PathBuf {
         let comic_download_dir = Comic::get_comic_download_dir(app, &self.comic_title);
 

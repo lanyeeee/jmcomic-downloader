@@ -172,7 +172,6 @@ updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 
 /** user-defined types **/
 
-export type ArchiveFormat = "Image" | "Pdf"
 export type CategoryRespData = { id: string | null; title: string | null }
 export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; comicId: number; comicTitle: string; author: string[]; isDownloaded?: boolean | null; order: number }
@@ -180,7 +179,7 @@ export type Comic = { id: number; name: string; addtime: string; description: st
 export type ComicInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type ComicInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
 export type CommandError = string
-export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; archiveFormat: ArchiveFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
 export type DownloadEvent = { event: "ChapterPending"; data: { chapterId: number; comicTitle: string; chapterTitle: string } } | { event: "ChapterStart"; data: { chapterId: number; total: number } } | { event: "ChapterEnd"; data: { chapterId: number; errMsg: string | null } } | { event: "ImageSuccess"; data: { chapterId: number; url: string; current: number } } | { event: "ImageError"; data: { chapterId: number; url: string; errMsg: string } } | { event: "OverallUpdate"; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } } | { event: "OverallSpeed"; data: { speed: string } }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type ExportCbzEvent = { event: "Start"; data: { uuid: string; comicTitle: string; total: number } } | { event: "Progress"; data: { uuid: string; current: number } } | { event: "Error"; data: { uuid: string } } | { event: "End"; data: { uuid: string } }

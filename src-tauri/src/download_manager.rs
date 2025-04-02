@@ -24,8 +24,7 @@ use tokio::task::JoinSet;
 use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
-use crate::save_archive::{save_image_archive, save_pdf_archive};
-use crate::types::{ArchiveFormat, AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
+use crate::types::{AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
 use crate::{utils, DownloadEvent, SetProxyEvent};
 
 pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -127,7 +126,7 @@ impl DownloadManager {
         }
         .emit(&self.app);
         // 创建临时下载目录
-        let temp_download_dir = get_temp_download_dir(&self.app, &chapter_info);
+        let temp_download_dir = chapter_info.get_temp_download_dir(&self.app);
         std::fs::create_dir_all(&temp_download_dir)
             .context(format!("创建目录`{temp_download_dir:?}`失败"))?;
         // 从配置文件获取图片格式
@@ -207,7 +206,7 @@ impl DownloadManager {
             return Ok(());
         }
         // 此章节的图片全部下载成功
-        let err_msg = match self.save_archive(&chapter_info, &temp_download_dir) {
+        let err_msg = match self.rename_temp_download_dir(&chapter_info, &temp_download_dir) {
             Ok(()) => None,
             Err(err) => Some(err.to_string_chain()),
         };
@@ -220,30 +219,22 @@ impl DownloadManager {
         Ok(())
     }
 
-    fn save_archive(
+    fn rename_temp_download_dir(
         &self,
         chapter_info: &ChapterInfo,
         temp_download_dir: &PathBuf,
     ) -> anyhow::Result<()> {
-        let archive_format = self
-            .app
-            .state::<RwLock<Config>>()
-            .read()
-            .archive_format
-            .clone();
+        let chapter_download_dir = chapter_info.get_chapter_download_dir(&self.app);
 
-        let Some(parent) = temp_download_dir.parent() else {
-            return Err(anyhow!("无法获取 {temp_download_dir:?} 的父目录"));
-        };
-
-        let download_dir = parent.join(&chapter_info.chapter_title);
-
-        match archive_format {
-            ArchiveFormat::Image => save_image_archive(&download_dir, temp_download_dir)?,
-            ArchiveFormat::Pdf => {
-                save_pdf_archive(&download_dir, temp_download_dir, &archive_format)?;
-            }
+        if chapter_download_dir.exists() {
+            std::fs::remove_dir_all(&chapter_download_dir)
+                .context(format!("删除 {chapter_download_dir:?} 失败"))?;
         }
+
+        std::fs::rename(temp_download_dir, &chapter_download_dir).context(format!(
+            "将 {temp_download_dir:?} 重命名为 {chapter_download_dir:?} 失败"
+        ))?;
+
         Ok(())
     }
 
@@ -384,14 +375,6 @@ impl DownloadManager {
 
         Ok(image_data)
     }
-}
-
-fn get_temp_download_dir(app: &AppHandle, chapter_info: &ChapterInfo) -> PathBuf {
-    app.state::<RwLock<Config>>()
-        .read()
-        .download_dir
-        .join(&chapter_info.comic_title)
-        .join(format!(".下载中-{}", chapter_info.chapter_title)) // 以 `.下载中-` 开头，表示是临时目录
 }
 
 fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
