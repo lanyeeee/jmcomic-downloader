@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Comic, commands, events, GetFavoriteRespData, FavoriteSort, GetUserProfileRespData } from '../bindings.ts'
+import { commands, events, GetFavoriteRespData, FavoriteSort } from '../bindings.ts'
 import { MessageReactive, useMessage, useNotification } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import { SelectProps } from 'naive-ui'
-import { CurrentTabName } from '../types.ts'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const message = useMessage()
 const notification = useNotification()
-
-const props = defineProps<{
-  userProfile: GetUserProfileRespData | undefined
-}>()
-
-const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
-const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
 
 const sortOptions: SelectProps['options'] = [
   { label: '收藏时间', value: 'FavoriteTime' },
@@ -43,9 +38,9 @@ const folderOptions = computed<SelectProps['options']>(() => [
 ])
 
 watch(
-  () => props.userProfile,
+  () => store.userProfile,
   async () => {
-    if (props.userProfile === undefined) {
+    if (store.userProfile === undefined) {
       getFavoriteRespData.value = undefined
       return
     }
@@ -132,9 +127,7 @@ onMounted(async () => {
       <comic-card
         v-for="comicInFavorite in getFavoriteRespData?.list"
         :key="comicInFavorite.id"
-        :comic-info="comicInFavorite"
-        v-model:picked-comic="pickedComic"
-        v-model:current-tab-name="currentTabName" />
+        :comic-info="comicInFavorite" />
     </div>
 
     <n-pagination

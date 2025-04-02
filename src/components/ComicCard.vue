@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { Comic, commands } from '../bindings.ts'
+import { commands } from '../bindings.ts'
 import { useNotification } from 'naive-ui'
-import { ComicInfo, CurrentTabName } from '../types.ts'
+import { ComicInfo } from '../types.ts'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 defineProps<{
   comicInfo: ComicInfo
 }>()
-
-const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
-const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
 
 const notification = useNotification()
 
@@ -18,8 +18,8 @@ async function onClickItem(aid: number) {
     notification.error({ title: '获取漫画失败', description: result.error })
     return
   }
-  pickedComic.value = result.data
-  currentTabName.value = 'chapter'
+  store.pickedComic = result.data
+  store.currentTabName = 'chapter'
 }
 
 async function downloadComic(aid: number) {

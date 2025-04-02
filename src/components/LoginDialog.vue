@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { commands, Config, GetUserProfileRespData } from '../bindings.ts'
+import { commands } from '../bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import FloatLabelInput from './FloatLabelInput.vue'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const message = useMessage()
 const notification = useNotification()
 
 const showing = defineModel<boolean>('showing', { required: true })
-const config = defineModel<Config>('config', { required: true })
-const userProfile = defineModel<GetUserProfileRespData | undefined>('userProfile', { required: true })
 
-const username = ref<string>(config.value.username)
-const password = ref<string>(config.value.password)
+const username = ref<string>(store.config?.username ?? '')
+const password = ref<string>(store.config?.password ?? '')
 const remember = ref<boolean>(username.value !== '' && password.value !== '')
 
 async function onLogin() {
+  if (store.config === undefined) {
+    return
+  }
   if (username.value === '') {
     message.error('请输入用户名')
     return
@@ -24,23 +28,28 @@ async function onLogin() {
     message.error('请输入密码')
     return
   }
+
   const result = await commands.login(username.value, password.value)
   if (result.status === 'error') {
     notification.error({ title: '登录失败', description: result.error })
     return
   }
-  userProfile.value = result.data
+  store.userProfile = result.data
   message.success('登录成功')
   if (remember.value) {
-    config.value.username = username.value
-    config.value.password = password.value
+    store.config.username = username.value
+    store.config.password = password.value
   }
   showing.value = false
 }
 
 function clearUsernameAndPasswordInConfig() {
-  config.value.username = ''
-  config.value.password = ''
+  if (store.config === undefined) {
+    return
+  }
+
+  store.config.username = ''
+  store.config.password = ''
 }
 </script>
 

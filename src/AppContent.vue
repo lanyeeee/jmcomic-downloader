@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { Comic, commands, Config, GetUserProfileRespData } from './bindings.ts'
+import { commands } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
@@ -10,28 +10,26 @@ import FavoritePane from './panes/FavoritePane.vue'
 import AboutDialog from './components/AboutDialog.vue'
 import { QuestionCircleOutlined, UserOutlined, SettingOutlined } from '@vicons/antd'
 import SettingsDialog from './components/SettingsDialog.vue'
-import { CurrentTabName } from './types.ts'
 import DownloadedPane from './panes/DownloadedPane.vue'
+import { useStore } from './store.ts'
+
+const store = useStore()
 
 const message = useMessage()
 const notification = useNotification()
 
-const config = ref<Config>()
-const userProfile = ref<GetUserProfileRespData>()
 const loginDialogShowing = ref<boolean>(false)
 const settingsDialogShowing = ref<boolean>(false)
 const aboutDialogShowing = ref<boolean>(false)
-const currentTabName = ref<CurrentTabName>('search')
-const pickedComic = ref<Comic>()
 
 watch(
-  config,
+  () => store.config,
   async () => {
-    if (config.value === undefined) {
+    if (store.config === undefined) {
       return
     }
 
-    const result = await commands.saveConfig(config.value)
+    const result = await commands.saveConfig(store.config)
     if (result.status === 'error') {
       notification.error({ title: '保存配置失败', description: result.error })
       return
@@ -47,40 +45,34 @@ onMounted(async () => {
     event.preventDefault()
   }
   // 获取配置
-  config.value = await commands.getConfig()
+  store.config = await commands.getConfig()
   // 如果username和password不为空，尝试登录
-  if (config.value.username !== '' && config.value.password !== '') {
-    const result = await commands.login(config.value.username, config.value.password)
+  if (store.config.username !== '' && store.config.password !== '') {
+    const result = await commands.login(store.config.username, store.config.password)
     if (result.status === 'error') {
       notification.error({ title: '自动登录失败', description: result.error })
       return
     }
-    userProfile.value = result.data
+    store.userProfile = result.data
     message.success('自动登录成功')
   }
 })
 </script>
 
 <template>
-  <div v-if="config !== undefined" class="h-screen flex overflow-hidden">
-    <n-tabs class="h-full w-1/2" v-model:value="currentTabName" type="line" size="small" animated>
+  <div v-if="store.config !== undefined" class="h-screen flex overflow-hidden">
+    <n-tabs class="h-full w-1/2" v-model:value="store.currentTabName" type="line" size="small" animated>
       <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show">
-        <search-pane v-model:picked-comic="pickedComic" v-model:current-tab-name="currentTabName" />
+        <search-pane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show">
-        <favorite-pane
-          :user-profile="userProfile"
-          v-model:picked-comic="pickedComic"
-          v-model:current-tab-name="currentTabName" />
+        <favorite-pane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="downloaded" tab="本地库存" display-directive="show">
-        <downloaded-pane
-          v-model:config="config"
-          v-model:picked-comic="pickedComic"
-          v-model:current-tab-name="currentTabName" />
+        <downloaded-pane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show">
-        <chapter-pane v-model:picked-comic="pickedComic" />
+        <chapter-pane />
       </n-tab-pane>
     </n-tabs>
     <div class="w-1/2 overflow-auto flex flex-col">
@@ -109,22 +101,22 @@ onMounted(async () => {
           </template>
           关于
         </n-button>
-        <div v-if="userProfile !== undefined" class="flex items-center ml-auto overflow-hidden">
+        <div v-if="store.userProfile !== undefined" class="flex items-center ml-auto overflow-hidden">
           <n-avatar
             class="flex-shrink-0"
             round
             :size="32"
-            :src="userProfile.photo"
+            :src="store.userProfile.photo"
             fallback-src="https://cdn-msp.18comic.vip/templates/frontend/airav/img/title-png/more-ms-jm.webp?v=2" />
-          <span class="whitespace-nowrap text-ellipsis overflow-hidden" :title="userProfile.username">
-            {{ userProfile.username }}
+          <span class="whitespace-nowrap text-ellipsis overflow-hidden" :title="store.userProfile.username">
+            {{ store.userProfile.username }}
           </span>
         </div>
       </div>
-      <downloading-pane v-model:config="config" />
+      <downloading-pane />
     </div>
-    <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile" />
-    <settings-dialog v-model:showing="settingsDialogShowing" v-model:config="config" />
+    <login-dialog v-model:showing="loginDialogShowing" />
+    <settings-dialog v-model:showing="settingsDialogShowing" />
     <about-dialog v-model:showing="aboutDialogShowing" />
   </div>
 </template>

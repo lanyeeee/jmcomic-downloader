@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Comic, commands } from '../bindings.ts'
-import { CurrentTabName } from '../types.ts'
 import { useNotification } from 'naive-ui'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const notification = useNotification()
 
@@ -9,12 +11,9 @@ const props = defineProps<{
   comic: Comic
 }>()
 
-const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
-const currentTabName = defineModel<CurrentTabName>('currentTabName', { required: true })
-
 function pickComic() {
-  pickedComic.value = props.comic
-  currentTabName.value = 'chapter'
+  store.pickedComic = props.comic
+  store.currentTabName = 'chapter'
 }
 
 async function exportCbz() {

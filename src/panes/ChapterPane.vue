@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { SelectionArea, SelectionEvent, SelectionOptions } from '@viselect/vue'
 import { nextTick, ref, watch } from 'vue'
-import { Comic, commands } from '../bindings.ts'
+import { commands } from '../bindings.ts'
 import { useNotification } from 'naive-ui'
+import { useStore } from '../store.ts'
+
+const store = useStore()
 
 const notification = useNotification()
-
-const pickedComic = defineModel<Comic | undefined>('pickedComic', { required: true })
 
 const dropdownX = ref<number>(0)
 const dropdownY = ref<number>(0)
@@ -23,11 +24,14 @@ const selectedIds = ref<Set<number>>(new Set())
 const selectedChanged = ref<boolean>(false)
 const selectionAreaRef = ref<InstanceType<typeof SelectionArea>>()
 
-watch(pickedComic, () => {
-  checkedIds.value = []
-  selectedIds.value.clear()
-  selectionAreaRef.value?.selection?.clearSelection()
-})
+watch(
+  () => store.pickedComic,
+  () => {
+    checkedIds.value = []
+    selectedIds.value.clear()
+    selectionAreaRef.value?.selection?.clearSelection()
+  },
+)
 
 watch(selectedIds.value, () => {
   selectedChanged.value = true
@@ -39,7 +43,7 @@ function extractIds(elements: Element[]): number[] {
     .filter(Boolean)
     .map(Number)
     .filter((id) => {
-      const chapterInfo = pickedComic.value?.chapterInfos.find((c) => c.chapterId === id)
+      const chapterInfo = store.pickedComic?.chapterInfos.find((c) => c.chapterId === id)
       if (chapterInfo === undefined) {
         return false
       }
@@ -89,7 +93,7 @@ function onDropdownSelect(key: 'check' | 'uncheck' | 'check all' | 'uncheck all'
     checkedIds.value = checkedIds.value.filter((id) => !selectedIds.value.has(id))
   } else if (key === 'check all') {
     // 只有未锁定的才会被勾选
-    pickedComic.value?.chapterInfos
+    store.pickedComic?.chapterInfos
       ?.filter((c) => c.isDownloaded !== true && !checkedIds.value.includes(c.chapterId))
       .forEach((c) => checkedIds.value.push(c.chapterId))
   } else if (key === 'uncheck all') {
@@ -107,13 +111,13 @@ async function onContextMenu(e: MouseEvent) {
 
 async function downloadChapters() {
   // 创建下载任务前，先创建元数据
-  const result = await commands.saveMetadata(pickedComic.value!)
+  const result = await commands.saveMetadata(store.pickedComic!)
   if (result.status === 'error') {
     notification.error({ title: '保存元数据失败', description: result.error })
     return
   }
   // 下载勾选的章节
-  const chapterToDownload = pickedComic.value?.chapterInfos.filter(
+  const chapterToDownload = store.pickedComic?.chapterInfos.filter(
     (c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId),
   )
   if (chapterToDownload === undefined) {
@@ -122,7 +126,7 @@ async function downloadChapters() {
   await commands.downloadChapters(chapterToDownload)
 
   for (const downloadedChapter of chapterToDownload) {
-    const chapter = pickedComic.value?.chapterInfos.find((c) => c.chapterId === downloadedChapter.chapterId)
+    const chapter = store.pickedComic?.chapterInfos.find((c) => c.chapterId === downloadedChapter.chapterId)
     if (chapter !== undefined) {
       chapter.isDownloaded = true
       checkedIds.value = checkedIds.value.filter((id) => id !== downloadedChapter.chapterId)
@@ -131,26 +135,26 @@ async function downloadChapters() {
 }
 
 async function refreshChapters() {
-  if (pickedComic.value === undefined) {
+  if (store.pickedComic === undefined) {
     return
   }
-  const result = await commands.getComic(pickedComic.value.id)
+  const result = await commands.getComic(store.pickedComic.id)
   if (result.status === 'error') {
     console.error(result.error)
     return
   }
-  pickedComic.value = result.data
+  store.pickedComic = result.data
 }
 </script>
 
 <template>
   <div class="h-full flex flex-col gap-2 box-border">
-    <div v-if="pickedComic !== undefined" class="flex items-center select-none pt-2 gap-1 px-2">
+    <div v-if="store.pickedComic !== undefined" class="flex items-center select-none pt-2 gap-1 px-2">
       左键拖动进行框选，右键打开菜单
       <n-button class="ml-auto" size="small" @click="refreshChapters">刷新</n-button>
       <n-button size="small" type="primary" @click="downloadChapters">下载勾选章节</n-button>
     </div>
-    <n-empty v-if="pickedComic === undefined" description="请先进行漫画搜索"></n-empty>
+    <n-empty v-if="store.pickedComic === undefined" description="请先进行漫画搜索"></n-empty>
     <SelectionArea
       v-else
       ref="selectionAreaRef"
@@ -163,7 +167,7 @@ async function refreshChapters() {
       @start="onDragStart">
       <n-checkbox-group v-model:value="checkedIds" class="grid grid-cols-3 gap-1.5">
         <n-checkbox
-          v-for="{ chapterId, chapterTitle, isDownloaded } in pickedComic.chapterInfos"
+          v-for="{ chapterId, chapterTitle, isDownloaded } in store.pickedComic.chapterInfos"
           :key="chapterId"
           :data-key="chapterId"
           class="selectable hover:bg-gray-200!"
@@ -174,17 +178,17 @@ async function refreshChapters() {
       </n-checkbox-group>
     </SelectionArea>
 
-    <div v-if="pickedComic !== undefined" class="flex p-2 pt-0">
+    <div v-if="store.pickedComic !== undefined" class="flex p-2 pt-0">
       <img
         class="w-24 mr-4"
-        :src="`https://cdn-msp3.18comic.vip/media/albums/${pickedComic.id}_3x4.jpg`"
+        :src="`https://cdn-msp3.18comic.vip/media/albums/${store.pickedComic.id}_3x4.jpg`"
         alt=""
         referrerpolicy="no-referrer" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-          <span class="font-bold text-xl line-clamp-2">{{ pickedComic.name }}</span>
-          <span class="text-red">作者：{{ pickedComic.author }}</span>
-          <span class="text-gray">标签：{{ pickedComic.tags }}</span>
+          <span class="font-bold text-xl line-clamp-2">{{ store.pickedComic.name }}</span>
+          <span class="text-red">作者：{{ store.pickedComic.author }}</span>
+          <span class="text-gray">标签：{{ store.pickedComic.tags }}</span>
         </div>
       </div>
     </div>
