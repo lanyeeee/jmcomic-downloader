@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import { Comic, commands } from '../bindings.ts'
-import { useNotification } from 'naive-ui'
 import { useStore } from '../store.ts'
 
 const store = useStore()
-
-const notification = useNotification()
 
 const props = defineProps<{
   comic: Comic
@@ -19,7 +16,7 @@ function pickComic() {
 async function exportCbz() {
   const result = await commands.exportCbz(props.comic)
   if (result.status === 'error') {
-    notification.error({ title: '导出cbz失败', description: result.error })
+    console.error(result.error)
     return
   }
 }
@@ -27,7 +24,7 @@ async function exportCbz() {
 async function exportPdf() {
   const result = await commands.exportPdf(props.comic)
   if (result.status === 'error') {
-    notification.error({ title: '导出pdf失败', description: result.error })
+    console.error(result.error)
     return
   }
 }

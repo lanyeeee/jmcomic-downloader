@@ -1,5 +1,5 @@
 use anyhow::Context;
-use events::{ExportCbzEvent, ExportPdfEvent};
+use events::{ExportCbzEvent, ExportPdfEvent, LogEvent};
 use parking_lot::RwLock;
 use tauri::{Manager, Wry};
 
@@ -18,6 +18,7 @@ mod events;
 mod export;
 mod extensions;
 mod jm_client;
+mod logger;
 mod responses;
 mod types;
 mod utils;
@@ -53,10 +54,10 @@ pub fn run() {
         ])
         .events(tauri_specta::collect_events![
             DownloadEvent,
-            SetProxyEvent,
             UpdateDownloadedFavoriteComicEvent,
             ExportCbzEvent,
             ExportPdfEvent,
+            LogEvent,
         ]);
 
     #[cfg(debug_assertions)]
@@ -94,6 +95,8 @@ pub fn run() {
 
             let download_manager = DownloadManager::new(app.handle().clone());
             app.manage(download_manager);
+
+            logger::init(app.handle())?;
 
             Ok(())
         })

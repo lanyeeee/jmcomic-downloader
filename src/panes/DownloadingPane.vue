@@ -101,12 +101,6 @@ onMounted(async () => {
       overallProgress.value.total = totalImageCount
     }
   })
-
-  await events.setProxyEvent.listen(({ payload }) => {
-    if (payload.event === 'Error') {
-      notification.error({ title: '设置代理失败', description: payload.data.errMsg })
-    }
-  })
 })
 
 async function showDownloadDirInFileManager() {
@@ -115,7 +109,7 @@ async function showDownloadDirInFileManager() {
   }
   const result = await commands.showPathInFileManager(store.config.downloadDir)
   if (result.status === 'error') {
-    notification.error({ title: '打开下载目录失败', description: result.error })
+    console.error(result.error)
   }
 }
 

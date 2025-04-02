@@ -156,13 +156,13 @@ export const events = __makeEvents__<{
 downloadEvent: DownloadEvent,
 exportCbzEvent: ExportCbzEvent,
 exportPdfEvent: ExportPdfEvent,
-setProxyEvent: SetProxyEvent,
+logEvent: LogEvent,
 updateDownloadedFavoriteComicEvent: UpdateDownloadedFavoriteComicEvent
 }>({
 downloadEvent: "download-event",
 exportCbzEvent: "export-cbz-event",
 exportPdfEvent: "export-pdf-event",
-setProxyEvent: "set-proxy-event",
+logEvent: "log-event",
 updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 })
 
@@ -178,8 +178,8 @@ export type ChapterInfo = { chapterId: number; chapterTitle: string; comicId: nu
 export type Comic = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean; isDownloaded?: boolean | null }
 export type ComicInFavoriteRespData = { id: string; author: string; description: string | null; name: string; latest_ep: string | null; latest_ep_aid: string | null; image: string; category: CategoryRespData; category_sub: CategorySubRespData }
 export type ComicInSearchRespData = { id: string; author: string; name: string; image: string; category: CategoryRespData; category_sub: CategorySubRespData; liked: boolean; is_favorite: boolean; update_at: number }
-export type CommandError = string
-export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number }
+export type CommandError = { err_title: string; err_message: string }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean }
 export type DownloadEvent = { event: "ChapterPending"; data: { chapterId: number; comicTitle: string; chapterTitle: string } } | { event: "ChapterStart"; data: { chapterId: number; total: number } } | { event: "ChapterEnd"; data: { chapterId: number; errMsg: string | null } } | { event: "ImageSuccess"; data: { chapterId: number; url: string; current: number } } | { event: "ImageError"; data: { chapterId: number; url: string; errMsg: string } } | { event: "OverallUpdate"; data: { downloadedImageCount: number; totalImageCount: number; percentage: number } } | { event: "OverallSpeed"; data: { speed: string } }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type ExportCbzEvent = { event: "Start"; data: { uuid: string; comicTitle: string; total: number } } | { event: "Progress"; data: { uuid: string; current: number } } | { event: "Error"; data: { uuid: string } } | { event: "End"; data: { uuid: string } }
@@ -189,13 +189,15 @@ export type FavoriteSort = "FavoriteTime" | "UpdateTime"
 export type GetChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type GetFavoriteRespData = { list: ComicInFavoriteRespData[]; folder_list: FavoriteFolderRespData[]; total: string; count: number }
 export type GetUserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key in string]: JsonValue }
+export type LogEvent = { timestamp: string; level: LogLevel; fields: { [key in string]: JsonValue }; target: string; filename: string; line_number: number }
+export type LogLevel = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR"
 export type ProxyMode = "System" | "NoProxy" | "Custom"
 export type RelatedListRespData = { id: string; author: string; name: string; image: string }
 export type SearchRespData = { search_query: string; total: number; content: ComicInSearchRespData[] }
 export type SearchResult = { SearchRespData: SearchRespData } | { Comic: Comic }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type SeriesRespData = { id: string; name: string; sort: string }
-export type SetProxyEvent = { event: "Error"; data: { errMsg: string } }
 export type UpdateDownloadedFavoriteComicEvent = { event: "GettingFolders" } | { event: "GettingComics"; data: { total: number } } | { event: "ComicGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 
 /** tauri-specta globals **/

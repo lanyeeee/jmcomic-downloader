@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { commands, events, GetFavoriteRespData, FavoriteSort } from '../bindings.ts'
-import { MessageReactive, useMessage, useNotification } from 'naive-ui'
+import { MessageReactive, useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import { SelectProps } from 'naive-ui'
 import { useStore } from '../store.ts'
@@ -9,7 +9,6 @@ import { useStore } from '../store.ts'
 const store = useStore()
 
 const message = useMessage()
-const notification = useNotification()
 
 const sortOptions: SelectProps['options'] = [
   { label: '收藏时间', value: 'FavoriteTime' },
@@ -56,7 +55,7 @@ async function getFavourite(folderId: number, page: number, sort: FavoriteSort) 
   pageSelected.value = page
   const result = await commands.getFavoriteFolder(folderId, page, sort)
   if (result.status === 'error') {
-    notification.error({ title: '获取收藏失败', description: result.error })
+    console.error(result.error)
     return
   }
   getFavoriteRespData.value = result.data
@@ -65,7 +64,7 @@ async function getFavourite(folderId: number, page: number, sort: FavoriteSort) 
 async function syncFavoriteFolder() {
   const result = await commands.syncFavoriteFolder()
   if (result.status === 'error') {
-    notification.error({ title: '获取收藏失败', description: result.error })
+    console.error(result.error)
     return
   }
   await getFavourite(0, 1, 'FavoriteTime')
@@ -76,7 +75,7 @@ async function updateDownloadedFavoriteComic() {
   const result = await commands.updateDownloadedFavoriteComic()
   if (result.status === 'error') {
     updateMessage?.destroy()
-    notification.error({ title: '更新收藏夹中已下载的漫画失败', description: result.error })
+    console.error(result.error)
     return
   }
 }

@@ -3,12 +3,9 @@ import { commands } from '../bindings.ts'
 import { computed, ref } from 'vue'
 import { path } from '@tauri-apps/api'
 import { appDataDir } from '@tauri-apps/api/path'
-import { useNotification } from 'naive-ui'
 import { useStore } from '../store.ts'
 
 const store = useStore()
-
-const notification = useNotification()
 
 const showing = defineModel<boolean>('showing', { required: true })
 
@@ -21,7 +18,7 @@ async function showConfigInFileManager() {
   const configPath = await path.join(await appDataDir(), configName)
   const result = await commands.showPathInFileManager(configPath)
   if (result.status === 'error') {
-    notification.error({ title: '打开配置目录失败', description: result.error })
+    console.error(result.error)
   }
 }
 </script>

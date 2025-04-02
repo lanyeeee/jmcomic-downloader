@@ -1,17 +1,6 @@
-// TODO: 删除未使用的import
-use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::config::Config;
-use crate::download_manager::IMAGE_DOMAIN;
-use crate::extensions::AnyhowErrorToStringChain;
-use crate::responses::{
-    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
-    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
-};
-use crate::types::{FavoriteSort, ProxyMode, SearchSort};
-use crate::{utils, SetProxyEvent};
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockDecrypt, KeyInit};
 use aes::Aes256;
@@ -24,7 +13,16 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
-use tauri_specta::Event;
+
+use crate::config::Config;
+use crate::download_manager::IMAGE_DOMAIN;
+use crate::extensions::AnyhowErrorToStringChain;
+use crate::responses::{
+    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
+    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
+};
+use crate::types::{FavoriteSort, ProxyMode, SearchSort};
+use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -475,10 +473,9 @@ pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewa
             match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
                 Ok(proxy) => builder.proxy(proxy),
                 Err(err) => {
-                    let err = err.context(format!("JmClient设置代理 {proxy_url} 失败"));
-                    let err_msg = err.to_string_chain();
-                    // 发送设置代理失败事件
-                    let _ = SetProxyEvent::Error { err_msg }.emit(app);
+                    let err_title = format!("`JmClient`设置代理`{proxy_url}`失败");
+                    let string_chain = err.to_string_chain();
+                    tracing::error!(err_title, message = string_chain);
                     builder
                 }
             }

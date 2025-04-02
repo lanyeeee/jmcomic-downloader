@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { commands } from '../bindings.ts'
-import { useMessage, useNotification } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import FloatLabelInput from './FloatLabelInput.vue'
 import { useStore } from '../store.ts'
 
 const store = useStore()
 
 const message = useMessage()
-const notification = useNotification()
 
 const showing = defineModel<boolean>('showing', { required: true })
 
@@ -31,7 +30,7 @@ async function onLogin() {
 
   const result = await commands.login(username.value, password.value)
   if (result.status === 'error') {
-    notification.error({ title: '登录失败', description: result.error })
+    console.error(result.error)
     return
   }
   store.userProfile = result.data
