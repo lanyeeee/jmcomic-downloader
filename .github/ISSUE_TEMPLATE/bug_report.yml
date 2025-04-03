@@ -3,6 +3,13 @@ description: 反馈遇到的问题
 labels: [bug]
 title: "[Bug] 修改我！"
 body:
+  - type: checkboxes
+    attributes:
+      label: 在提交BUG之前
+      description: 请先尝试使用最新版，也许这个问题已经在最新版修复
+      options:
+        - label: 我尝试使用了最新版，我确定这个问题在最新版中依然存在
+          required: true
   - type: markdown
     attributes:
       value: |
@@ -37,8 +44,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: 工具版本号
-      placeholder: v0.1
+      label: 工具版本号(点`关于`按钮查看)
+      placeholder: v0.1.0
     validations:
       required: true
   - type: textarea
