@@ -6,6 +6,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
+use image::codecs::png;
+use image::codecs::png::PngEncoder;
 use image::{ImageBuffer, ImageFormat, RgbImage};
 use parking_lot::RwLock;
 use reqwest::StatusCode;
@@ -505,13 +507,19 @@ fn save_image_by_format(
     format: DownloadFormat,
 ) -> anyhow::Result<()> {
     let mut img_data = Vec::new();
-    let img_format = match format {
-        DownloadFormat::Jpeg => ImageFormat::Jpeg,
-        DownloadFormat::Png => ImageFormat::Png,
-        DownloadFormat::Webp => ImageFormat::WebP,
-    };
 
-    img.write_to(&mut Cursor::new(&mut img_data), img_format)?;
+    match format {
+        DownloadFormat::Jpeg => img.write_to(&mut Cursor::new(&mut img_data), ImageFormat::Jpeg)?,
+        DownloadFormat::Png => {
+            let encoder = PngEncoder::new_with_quality(
+                Cursor::new(&mut img_data),
+                png::CompressionType::Best,
+                png::FilterType::default(),
+            );
+            img.write_with_encoder(encoder)?;
+        }
+        DownloadFormat::Webp => img.write_to(&mut Cursor::new(&mut img_data), ImageFormat::WebP)?,
+    }
 
     std::fs::write(save_path, img_data).context(format!("保存图片`{save_path:?}`失败"))?;
     Ok(())
