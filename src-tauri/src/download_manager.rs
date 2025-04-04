@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
-use image::{DynamicImage, GenericImage, GenericImageView, ImageFormat};
+use image::{ImageBuffer, ImageFormat, RgbImage};
 use parking_lot::RwLock;
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
@@ -486,19 +486,21 @@ fn save_image(
     block_num: u32,
     image_data: &Bytes,
 ) -> anyhow::Result<()> {
-    let mut src_img = image::load_from_memory(image_data).context("解码图片失败")?;
+    let mut src_img = image::load_from_memory(image_data)
+        .context("解码图片失败")?
+        .to_rgb8();
     // 如果无需拼接，直接根据格式保存图片
     if block_num == 0 {
         return save_image_by_format(&src_img, save_path, download_format);
     }
     // 否则拼接图片
-    let stitched_image = stitch_image(&mut src_img, block_num)?;
+    let stitched_image = stitch_image(&mut src_img, block_num);
     save_image_by_format(&stitched_image, save_path, download_format)
 }
 
 /// 根据格式保存图片
 fn save_image_by_format(
-    img: &DynamicImage,
+    img: &RgbImage,
     save_path: &PathBuf,
     format: DownloadFormat,
 ) -> anyhow::Result<()> {
@@ -508,26 +510,19 @@ fn save_image_by_format(
         DownloadFormat::Png => ImageFormat::Png,
         DownloadFormat::Webp => ImageFormat::WebP,
     };
-    match format {
-        DownloadFormat::Jpeg => {
-            img.to_rgb8()
-                .write_to(&mut Cursor::new(&mut img_data), img_format)?;
-        }
-        DownloadFormat::Png | DownloadFormat::Webp => {
-            img.to_rgba8()
-                .write_to(&mut Cursor::new(&mut img_data), img_format)?;
-        }
-    };
+
+    img.write_to(&mut Cursor::new(&mut img_data), img_format)?;
+
     std::fs::write(save_path, img_data).context(format!("保存图片`{save_path:?}`失败"))?;
     Ok(())
 }
 
 /// 拼接图片
-fn stitch_image(src_img: &mut DynamicImage, block_num: u32) -> anyhow::Result<DynamicImage> {
+fn stitch_image(src_img: &mut RgbImage, block_num: u32) -> RgbImage {
     // 如果block_num不为0，需要将图片拼接后再保存
     let (width, height) = src_img.dimensions();
-    // 创建一张空的图片，尺寸与原图相同，用于拼接分块
-    let mut stitched_image = image::ImageBuffer::new(width, height);
+    // 创建一张空的RGB图片，尺寸与原图相同，用于拼接分块
+    let mut stitched_image = ImageBuffer::new(width, height);
     // 计算原图像的高度除以num的余数
     let remainder_height = height % block_num;
     // 将图片切分为block_num块并拼接
@@ -544,13 +539,16 @@ fn stitch_image(src_img: &mut DynamicImage, block_num: u32) -> anyhow::Result<Dy
         } else {
             dst_img_y_start += remainder_height;
         }
-        // 从原图裁剪出当前块
-        let cropped_block = src_img.crop(0, src_img_y_start, width, block_height);
-        // 将裁剪出的当前块复制到新图的对应位置
-        stitched_image
-            .copy_from(&cropped_block, 0, dst_img_y_start)
-            .context("拼接图片失败")?;
+        // 逐行复制当前块
+        for y in 0..block_height {
+            let src_y = src_img_y_start + y;
+            let dst_y = dst_img_y_start + y;
+            // 复制整行像素到目标图像
+            for x in 0..width {
+                stitched_image.put_pixel(x, dst_y, *src_img.get_pixel(x, src_y));
+            }
+        }
     }
 
-    Ok(DynamicImage::ImageRgba8(stitched_image))
+    stitched_image
 }
