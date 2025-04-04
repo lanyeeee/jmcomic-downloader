@@ -274,6 +274,11 @@ impl DownloadManager {
         block_num: u32,
         downloaded_count: Arc<AtomicU32>,
     ) {
+        if save_path.exists() {
+            // 如果图片已经存在，直接返回
+            downloaded_count.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
         // 获取下载图片的semaphore
         let permit = match self.img_sem.acquire().await.map_err(anyhow::Error::from) {
             Ok(permit) => permit,
