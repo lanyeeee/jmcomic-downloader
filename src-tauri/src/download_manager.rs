@@ -115,7 +115,6 @@ impl DownloadManager {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     //TODO: 这里不能用anyhow::Result<()>和`?`，否则会导致错误信息被忽略
     async fn process_chapter(self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
         // 发送章节排队事件
@@ -136,6 +135,7 @@ impl DownloadManager {
             .get_urls_with_block_num(chapter_info.chapter_id)
             .await?;
         // 总共需要下载的图片数量
+        #[allow(clippy::cast_possible_truncation)]
         let total = urls_with_block_num.len() as u32;
         // 记录总共需要下载的图片数量
         self.total_image_count.fetch_add(total, Ordering::Relaxed);
@@ -173,6 +173,7 @@ impl DownloadManager {
             let downloaded_image_count = self.downloaded_image_count.load(Ordering::Relaxed);
             let total_image_count = self.total_image_count.load(Ordering::Relaxed);
             // 更新下载进度
+            #[allow(clippy::cast_lossless)]
             let percentage = downloaded_image_count as f64 / total_image_count as f64 * 100.0;
             // 发送总进度条更新事件
             let _ = DownloadEvent::OverallUpdate {
@@ -378,8 +379,7 @@ impl DownloadManager {
 }
 
 fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
-    // TODO: 删掉多余的return
-    return if id < scramble_id {
+    if id < scramble_id {
         0
     } else if id < 268_850 {
         10
@@ -391,7 +391,7 @@ fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
         block_num %= x;
         block_num = block_num * 2 + 2;
         block_num
-    };
+    }
 }
 
 pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {

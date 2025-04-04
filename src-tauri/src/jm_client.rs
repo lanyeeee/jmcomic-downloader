@@ -92,11 +92,10 @@ impl JmClient {
         ts: u64,
     ) -> anyhow::Result<reqwest::Response> {
         let tokenparam = format!("{ts},{APP_VERSION}");
-        // TODO: 直接用 ==
-        let token = if path != ApiPath::GetScrambleId {
-            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
-        } else {
+        let token = if path == ApiPath::GetScrambleId {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
+        } else {
+            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         };
 
         let path = path.as_str();
@@ -366,7 +365,7 @@ impl JmClient {
             .nth(1)
             .and_then(|s| s.split(';').next())
             .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(220980);
+            .unwrap_or(220_980);
         Ok(scramble_id)
     }
 
@@ -496,8 +495,7 @@ fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 使用Base64解码传入的数据，得到AES-256-ECB加密的数据
     let aes256_ecb_encrypted_data = general_purpose::STANDARD.decode(data)?;
     // 生成密钥
-    // TODO: 直接用format!("{ts}{APP_DATA_SECRET}")
-    let key = utils::md5_hex(&format!("{}{}", ts, APP_DATA_SECRET));
+    let key = utils::md5_hex(&format!("{ts}{APP_DATA_SECRET}"));
     // 使用AES-256-ECB进行解密
     let cipher = Aes256::new(GenericArray::from_slice(key.as_bytes()));
     let decrypted_data_with_padding: Vec<u8> = aes256_ecb_encrypted_data
