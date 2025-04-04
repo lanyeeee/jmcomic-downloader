@@ -1,4 +1,4 @@
-use std::io::BufWriter;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -6,8 +6,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context};
 use bytes::Bytes;
-use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-use image::{DynamicImage, GenericImage, GenericImageView};
+use image::{DynamicImage, GenericImage, GenericImageView, ImageFormat};
 use parking_lot::RwLock;
 use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
@@ -115,6 +114,7 @@ impl DownloadManager {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     //TODO: 这里不能用anyhow::Result<()>和`?`，否则会导致错误信息被忽略
     async fn process_chapter(self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
         // 发送章节排队事件
@@ -134,6 +134,27 @@ impl DownloadManager {
         let urls_with_block_num = self
             .get_urls_with_block_num(chapter_info.chapter_id)
             .await?;
+        // 图片下载路径
+        let save_paths: Vec<PathBuf> = urls_with_block_num
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                let extension = download_format.as_str();
+                temp_download_dir.join(format!("{:03}.{extension}", i + 1))
+            })
+            .collect();
+        if let Err(err) =
+            Self::clean_temp_download_dir(&temp_download_dir, &chapter_info, &save_paths)
+        {
+            let err_msg = Some(err.to_string_chain());
+            // 发送下载结束事件
+            let _ = DownloadEvent::ChapterEnd {
+                chapter_id: chapter_info.chapter_id,
+                err_msg,
+            }
+            .emit(&self.app);
+            return Ok(());
+        }
         // 总共需要下载的图片数量
         #[allow(clippy::cast_possible_truncation)]
         let total = urls_with_block_num.len() as u32;
@@ -149,11 +170,11 @@ impl DownloadManager {
             total,
         }
         .emit(&self.app);
-        for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
+        for ((url, block_num), save_path) in
+            urls_with_block_num.into_iter().zip(save_paths.into_iter())
+        {
             let manager = self.clone();
             let chapter_id = chapter_info.chapter_id;
-            let ext = download_format.as_str();
-            let save_path = temp_download_dir.join(format!("{:03}.{ext}", i + 1));
             let url = url.clone();
             let downloaded_count = downloaded_count.clone();
             // 创建下载任务
@@ -263,6 +284,33 @@ impl DownloadManager {
             })
             .collect();
         Ok(urls_with_block_num)
+    }
+
+    /// 删除临时下载目录中与`config.download_format`对不上的文件
+    fn clean_temp_download_dir(
+        temp_download_dir: &Path,
+        chapter_info: &ChapterInfo,
+        save_paths: &[PathBuf],
+    ) -> anyhow::Result<()> {
+        let comic_title = &chapter_info.comic_title;
+        let chapter_title = &chapter_info.chapter_title;
+
+        let entries = std::fs::read_dir(temp_download_dir)
+            .context(format!("读取临时下载目录`{temp_download_dir:?}`失败"))?;
+
+        for path in entries.filter_map(Result::ok).map(|entry| entry.path()) {
+            if !save_paths.contains(&path) {
+                std::fs::remove_file(&path).context(format!("删除临时下载目录的`{path:?}`失败"))?;
+            }
+        }
+
+        tracing::trace!(
+            comic_title,
+            chapter_title,
+            "清理临时下载目录`{temp_download_dir:?}`成功"
+        );
+
+        Ok(())
     }
 
     async fn download_image(
@@ -454,24 +502,23 @@ fn save_image_by_format(
     save_path: &PathBuf,
     format: DownloadFormat,
 ) -> anyhow::Result<()> {
+    let mut img_data = Vec::new();
+    let img_format = match format {
+        DownloadFormat::Jpeg => ImageFormat::Jpeg,
+        DownloadFormat::Png => ImageFormat::Png,
+        DownloadFormat::Webp => ImageFormat::WebP,
+    };
     match format {
         DownloadFormat::Jpeg => {
-            img.to_rgb8().save(save_path)?;
+            img.to_rgb8()
+                .write_to(&mut Cursor::new(&mut img_data), img_format)?;
         }
-        DownloadFormat::Png => {
-            let png_file = std::fs::File::create(save_path)?;
-            let buffered_file_writer = BufWriter::new(png_file);
-            let encoder = PngEncoder::new_with_quality(
-                buffered_file_writer,
-                CompressionType::Best,
-                FilterType::default(),
-            );
-            img.write_with_encoder(encoder)?;
-        }
-        DownloadFormat::Webp => {
-            img.to_rgba8().save(save_path)?;
+        DownloadFormat::Png | DownloadFormat::Webp => {
+            img.to_rgba8()
+                .write_to(&mut Cursor::new(&mut img_data), img_format)?;
         }
     };
+    std::fs::write(save_path, img_data).context(format!("保存图片`{save_path:?}`失败"))?;
     Ok(())
 }
 
