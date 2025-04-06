@@ -3,8 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { commands, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
 import { NProgress, useNotification } from 'naive-ui'
-import { FolderOpenOutlined } from '@vicons/antd'
+import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
 import { useStore } from '../store.ts'
+import SettingsDialog from '../components/SettingsDialog.vue'
 
 const store = useStore()
 
@@ -18,6 +19,8 @@ type ProgressData = {
 }
 
 const notification = useNotification()
+
+const settingsDialogShowing = ref<boolean>(false)
 
 const progresses = ref<Map<number, ProgressData>>(new Map())
 const overallProgress = ref<ProgressData>({
@@ -129,17 +132,27 @@ async function selectDownloadDir() {
 
 <template>
   <div v-if="store.config !== undefined" class="flex flex-col gap-2 flex-1 overflow-auto">
-    <n-input-group class="box-border px-2 pt-2">
-      <n-input-group-label size="small">下载目录</n-input-group-label>
-      <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
-      <n-button size="small" @click="showDownloadDirInFileManager">
+    <div class="flex gap-1 box-border px-2 pt-2">
+      <n-input-group class="">
+        <n-input-group-label size="small">下载目录</n-input-group-label>
+        <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
+        <n-button size="small" @click="showDownloadDirInFileManager">
+          <template #icon>
+            <n-icon>
+              <FolderOpenOutlined />
+            </n-icon>
+          </template>
+        </n-button>
+      </n-input-group>
+      <n-button size="small" @click="settingsDialogShowing = true">
         <template #icon>
           <n-icon>
-            <FolderOpenOutlined />
+            <SettingOutlined />
           </n-icon>
         </template>
+        配置
       </n-button>
-    </n-input-group>
+    </div>
     <div class="grid grid-cols-[1fr_4fr_1fr]">
       <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
       <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
@@ -158,5 +171,6 @@ async function selectDownloadDir() {
         <n-progress v-else :percentage="percentage">{{ downloadedCount }}/{{ total }}</n-progress>
       </div>
     </div>
+    <settings-dialog v-model:showing="settingsDialogShowing" />
   </div>
 </template>
