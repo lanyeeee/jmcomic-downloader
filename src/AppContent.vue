@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { commands, events, LogEvent } from './bindings.ts'
-import { useMessage, useNotification } from 'naive-ui'
+import { commands } from './bindings.ts'
+import { useMessage } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
 import ChapterPane from './panes/ChapterPane.vue'
 import DownloadingPane from './panes/DownloadingPane.vue'
 import FavoritePane from './panes/FavoritePane.vue'
 import AboutDialog from './components/AboutDialog.vue'
-import { QuestionCircleOutlined, UserOutlined, SettingOutlined } from '@vicons/antd'
-import SettingsDialog from './components/SettingsDialog.vue'
+import { QuestionCircleOutlined, UserOutlined, BarsOutlined } from '@vicons/antd'
 import DownloadedPane from './panes/DownloadedPane.vue'
 import { useStore } from './store.ts'
+import LogViewer from './components/LogViewer.vue'
 
 const store = useStore()
 
 const message = useMessage()
-const notification = useNotification()
 
 const loginDialogShowing = ref<boolean>(false)
-const settingsDialogShowing = ref<boolean>(false)
 const aboutDialogShowing = ref<boolean>(false)
+const logViewerShowing = ref<boolean>(false)
 
 watch(
   () => store.config,
@@ -57,35 +56,6 @@ onMounted(async () => {
     message.success('自动登录成功')
   }
 })
-
-onMounted(async () => {
-  type LogRecord = LogEvent & { id: number; formatedLog: string }
-  const logRecords = ref<LogRecord[]>([])
-  let nextLogRecordId = 0
-  await events.logEvent.listen(async ({ payload: logEvent }) => {
-    logRecords.value.push({
-      ...logEvent,
-      id: nextLogRecordId++,
-      formatedLog: formatLogEvent(logEvent),
-    })
-    const { level, fields } = logEvent
-    if (level === 'ERROR') {
-      notification.error({
-        title: fields['err_title'] as string,
-        description: fields['message'] as string,
-        duration: 0,
-      })
-    }
-  })
-})
-
-function formatLogEvent(logEvent: LogEvent): string {
-  const { timestamp, level, fields, target, filename, line_number } = logEvent
-  const fields_str = Object.entries(fields)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(' ')
-  return `${timestamp} ${level} ${target}: ${filename}:${line_number} ${fields_str}`
-}
 </script>
 
 <template>
@@ -114,13 +84,13 @@ function formatLogEvent(logEvent: LogEvent): string {
           </template>
           登录
         </n-button>
-        <n-button @click="settingsDialogShowing = true">
+        <n-button @click="logViewerShowing = true">
           <template #icon>
             <n-icon>
-              <SettingOutlined />
+              <BarsOutlined />
             </n-icon>
           </template>
-          配置
+          日志
         </n-button>
         <n-button @click="aboutDialogShowing = true">
           <template #icon>
@@ -145,8 +115,8 @@ function formatLogEvent(logEvent: LogEvent): string {
       <downloading-pane />
     </div>
     <login-dialog v-model:showing="loginDialogShowing" />
-    <settings-dialog v-model:showing="settingsDialogShowing" />
     <about-dialog v-model:showing="aboutDialogShowing" />
+    <log-viewer v-model:showing="logViewerShowing" />
   </div>
 </template>
 
