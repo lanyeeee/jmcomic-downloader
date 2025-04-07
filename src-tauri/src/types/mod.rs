@@ -17,5 +17,3 @@ pub use log_level::*;
 pub use proxy_mode::*;
 pub use search_result::*;
 pub use search_sort::*;
-
-pub type AsyncRwLock<T> = tokio::sync::RwLock<T>;

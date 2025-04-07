@@ -2,19 +2,14 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use bytes::Bytes;
 use image::codecs::png;
 use image::codecs::png::PngEncoder;
 use image::{ImageBuffer, ImageFormat, RgbImage};
 use parking_lot::RwLock;
-use reqwest::StatusCode;
-use reqwest_middleware::ClientWithMiddleware;
-use reqwest_retry::policies::ExponentialBackoff;
-use reqwest_retry::RetryTransientMiddleware;
-use serde_json::json;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::runtime::Runtime;
@@ -25,7 +20,7 @@ use tokio::task::JoinSet;
 use crate::config::Config;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
-use crate::types::{AsyncRwLock, ChapterInfo, DownloadFormat, ProxyMode};
+use crate::types::{ChapterInfo, DownloadFormat};
 use crate::{utils, DownloadEvent};
 
 pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
@@ -40,7 +35,6 @@ pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 /// - 其他字段都被 `Arc` 包裹，这些字段的克隆操作仅仅是增加引用计数。
 #[derive(Clone)]
 pub struct DownloadManager {
-    http_client: Arc<AsyncRwLock<ClientWithMiddleware>>,
     app: AppHandle,
     rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
@@ -54,8 +48,6 @@ pub struct DownloadManager {
 
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
-        let http_client = create_http_client(&app);
-        let http_client = Arc::new(AsyncRwLock::new(http_client));
         // 创建异步运行时
         let core_count = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
@@ -67,7 +59,6 @@ impl DownloadManager {
             .expect("DownloadManager::new: 创建Runtime失败");
         let (sender, receiver) = mpsc::channel::<ChapterInfo>(32);
         let manager = DownloadManager {
-            http_client,
             app,
             rt: Arc::new(rt),
             sender: Arc::new(sender),
@@ -83,11 +74,6 @@ impl DownloadManager {
         manager.rt.spawn(manager.clone().receiver_loop(receiver));
 
         manager
-    }
-
-    pub async fn recreate_http_client(&self) {
-        let http_client = create_http_client(&self.app);
-        *self.http_client.write().await = http_client;
     }
 
     pub async fn submit_chapter(&self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
@@ -263,7 +249,7 @@ impl DownloadManager {
     }
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> anyhow::Result<Vec<(String, u32)>> {
-        let jm_client = self.app.state::<JmClient>();
+        let jm_client = self.jm_client();
         // 限制同时获取urls_with_block_num的数量
         let _permit = self.urls_with_block_num_sem.acquire().await?;
         // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
@@ -345,7 +331,7 @@ impl DownloadManager {
             }
         };
         // 成功获取semaphore后，开始下载图片
-        let image_data = match self.get_image_bytes(&url).await {
+        let image_data = match self.jm_client().get_image_bytes(&url).await {
             Ok(data) => data,
             Err(err) => {
                 let err = err.context(format!("下载图片`{url}`失败"));
@@ -393,43 +379,8 @@ impl DownloadManager {
         .await;
     }
 
-    // TODO: 把下载图片的逻辑移到JmClient中
-    async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
-        let http_res = self.http_client.read().await.get(url).send().await?;
-
-        let status = http_res.status();
-        if status != StatusCode::OK {
-            let text = http_res.text().await?;
-            let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
-            return Err(err);
-        }
-
-        let mut image_data = http_res.bytes().await?;
-
-        if image_data.is_empty() {
-            // 如果图片为空，说明jm那边缓存失效了，带上时间戳再次请求，以避免缓存
-            let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-            let query = json!({"ts": ts});
-            let http_res = self
-                .http_client
-                .read()
-                .await
-                .get(url)
-                .query(&query)
-                .send()
-                .await?;
-
-            let status = http_res.status();
-            if status != StatusCode::OK {
-                let text = http_res.text().await?;
-                let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
-                return Err(err);
-            }
-
-            image_data = http_res.bytes().await?;
-        }
-
-        Ok(image_data)
+    fn jm_client(&self) -> JmClient {
+        self.app.state::<JmClient>().inner().clone()
     }
 }
 
@@ -447,39 +398,6 @@ fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
         block_num = block_num * 2 + 2;
         block_num
     }
-}
-
-pub fn create_http_client(app: &AppHandle) -> ClientWithMiddleware {
-    let builder = reqwest::ClientBuilder::new();
-
-    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
-    let builder = match proxy_mode {
-        ProxyMode::System => builder,
-        ProxyMode::NoProxy => builder.no_proxy(),
-        ProxyMode::Custom => {
-            let config = app.state::<RwLock<Config>>();
-            let config = config.read();
-            let proxy_host = &config.proxy_host;
-            let proxy_port = &config.proxy_port;
-            let proxy_url = format!("http://{proxy_host}:{proxy_port}");
-
-            match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
-                Ok(proxy) => builder.proxy(proxy),
-                Err(err) => {
-                    let err_title = format!("`DownloadManager`设置代理`{proxy_url}`失败");
-                    let string_chain = err.to_string_chain();
-                    tracing::error!(err_title, message = string_chain);
-                    builder
-                }
-            }
-        }
-    };
-
-    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(2);
-
-    reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
-        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-        .build()
 }
 
 fn save_image(

@@ -7,9 +7,12 @@ use aes::Aes256;
 use anyhow::{anyhow, Context};
 use base64::engine::general_purpose;
 use base64::Engine;
+use bytes::Bytes;
 use parking_lot::RwLock;
 use reqwest::cookie::Jar;
+use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
+use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
@@ -60,27 +63,33 @@ impl ApiPath {
 #[derive(Clone)]
 pub struct JmClient {
     app: AppHandle,
-    http_client: Arc<RwLock<ClientWithMiddleware>>,
-    jar: Arc<Jar>,
+    api_client: Arc<RwLock<ClientWithMiddleware>>,
+    api_jar: Arc<Jar>,
+    img_client: Arc<RwLock<ClientWithMiddleware>>,
 }
 
 impl JmClient {
     pub fn new(app: AppHandle) -> Self {
-        let jar = Arc::new(Jar::default());
+        let api_jar = Arc::new(Jar::default());
+        let api_client = create_api_client(&app, &api_jar);
+        let api_client = Arc::new(RwLock::new(api_client));
 
-        let http_client = create_http_client(&app, &jar);
-        let http_client = Arc::new(RwLock::new(http_client));
+        let img_client = create_img_client(&app);
+        let img_client = Arc::new(RwLock::new(img_client));
 
         Self {
             app,
-            http_client,
-            jar,
+            api_client,
+            api_jar,
+            img_client,
         }
     }
 
-    pub fn recreate_http_client(&self) {
-        let http_client = create_http_client(&self.app, &self.jar);
-        *self.http_client.write() = http_client;
+    pub fn reload_client(&self) {
+        let api_client = create_api_client(&self.app, &self.api_jar);
+        *self.api_client.write() = api_client;
+        let img_client = create_img_client(&self.app);
+        *self.img_client.write() = img_client;
     }
 
     async fn jm_request(
@@ -100,7 +109,7 @@ impl JmClient {
 
         let path = path.as_str();
         let request = self
-            .http_client
+            .api_client
             .read()
             .request(method, format!("https://{API_DOMAIN}{path}").as_str())
             .header("token", token)
@@ -451,9 +460,25 @@ impl JmClient {
             ))?;
         Ok(toggle_favorite_resp_data)
     }
+
+    pub async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
+        let request = self.img_client.read().get(url);
+
+        let http_resp = request.send().await?;
+
+        let status = http_resp.status();
+        if status != StatusCode::OK {
+            let text = http_resp.text().await?;
+            let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
+            return Err(err);
+        }
+
+        let image_data = http_resp.bytes().await?;
+        Ok(image_data)
+    }
 }
 
-pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
+pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
     let builder = reqwest::ClientBuilder::new()
         .cookie_provider(jar.clone())
         .timeout(Duration::from_secs(2)); // 每个请求超过2秒就超时
@@ -481,10 +506,43 @@ pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewa
         }
     };
 
-    let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
+    let retry_policy = ExponentialBackoff::builder()
         .base(1) // 指数为1，保证重试间隔为1秒不变
         .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
         .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
+
+    reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build()
+}
+
+pub fn create_img_client(app: &AppHandle) -> ClientWithMiddleware {
+    let builder = reqwest::ClientBuilder::new();
+
+    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let builder = match proxy_mode {
+        ProxyMode::System => builder,
+        ProxyMode::NoProxy => builder.no_proxy(),
+        ProxyMode::Custom => {
+            let config = app.state::<RwLock<Config>>();
+            let config = config.read();
+            let proxy_host = &config.proxy_host;
+            let proxy_port = &config.proxy_port;
+            let proxy_url = format!("http://{proxy_host}:{proxy_port}");
+
+            match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
+                Ok(proxy) => builder.proxy(proxy),
+                Err(err) => {
+                    let err_title = format!("`DownloadManager`设置代理`{proxy_url}`失败");
+                    let string_chain = err.to_string_chain();
+                    tracing::error!(err_title, message = string_chain);
+                    builder
+                }
+            }
+        }
+    };
+
+    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(2);
 
     reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
         .with(RetryTransientMiddleware::new_with_policy(retry_policy))
