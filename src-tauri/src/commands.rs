@@ -36,11 +36,10 @@ pub fn get_config(config: State<RwLock<Config>>) -> Config {
 #[tauri::command(async)]
 #[specta::specta]
 #[allow(clippy::needless_pass_by_value)]
-pub async fn save_config(
+pub fn save_config(
     app: AppHandle,
-    jm_client: State<'_, JmClient>,
-    download_manager: State<'_, DownloadManager>,
-    config_state: State<'_, RwLock<Config>>,
+    jm_client: State<JmClient>,
+    config_state: State<RwLock<Config>>,
     config: Config,
 ) -> CommandResult<()> {
     let proxy_changed = {
@@ -63,8 +62,7 @@ pub async fn save_config(
     }
 
     if proxy_changed {
-        jm_client.recreate_http_client();
-        download_manager.recreate_http_client().await;
+        jm_client.reload_client();
     }
 
     if file_logger_changed {
