@@ -70,7 +70,7 @@ impl DownloadManager {
             total_image_count: Arc::new(AtomicU32::new(0)),
         };
         // TODO: 改用tauri::async_runtime::spawn
-        manager.rt.spawn(manager.clone().log_download_speed());
+        manager.rt.spawn(manager.clone().emit_download_speed_loop());
         manager.rt.spawn(manager.clone().receiver_loop(receiver));
 
         manager
@@ -80,9 +80,8 @@ impl DownloadManager {
         Ok(self.sender.send(chapter_info).await?)
     }
 
-    // TODO: 换个函数名，如emit_download_speed_loop
     #[allow(clippy::cast_precision_loss)]
-    async fn log_download_speed(self) {
+    async fn emit_download_speed_loop(self) {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
 
         loop {
