@@ -347,9 +347,9 @@ impl DownloadManager {
         // 下载完成后释放semaphore
         drop(permit);
         // 保存图片，因为保存图片可能要进行图片拼接
-        // 而图片拼接是CPU密集型操作，所以使用spawn_blocking，避免阻塞worker threads
-        // TODO: 改用rayon + tokio::sync::oneshot
-        let _ = tokio::task::spawn_blocking(move || {
+        // 而图片拼接是CPU密集型操作，所以使用rayon并发处理，避免阻塞tokio的worker threads
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        rayon::spawn(move || {
             if let Err(err) = save_image(&save_path, download_format, block_num, &image_data) {
                 let err = err.context(format!("保存图片`{url}`到`{save_path:?}`失败"));
                 // 发送下载图片失败事件
@@ -359,6 +359,8 @@ impl DownloadManager {
                     err_msg: err.to_string_chain(),
                 }
                 .emit(&self.app);
+                // 通知rayon任务完成
+                let _ = sender.send(());
                 return;
             }
             // 记录下载字节数
@@ -374,8 +376,11 @@ impl DownloadManager {
                 current: downloaded_count,
             }
             .emit(&self.app);
-        })
-        .await;
+            // 通知rayon任务完成
+            let _ = sender.send(());
+        });
+        // 在tokio任务中等待rayon任务的完成，避免阻塞worker threads
+        let _ = receiver.await;
     }
 
     fn jm_client(&self) -> JmClient {
