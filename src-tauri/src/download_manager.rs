@@ -12,7 +12,6 @@ use image::{ImageBuffer, ImageFormat, RgbImage};
 use parking_lot::RwLock;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
-use tokio::runtime::Runtime;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::{mpsc, Semaphore};
 use tokio::task::JoinSet;
@@ -36,7 +35,6 @@ pub const IMAGE_DOMAIN: &str = "cdn-msp2.jmapiproxy2.cc";
 #[derive(Clone)]
 pub struct DownloadManager {
     app: AppHandle,
-    rt: Arc<Runtime>,
     sender: Arc<mpsc::Sender<ChapterInfo>>,
     urls_with_block_num_sem: Arc<Semaphore>,
     chapter_sem: Arc<Semaphore>,
@@ -48,19 +46,9 @@ pub struct DownloadManager {
 
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
-        // 创建异步运行时
-        let core_count = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .expect("DownloadManager::new: 获取CPU核心数失败");
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .max_blocking_threads(core_count)
-            .enable_all()
-            .build()
-            .expect("DownloadManager::new: 创建Runtime失败");
         let (sender, receiver) = mpsc::channel::<ChapterInfo>(32);
         let manager = DownloadManager {
             app,
-            rt: Arc::new(rt),
             sender: Arc::new(sender),
             urls_with_block_num_sem: Arc::new(Semaphore::new(10)), // 最多同时获取10个urls_with_block_num
             chapter_sem: Arc::new(Semaphore::new(3)),              // 最多同时下载3个章节
@@ -69,9 +57,9 @@ impl DownloadManager {
             downloaded_image_count: Arc::new(AtomicU32::new(0)),
             total_image_count: Arc::new(AtomicU32::new(0)),
         };
-        // TODO: 改用tauri::async_runtime::spawn
-        manager.rt.spawn(manager.clone().emit_download_speed_loop());
-        manager.rt.spawn(manager.clone().receiver_loop(receiver));
+
+        tauri::async_runtime::spawn(manager.clone().emit_download_speed_loop());
+        tauri::async_runtime::spawn(manager.clone().receiver_loop(receiver));
 
         manager
     }
