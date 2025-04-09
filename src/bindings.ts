@@ -43,22 +43,6 @@ async getComic(aid: number) : Promise<Result<Comic, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getChapter(id: number) : Promise<Result<GetChapterRespData, CommandError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_chapter", { id }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getScrambleId(id: number) : Promise<Result<number, CommandError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_scramble_id", { id }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async getFavoriteFolder(folderId: number, page: number, sort: FavoriteSort) : Promise<Result<GetFavoriteRespData, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_favorite_folder", { folderId, page, sort }) };
@@ -194,7 +178,6 @@ export type ExportCbzEvent = { event: "Start"; data: { uuid: string; comicTitle:
 export type ExportPdfEvent = { event: "CreateStart"; data: { uuid: string; comicTitle: string; total: number } } | { event: "CreateProgress"; data: { uuid: string; current: number } } | { event: "CreateError"; data: { uuid: string } } | { event: "CreateEnd"; data: { uuid: string } } | { event: "MergeStart"; data: { uuid: string; comicTitle: string } } | { event: "MergeError"; data: { uuid: string } } | { event: "MergeEnd"; data: { uuid: string } }
 export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
 export type FavoriteSort = "FavoriteTime" | "UpdateTime"
-export type GetChapterRespData = { id: number; series: SeriesRespData[]; tags: string; name: string; images: string[]; addtime: string; series_id: string; is_favorite: boolean; liked: boolean }
 export type GetFavoriteRespData = { list: ComicInFavoriteRespData[]; folder_list: FavoriteFolderRespData[]; total: string; count: number }
 export type GetUserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key in string]: JsonValue }
@@ -205,7 +188,6 @@ export type RelatedListRespData = { id: string; author: string; name: string; im
 export type SearchRespData = { search_query: string; total: number; content: ComicInSearchRespData[] }
 export type SearchResult = { SearchRespData: SearchRespData } | { Comic: Comic }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
-export type SeriesRespData = { id: string; name: string; sort: string }
 export type UpdateDownloadedFavoriteComicEvent = { event: "GettingFolders" } | { event: "GettingComics"; data: { total: number } } | { event: "ComicGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 
 /** tauri-specta globals **/

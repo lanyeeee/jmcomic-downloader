@@ -16,7 +16,7 @@ use crate::errors::{CommandError, CommandResult};
 use crate::events::UpdateDownloadedFavoriteComicEvent;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
-use crate::responses::{GetChapterRespData, GetFavoriteRespData, GetUserProfileRespData};
+use crate::responses::{GetFavoriteRespData, GetUserProfileRespData};
 use crate::types::{ChapterInfo, Comic, FavoriteSort, SearchResult, SearchSort};
 use crate::{export, logger};
 
@@ -134,31 +134,6 @@ pub async fn get_comic(
         .map_err(|err| CommandError::from("获取漫画信息失败", err))?;
     let comic = Comic::from_comic_resp_data(&app, comic_resp_data);
     Ok(comic)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn get_chapter(
-    jm_client: State<'_, JmClient>,
-    id: i64,
-) -> CommandResult<GetChapterRespData> {
-    // TODO: 这个command好像用不到，可以考虑删除
-    let chapter = jm_client
-        .get_chapter(id)
-        .await
-        .map_err(|err| CommandError::from("获取章节信息失败", err))?;
-    Ok(chapter)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn get_scramble_id(jm_client: State<'_, JmClient>, id: i64) -> CommandResult<i64> {
-    // TODO: 这个command好像用不到，可以考虑删除
-    let scramble_id = jm_client
-        .get_scramble_id(id)
-        .await
-        .map_err(|err| CommandError::from("获取scramble_id失败", err))?;
-    Ok(scramble_id)
 }
 
 #[tauri::command(async)]
