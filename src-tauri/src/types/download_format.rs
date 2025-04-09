@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum DownloadFormat {
+    #[default]
     Jpeg,
     Png,
     Webp,
