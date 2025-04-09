@@ -38,8 +38,6 @@ pub fn run() {
             login,
             search,
             get_comic,
-            get_chapter,
-            get_scramble_id,
             get_favorite_folder,
             get_user_profile,
             download_chapters,
