@@ -76,7 +76,7 @@ impl Config {
             password: String::new(),
             download_dir: app_data_dir.join("漫画下载"),
             export_dir: app_data_dir.join("漫画导出"),
-            download_format: DownloadFormat::Jpeg, // TODO: 给DownloadFormat实现 Default trait
+            download_format: DownloadFormat::default(),
             proxy_mode: ProxyMode::default(),
             proxy_host: "127.0.0.1".to_string(),
             proxy_port: 7890,
