@@ -272,9 +272,10 @@ impl DownloadManager {
         let jm_client = self.jm_client();
         // 限制同时获取urls_with_block_num的数量
         let _permit = self.urls_with_block_num_sem.acquire().await?;
-        // TODO: 获取`scramble_id`与`chapter_resp_data`可以并发
-        let scramble_id = jm_client.get_scramble_id(chapter_id).await?;
-        let chapter_resp_data = jm_client.get_chapter(chapter_id).await?;
+        let (scramble_id, chapter_resp_data) = tokio::try_join!(
+            jm_client.get_scramble_id(chapter_id),
+            jm_client.get_chapter(chapter_id)
+        )?;
         // 构造图片下载链接
         let urls_with_block_num: Vec<(String, u32)> = chapter_resp_data
             .images
