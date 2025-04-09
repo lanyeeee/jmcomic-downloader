@@ -90,8 +90,7 @@ impl DownloadManager {
     }
 
     #[allow(clippy::too_many_lines)]
-    //TODO: 这里不能用anyhow::Result<()>和`?`，否则会导致错误信息被忽略
-    async fn process_chapter(self, chapter_info: ChapterInfo) -> anyhow::Result<()> {
+    async fn process_chapter(self, chapter_info: ChapterInfo) {
         // 发送章节排队事件
         let _ = DownloadEvent::ChapterPending {
             chapter_id: chapter_info.chapter_id,
@@ -101,14 +100,33 @@ impl DownloadManager {
         .emit(&self.app);
         // 创建临时下载目录
         let temp_download_dir = chapter_info.get_temp_download_dir(&self.app);
-        std::fs::create_dir_all(&temp_download_dir)
-            .context(format!("创建目录`{temp_download_dir:?}`失败"))?;
+        if let Err(err) = std::fs::create_dir_all(&temp_download_dir).map_err(anyhow::Error::from) {
+            let err_msg = Some(err.to_string_chain());
+            // 发送下载结束事件
+            let _ = DownloadEvent::ChapterEnd {
+                chapter_id: chapter_info.chapter_id,
+                err_msg,
+            }
+            .emit(&self.app);
+            return;
+        }
         // 从配置文件获取图片格式
         let download_format = self.app.state::<RwLock<Config>>().read().download_format;
         // 获取此章节每张图片的下载链接以及对应的block_num
-        let urls_with_block_num = self
-            .get_urls_with_block_num(chapter_info.chapter_id)
-            .await?;
+        let urls_with_block_num = match self.get_urls_with_block_num(chapter_info.chapter_id).await
+        {
+            Ok(urls_with_block_num) => urls_with_block_num,
+            Err(err) => {
+                let err_msg = Some(err.to_string_chain());
+                // 发送下载结束事件
+                let _ = DownloadEvent::ChapterEnd {
+                    chapter_id: chapter_info.chapter_id,
+                    err_msg,
+                }
+                .emit(&self.app);
+                return;
+            }
+        };
         // 图片下载路径
         let save_paths: Vec<PathBuf> = urls_with_block_num
             .iter()
@@ -128,7 +146,7 @@ impl DownloadManager {
                 err_msg,
             }
             .emit(&self.app);
-            return Ok(());
+            return;
         }
         // 总共需要下载的图片数量
         #[allow(clippy::cast_possible_truncation)]
@@ -138,7 +156,24 @@ impl DownloadManager {
         let downloaded_count = Arc::new(AtomicU32::new(0));
         let mut join_set = JoinSet::new();
         // 限制同时下载的章节数量
-        let permit = self.chapter_sem.acquire().await?;
+        let permit = match self
+            .chapter_sem
+            .acquire()
+            .await
+            .map_err(anyhow::Error::from)
+        {
+            Ok(permit) => permit,
+            Err(err) => {
+                let err = err.context("获取下载章节的semaphore失败");
+                // 发送下载结束事件
+                let _ = DownloadEvent::ChapterEnd {
+                    chapter_id: chapter_info.chapter_id,
+                    err_msg: Some(err.to_string_chain()),
+                }
+                .emit(&self.app);
+                return;
+            }
+        };
         // 发送下载开始事件
         let _ = DownloadEvent::ChapterStart {
             chapter_id: chapter_info.chapter_id,
@@ -163,8 +198,7 @@ impl DownloadManager {
             ));
         }
         // 逐一处理完成的下载任务
-        while let Some(completed_task) = join_set.join_next().await {
-            completed_task?;
+        while let Some(Ok(())) = join_set.join_next().await {
             self.downloaded_image_count.fetch_add(1, Ordering::Relaxed);
             let downloaded_image_count = self.downloaded_image_count.load(Ordering::Relaxed);
             let total_image_count = self.total_image_count.load(Ordering::Relaxed);
@@ -200,7 +234,7 @@ impl DownloadManager {
                 err_msg,
             }
             .emit(&self.app);
-            return Ok(());
+            return;
         }
         // 此章节的图片全部下载成功
         let err_msg = match self.rename_temp_download_dir(&chapter_info, &temp_download_dir) {
@@ -213,7 +247,6 @@ impl DownloadManager {
             err_msg,
         }
         .emit(&self.app);
-        Ok(())
     }
 
     fn rename_temp_download_dir(
