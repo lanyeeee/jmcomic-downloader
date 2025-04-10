@@ -1,4 +1,4 @@
-import { CategoryRespData, CategorySubRespData } from './bindings.ts'
+import { CategoryRespData, CategorySubRespData, DownloadTaskEvent } from './bindings.ts'
 
 export type CurrentTabName = 'search' | 'favorite' | 'downloaded' | 'chapter'
 
@@ -8,4 +8,9 @@ export type ComicInfo = {
   name: string
   category: CategoryRespData
   category_sub: CategorySubRespData
+}
+
+export type ProgressData = Extract<DownloadTaskEvent, { event: 'Create' }>['data'] & {
+  percentage: number
+  indicator: string
 }
