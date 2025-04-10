@@ -461,7 +461,7 @@ impl JmClient {
         Ok(toggle_favorite_resp_data)
     }
 
-    pub async fn get_image_bytes(&self, url: &str) -> anyhow::Result<Bytes> {
+    pub async fn get_img_data(&self, url: &str) -> anyhow::Result<Bytes> {
         let request = self.img_client.read().get(url);
 
         let http_resp = request.send().await?;

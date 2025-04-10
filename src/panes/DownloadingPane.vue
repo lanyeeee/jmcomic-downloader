@@ -1,107 +1,65 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { commands, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
-import { NProgress, useNotification } from 'naive-ui'
+import { NProgress } from 'naive-ui'
 import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
 import { useStore } from '../store.ts'
 import SettingsDialog from '../components/SettingsDialog.vue'
 
 const store = useStore()
 
-type ProgressData = {
-  comicTitle: string
-  chapterTitle: string
-  downloadedCount: number
-  total: number
-  percentage: number
-  indicator: string
-}
-
-const notification = useNotification()
-
 const settingsDialogShowing = ref<boolean>(false)
 
-const progresses = ref<Map<number, ProgressData>>(new Map())
-const overallProgress = ref<ProgressData>({
-  comicTitle: '总进度',
-  chapterTitle: '总进度',
-  downloadedCount: 0,
-  total: 0,
-  percentage: 0,
-  indicator: '',
-})
-
-const sortedProgresses = computed(() => {
-  const progressesArray = Array.from(progresses.value.entries())
-  progressesArray.sort((a, b) => {
-    return b[1].total - a[1].total
-  })
-  return progressesArray
-})
+const downloadSpeed = ref<string>('')
 
 onMounted(async () => {
-  await events.downloadEvent.listen(({ payload: downloadEvent }) => {
-    if (downloadEvent.event == 'ChapterPending') {
-      const { chapterId, comicTitle: comicTitle, chapterTitle } = downloadEvent.data
-      const progressData: ProgressData = {
-        comicTitle,
-        chapterTitle,
-        downloadedCount: 0,
-        total: 0,
+  await events.downloadSpeedEvent.listen(async ({ payload: { speed } }) => {
+    downloadSpeed.value = speed
+  })
+
+  await events.downloadTaskEvent.listen(({ payload: { event, data } }) => {
+    if (event === 'Create') {
+      const { chapterInfo, downloadedImgCount, totalImgCount } = data
+
+      store.progresses.set(chapterInfo.chapterId, {
+        ...data,
         percentage: 0,
-        indicator: '',
-      }
-      progresses.value.set(chapterId, progressData)
-    } else if (downloadEvent.event == 'ChapterStart') {
-      const { chapterId, total } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      progressData.total = total
-    } else if (downloadEvent.event == 'ChapterEnd') {
-      const { chapterId, errMsg } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      if (errMsg !== null) {
-        notification.warning({
-          title: '下载章节失败',
-          content: errMsg,
-          meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`,
-        })
-      }
-      progresses.value.delete(chapterId)
-    } else if (downloadEvent.event == 'ImageSuccess') {
-      const { chapterId, current } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      progressData.downloadedCount = current
-      progressData.percentage = Math.round((progressData.downloadedCount / progressData.total) * 100)
-    } else if (downloadEvent.event == 'ImageError') {
-      const { chapterId, url, errMsg } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      notification.warning({
-        title: '下载图片失败',
-        description: url,
-        content: errMsg,
-        meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`,
+        indicator: `排队中 ${downloadedImgCount}/${totalImgCount}`,
       })
-    } else if (downloadEvent.event == 'OverallSpeed') {
-      const { speed } = downloadEvent.data
-      overallProgress.value.indicator = speed
-    } else if (downloadEvent.event == 'OverallUpdate') {
-      const { percentage, downloadedImageCount, totalImageCount } = downloadEvent.data
-      overallProgress.value.percentage = percentage
-      overallProgress.value.downloadedCount = downloadedImageCount
-      overallProgress.value.total = totalImageCount
+    } else if (event === 'Update') {
+      const { chapterId, state, downloadedImgCount, totalImgCount } = data
+
+      const progressData = store.progresses.get(chapterId)
+      if (progressData === undefined) {
+        return
+      }
+
+      progressData.state = state
+      progressData.downloadedImgCount = downloadedImgCount
+      progressData.totalImgCount = totalImgCount
+
+      progressData.percentage = (downloadedImgCount / totalImgCount) * 100
+
+      let indicator = ''
+      if (state === 'Pending') {
+        indicator = `排队中`
+      } else if (state === 'Downloading') {
+        indicator = `下载中`
+      } else if (state === 'Paused') {
+        indicator = `已暂停`
+      } else if (state === 'Cancelled') {
+        indicator = `已取消`
+      } else if (state === 'Completed') {
+        indicator = `下载完成`
+      } else if (state === 'Failed') {
+        indicator = `下载失败`
+      }
+      if (totalImgCount !== 0) {
+        indicator += ` ${downloadedImgCount}/${totalImgCount}`
+      }
+
+      progressData.indicator = indicator
     }
   })
 })
@@ -153,22 +111,13 @@ async function selectDownloadDir() {
         配置
       </n-button>
     </div>
-    <div class="grid grid-cols-[1fr_4fr_1fr]">
-      <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
-      <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
-        {{ overallProgress.indicator }}
-      </n-progress>
-      <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
-    </div>
-    <div class="h-full overflow-auto">
+    <div class="overflow-auto">
       <div
-        class="grid grid-cols-[1fr_1fr_2fr]"
-        v-for="[chapterId, { comicTitle, chapterTitle, percentage, downloadedCount, total }] in sortedProgresses"
+        class="grid grid-cols-[1fr_1fr] px-2"
+        v-for="[chapterId, { chapterInfo, percentage, downloadedImgCount, totalImgCount }] in store.progresses"
         :key="chapterId">
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ comicTitle }}</span>
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
-        <span v-if="total === 0">等待中</span>
-        <n-progress v-else :percentage="percentage">{{ downloadedCount }}/{{ total }}</n-progress>
+        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterInfo.comicTitle }}</span>
+        <n-progress class="" :percentage="percentage">{{ downloadedImgCount }}/{{ totalImgCount }}</n-progress>
       </div>
     </div>
     <settings-dialog v-model:showing="settingsDialogShowing" />

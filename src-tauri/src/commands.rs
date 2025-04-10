@@ -17,7 +17,7 @@ use crate::events::UpdateDownloadedFavoriteComicEvent;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
 use crate::responses::{GetFavoriteRespData, GetUserProfileRespData};
-use crate::types::{ChapterInfo, Comic, FavoriteSort, SearchResult, SearchSort};
+use crate::types::{Comic, FavoriteSort, SearchResult, SearchSort};
 use crate::{export, logger};
 
 #[tauri::command]
@@ -151,18 +151,70 @@ pub async fn get_favorite_folder(
     Ok(favorite_resp_data)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn download_chapters(
-    download_manager: State<'_, DownloadManager>,
-    chapter_infos: Vec<ChapterInfo>,
+pub fn create_download_task(
+    download_manager: State<DownloadManager>,
+    comic: Comic,
+    chapter_id: i64,
 ) -> CommandResult<()> {
-    for chapter_info in chapter_infos {
-        download_manager
-            .submit_chapter(chapter_info)
-            .await
-            .map_err(|err| CommandError::from("下载章节失败", err))?;
-    }
+    let comic_title = comic.name.clone();
+    download_manager
+        .create_download_task(comic, chapter_id)
+        .map_err(|err| {
+            let err_title = format!("`{comic_title}`的章节ID为`{chapter_id}`的下载任务创建失败");
+            CommandError::from(&err_title, err)
+        })?;
+    tracing::debug!("创建章节ID为`{chapter_id}`的下载任务成功");
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn pause_download_task(
+    download_manager: State<DownloadManager>,
+    chapter_id: i64,
+) -> CommandResult<()> {
+    download_manager
+        .pause_download_task(chapter_id)
+        .map_err(|err| {
+            CommandError::from(&format!("暂停章节ID为`{chapter_id}`的下载任务失败"), err)
+        })?;
+    tracing::debug!("暂停章节ID为`{chapter_id}`的下载任务成功");
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn resume_download_task(
+    download_manager: State<DownloadManager>,
+    chapter_id: i64,
+) -> CommandResult<()> {
+    download_manager
+        .resume_download_task(chapter_id)
+        .map_err(|err| {
+            CommandError::from(&format!("恢复章节ID为`{chapter_id}`的下载任务失败"), err)
+        })?;
+    tracing::debug!("恢复章节ID为`{chapter_id}`的下载任务成功");
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn cancel_download_task(
+    download_manager: State<DownloadManager>,
+    chapter_id: i64,
+) -> CommandResult<()> {
+    download_manager
+        .cancel_download_task(chapter_id)
+        .map_err(|err| {
+            CommandError::from(&format!("取消章节ID为`{chapter_id}`的下载任务失败"), err)
+        })?;
+    tracing::debug!("取消章节ID为`{chapter_id}`的下载任务成功");
     Ok(())
 }
 
@@ -175,18 +227,25 @@ pub async fn download_comic(
     aid: i64,
 ) -> CommandResult<()> {
     let comic = get_comic(app, jm_client, aid).await?;
-    let chapter_infos: Vec<ChapterInfo> = comic
+    let chapter_ids: Vec<i64> = comic
         .chapter_infos
-        .into_iter()
+        .iter()
         .filter(|chapter_info| chapter_info.is_downloaded != Some(true))
+        .map(|chapter_info| chapter_info.chapter_id)
         .collect();
-    if chapter_infos.is_empty() {
+    if chapter_ids.is_empty() {
         let comic_title = comic.name;
-        let err_title = format!("下载漫画`{comic_title}`失败");
-        let err = anyhow!("所有章节都已存在于下载目录，无需重复下载");
-        return Err(CommandError::from(&err_title, err));
+        return Err(CommandError::from(
+            "一键下载漫画失败",
+            anyhow!("漫画`{comic_title}`的所有章节都已存在于下载目录，无需重复下载"),
+        ));
     }
-    download_chapters(download_manager, chapter_infos).await?;
+    for chapter_id in chapter_ids {
+        download_manager
+            .create_download_task(comic.clone(), chapter_id)
+            .map_err(|err| CommandError::from("一键下载漫画失败", err))?;
+    }
+    tracing::debug!("一键下载漫画成功，已为所有需要下载的章节创建下载任务");
     Ok(())
 }
 
@@ -273,7 +332,7 @@ pub async fn update_downloaded_favorite_comic(
     // 至此，收藏夹漫画的详细信息已经全部获取完毕
     let comics = std::mem::take(&mut *comics.lock());
     // 过滤出已下载的漫画(至少有一个章节已下载)
-    let downloaded_comic = comics
+    let downloaded_comics = comics
         .into_iter()
         .filter(|comic| {
             comic
@@ -282,19 +341,20 @@ pub async fn update_downloaded_favorite_comic(
                 .any(|chapter_info| chapter_info.is_downloaded == Some(true))
         })
         .collect::<Vec<_>>();
-    // 获取已下载的漫画中的未下载章节
-    let chapters_to_download = downloaded_comic
-        .iter()
-        .flat_map(|comic| {
-            comic
-                .chapter_infos
-                .iter()
-                .filter(|chapter_info| chapter_info.is_downloaded != Some(true))
-                .cloned()
-        })
-        .collect::<Vec<_>>();
-    // 下载未下载章节
-    download_chapters(download_manager, chapters_to_download).await?;
+    // 把已下载漫画中的未下载章节添加到下载队列中
+    for comic in downloaded_comics {
+        let chapter_ids_to_download = comic
+            .chapter_infos
+            .iter()
+            .filter(|chapter| chapter.is_downloaded != Some(true))
+            .map(|chapter| chapter.chapter_id);
+
+        for chapter_id in chapter_ids_to_download {
+            download_manager
+                .create_download_task(comic.clone(), chapter_id)
+                .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+        }
+    }
     // 发送下载任务创建完成事件
     let _ = UpdateDownloadedFavoriteComicEvent::DownloadTaskCreated.emit(&app);
 

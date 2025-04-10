@@ -1,5 +1,8 @@
 use anyhow::Context;
-use events::{ExportCbzEvent, ExportPdfEvent, LogEvent};
+use events::{
+    DownloadSpeedEvent, DownloadTaskEvent, ExportCbzEvent, ExportPdfEvent, LogEvent,
+    UpdateDownloadedFavoriteComicEvent,
+};
 use parking_lot::RwLock;
 use tauri::{Manager, Wry};
 
@@ -7,7 +10,6 @@ use tauri::{Manager, Wry};
 use crate::commands::*;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
-use crate::events::prelude::*;
 use crate::jm_client::JmClient;
 
 mod commands;
@@ -40,7 +42,10 @@ pub fn run() {
             get_comic,
             get_favorite_folder,
             get_user_profile,
-            download_chapters,
+            create_download_task,
+            pause_download_task,
+            resume_download_task,
+            cancel_download_task,
             download_comic,
             update_downloaded_favorite_comic,
             show_path_in_file_manager,
@@ -52,7 +57,8 @@ pub fn run() {
             get_logs_dir_size,
         ])
         .events(tauri_specta::collect_events![
-            DownloadEvent,
+            DownloadSpeedEvent,
+            DownloadTaskEvent,
             UpdateDownloadedFavoriteComicEvent,
             ExportCbzEvent,
             ExportPdfEvent,

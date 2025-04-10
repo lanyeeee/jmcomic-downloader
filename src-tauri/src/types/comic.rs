@@ -64,7 +64,6 @@ impl Comic {
                     comic_title: comic_title.clone(),
                     chapter_id,
                     chapter_title,
-                    author: comic.author.clone(),
                     is_downloaded: Some(is_downloaded),
                     order,
                 };
@@ -78,7 +77,6 @@ impl Comic {
                 comic_title: comic_title.clone(),
                 chapter_id: comic.id,
                 chapter_title: "第1话".to_owned(),
-                author: comic.author.clone(),
                 is_downloaded: Some(false),
                 order: 1,
             });
