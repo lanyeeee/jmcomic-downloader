@@ -15,7 +15,6 @@ pub struct ChapterInfo {
     pub chapter_title: String,
     pub comic_id: i64,
     pub comic_title: String,
-    pub author: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_downloaded: Option<bool>,
     pub order: i64,

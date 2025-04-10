@@ -107,6 +107,9 @@ async function onContextMenu(e: MouseEvent) {
 }
 
 async function downloadChapters() {
+  if (store.pickedComic === undefined) {
+    return
+  }
   // 创建下载任务前，先创建元数据
   const result = await commands.saveMetadata(store.pickedComic!)
   if (result.status === 'error') {
@@ -114,19 +117,21 @@ async function downloadChapters() {
     return
   }
   // 下载勾选的章节
-  const chapterToDownload = store.pickedComic?.chapterInfos.filter(
-    (c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId),
-  )
-  if (chapterToDownload === undefined) {
-    return
-  }
-  await commands.downloadChapters(chapterToDownload)
-
-  for (const downloadedChapter of chapterToDownload) {
-    const chapter = store.pickedComic?.chapterInfos.find((c) => c.chapterId === downloadedChapter.chapterId)
+  const chapterIdsToDownload = store.pickedComic.chapterInfos
+    .filter((c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId))
+    .map((c) => c.chapterId)
+  for (const chapterId of chapterIdsToDownload) {
+    // 创建下载任务
+    const result = await commands.createDownloadTask(store.pickedComic, chapterId)
+    if (result.status === 'error') {
+      console.error(result.error)
+      continue
+    }
+    // 更新勾选状态
+    const chapter = store.pickedComic.chapterInfos.find((chapter) => chapter.chapterId === chapterId)
     if (chapter !== undefined) {
       chapter.isDownloaded = true
-      checkedIds.value = checkedIds.value.filter((id) => id !== downloadedChapter.chapterId)
+      checkedIds.value = checkedIds.value.filter((id) => id !== chapterId)
     }
   }
 }
