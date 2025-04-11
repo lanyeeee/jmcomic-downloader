@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AboutDialog: typeof import('./src/components/AboutDialog.vue')['default']
     ComicCard: typeof import('./src/components/ComicCard.vue')['default']
+    CompletedProgresses: typeof import('./src/components/CompletedProgresses.vue')['default']
     DownloadedComicCard: typeof import('./src/components/DownloadedComicCard.vue')['default']
     FloatLabelInput: typeof import('./src/components/FloatLabelInput.vue')['default']
     LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
@@ -34,6 +35,7 @@ declare module 'vue' {
     NModalProvider: typeof import('naive-ui')['NModalProvider']
     NNotificationProvider: typeof import('naive-ui')['NNotificationProvider']
     NPagination: typeof import('naive-ui')['NPagination']
+    NProgress: typeof import('naive-ui')['NProgress']
     NRadio: typeof import('naive-ui')['NRadio']
     NRadioGroup: typeof import('naive-ui')['NRadioGroup']
     NSelect: typeof import('naive-ui')['NSelect']
@@ -42,5 +44,6 @@ declare module 'vue' {
     NTooltip: typeof import('naive-ui')['NTooltip']
     NVirtualList: typeof import('naive-ui')['NVirtualList']
     SettingsDialog: typeof import('./src/components/SettingsDialog.vue')['default']
+    UncompletedProgresses: typeof import('./src/components/UncompletedProgresses.vue')['default']
   }
 }
