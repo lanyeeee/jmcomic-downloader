@@ -2,10 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { commands, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
-import { NProgress } from 'naive-ui'
 import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
 import { useStore } from '../store.ts'
 import SettingsDialog from '../components/SettingsDialog.vue'
+import UncompletedProgresses from '../components/UncompletedProgresses.vue'
+import CompletedProgresses from '../components/CompletedProgresses.vue'
 
 const store = useStore()
 
@@ -111,15 +112,15 @@ async function selectDownloadDir() {
         配置
       </n-button>
     </div>
-    <div class="overflow-auto">
-      <div
-        class="grid grid-cols-[1fr_1fr] px-2"
-        v-for="[chapterId, { chapterInfo, percentage, downloadedImgCount, totalImgCount }] in store.progresses"
-        :key="chapterId">
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterInfo.comicTitle }}</span>
-        <n-progress class="" :percentage="percentage">{{ downloadedImgCount }}/{{ totalImgCount }}</n-progress>
-      </div>
-    </div>
+    <n-tabs class="h-full overflow-auto" type="line" size="small">
+      <n-tab-pane class="h-full p-0! overflow-auto" name="uncompleted" tab="未完成">
+        <uncompleted-progresses />
+      </n-tab-pane>
+      <n-tab-pane class="h-full p-0! overflow-auto" name="completed" tab="已完成">
+        <completed-progresses />
+      </n-tab-pane>
+    </n-tabs>
+    <span class="ml-auto mr-2 mb-2">下载速度：{{ downloadSpeed }}</span>
     <settings-dialog v-model:showing="settingsDialogShowing" />
   </div>
 </template>
