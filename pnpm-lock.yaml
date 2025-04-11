@@ -20,12 +20,9 @@ importers:
       '@vicons/antd':
         specifier: ^0.13.0
         version: 0.13.0
-      '@viselect/vanilla':
-        specifier: ^3.5.1
-        version: 3.5.1
       '@viselect/vue':
-        specifier: ^3.5.1
-        version: 3.5.1(vue@3.5.13(typescript@5.6.2))
+        specifier: ^3.9.0
+        version: 3.9.0(vue@3.5.13(typescript@5.6.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.1.2(vite@5.4.8)(vue@3.5.13(typescript@5.6.2))
@@ -923,11 +920,11 @@ packages:
   '@vicons/antd@0.13.0':
     resolution: {integrity: sha512-yrUGoUSz2BbGupk9ghQOahc04n5H3MwUDM9pVPsLh9U1uqB47oRWZvYRiZaT1JKPqgTgSE6BXcVw4i9MOF4M+g==}
 
-  '@viselect/vanilla@3.5.1':
-    resolution: {integrity: sha512-qsHOoFd97MkSQREAvHHylBq5jVIsUYt+Bt/E2ncUIJLV7izKZVNX+UgNIgmeAyvW9qKLzUDft5bOab1aUXHYdw==}
+  '@viselect/vanilla@3.9.0':
+    resolution: {integrity: sha512-E9eBgoi/crJ0SlZMAc+Yst7nU324LZ5LLvcXjzWEcrfllscdpTml2OLOKHC7O8Bbz19OybSLv6VexxnjlJrLxQ==}
 
-  '@viselect/vue@3.5.1':
-    resolution: {integrity: sha512-ZB51vljlJUGAsf85L/gyy2U+vNeYX2z8bKwDWYbc+GJUHPGy2rjydxDp+Rih1Sg8PB4e3V5L3aOnyWP1ceMuDg==}
+  '@viselect/vue@3.9.0':
+    resolution: {integrity: sha512-CS4nzdKn1bZB/Upr3oCPlEGPXWRyvbjOvhlAkETVEkg1tkqS9vR9GVAytXGBbztIhCXRImTlCCO9G5NCNlDYng==}
     peerDependencies:
       vue: '>=3.2.0'
 
@@ -2741,11 +2738,11 @@ snapshots:
 
   '@vicons/antd@0.13.0': {}
 
-  '@viselect/vanilla@3.5.1': {}
+  '@viselect/vanilla@3.9.0': {}
 
-  '@viselect/vue@3.5.1(vue@3.5.13(typescript@5.6.2))':
+  '@viselect/vue@3.9.0(vue@3.5.13(typescript@5.6.2))':
     dependencies:
-      '@viselect/vanilla': 3.5.1
+      '@viselect/vanilla': 3.9.0
       vue: 3.5.13(typescript@5.6.2)
 
   '@vitejs/plugin-vue-jsx@4.1.2(vite@5.4.8)(vue@3.5.13(typescript@5.6.2))':
