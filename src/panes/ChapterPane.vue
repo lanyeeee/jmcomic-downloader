@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SelectionArea, SelectionEvent, SelectionOptions } from '@viselect/vue'
+import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import { nextTick, ref, watch } from 'vue'
 import { commands } from '../bindings.ts'
 import { useStore } from '../store.ts'
@@ -48,31 +48,14 @@ function extractIds(elements: Element[]): number[] {
     })
 }
 
-function onMouseDown(event: MouseEvent) {
-  if (event.ctrlKey || event.metaKey) {
-    return
-  }
-  if (event?.button === 0) {
-    selectedChanged.value = false
-  }
-}
-
-function onMouseUp(event: MouseEvent) {
-  // 如果是左键点击，且没有改动选中的元素，则清空选中
-  if (event?.button === 0 && !selectedChanged.value) {
-    selectedIds.value.clear()
-    selectionAreaRef.value?.selection?.clearSelection()
-  }
-}
-
-function onDragStart({ event, selection }: SelectionEvent) {
+function unselectAll({ event, selection }: SelectionEvent) {
   if (!event?.ctrlKey && !event?.metaKey) {
     selection.clearSelection()
     selectedIds.value.clear()
   }
 }
 
-function onDragMove({
+function updateSelectedIds({
   store: {
     changed: { added, removed },
   },
@@ -161,12 +144,10 @@ async function refreshChapters() {
       v-else
       ref="selectionAreaRef"
       class="selection-container flex flex-col flex-1 px-2 pt-0 overflow-auto"
-      :options="{ selectables: '.selectable' } as SelectionOptions"
+      :options="{ selectables: '.selectable', features: { deselectOnBlur: true } }"
       @contextmenu="onContextMenu"
-      @mousedown="onMouseDown"
-      @mouseup="onMouseUp"
-      @move="onDragMove"
-      @start="onDragStart">
+      @move="updateSelectedIds"
+      @start="unselectAll">
       <n-checkbox-group v-model:value="checkedIds" class="grid grid-cols-3 gap-1.5">
         <n-checkbox
           v-for="{ chapterId, chapterTitle, isDownloaded } in store.pickedComic.chapterInfos"
