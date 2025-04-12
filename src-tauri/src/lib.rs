@@ -49,6 +49,7 @@ pub fn run() {
             download_comic,
             update_downloaded_favorite_comic,
             show_path_in_file_manager,
+            show_comic_download_dir_in_file_manager,
             sync_favorite_folder,
             save_metadata,
             get_downloaded_comics,

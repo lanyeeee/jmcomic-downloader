@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { commands, events, GetFavoriteRespData, FavoriteSort } from '../bindings.ts'
+import { commands, events, FavoriteSort } from '../bindings.ts'
 import { MessageReactive, useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import { SelectProps } from 'naive-ui'
@@ -15,22 +15,21 @@ const sortOptions: SelectProps['options'] = [
   { label: '更新时间', value: 'UpdateTime' },
 ]
 
-const getFavoriteRespData = ref<GetFavoriteRespData>()
 const sortSelected = ref<FavoriteSort>('FavoriteTime')
 const pageSelected = ref<number>(1)
 const folderIdSelected = ref<number>(0)
 
 const favoritePageCount = computed(() => {
   const PAGE_SIZE = 20
-  if (getFavoriteRespData.value === undefined) {
+  if (store.getFavoriteResult === undefined) {
     return 0
   }
-  const total = parseInt(getFavoriteRespData.value.total)
+  const total = store.getFavoriteResult.total
   return Math.ceil(total / PAGE_SIZE)
 })
 const folderOptions = computed<SelectProps['options']>(() => [
   { label: '全部', value: 0 },
-  ...(getFavoriteRespData.value?.folder_list || []).map((folder) => ({
+  ...(store.getFavoriteResult?.folderList || []).map((folder) => ({
     label: folder.name,
     value: parseInt(folder.FID),
   })),
@@ -40,7 +39,7 @@ watch(
   () => store.userProfile,
   async () => {
     if (store.userProfile === undefined) {
-      getFavoriteRespData.value = undefined
+      store.getFavoriteResult = undefined
       return
     }
     await getFavourite(0, 1, 'FavoriteTime')
@@ -58,7 +57,7 @@ async function getFavourite(folderId: number, page: number, sort: FavoriteSort) 
     console.error(result.error)
     return
   }
-  getFavoriteRespData.value = result.data
+  store.getFavoriteResult = result.data
 }
 
 async function syncFavoriteFolder() {
@@ -105,7 +104,7 @@ onMounted(async () => {
 
 <template>
   <div class="h-full flex flex-col gap-2">
-    <div class="flex box-border px-2 pt-2">
+    <div v-if="store.getFavoriteResult !== undefined" class="flex box-border px-2 pt-2">
       <n-select
         v-model:value="folderIdSelected"
         :options="folderOptions"
@@ -122,15 +121,16 @@ onMounted(async () => {
       <n-button size="small" type="primary" secondary @click="syncFavoriteFolder">收藏不对点我</n-button>
     </div>
 
-    <div v-if="getFavoriteRespData !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
+    <div v-if="store.getFavoriteResult !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
       <comic-card
-        v-for="comicInFavorite in getFavoriteRespData?.list"
+        v-for="comicInFavorite in store.getFavoriteResult?.list"
         :key="comicInFavorite.id"
-        :comic-id="parseInt(comicInFavorite.id)"
+        :comic-id="comicInFavorite.id"
         :comic-title="comicInFavorite.name"
         :comic-author="comicInFavorite.author"
         :comic-category="comicInFavorite.category"
-        :comic-category-sub="comicInFavorite.category_sub" />
+        :comic-category-sub="comicInFavorite.categorySub"
+        :comic-downloaded="comicInFavorite.isDownloaded" />
     </div>
 
     <n-pagination

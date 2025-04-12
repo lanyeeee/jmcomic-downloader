@@ -16,8 +16,8 @@ use crate::errors::{CommandError, CommandResult};
 use crate::events::UpdateDownloadedFavoriteComicEvent;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::jm_client::JmClient;
-use crate::responses::{GetFavoriteRespData, GetUserProfileRespData};
-use crate::types::{Comic, FavoriteSort, SearchResult, SearchSort};
+use crate::responses::GetUserProfileRespData;
+use crate::types::{Comic, FavoriteSort, GetFavoriteResult, SearchResultVariant, SearchSort};
 use crate::{export, logger};
 
 #[tauri::command]
@@ -112,12 +112,13 @@ pub async fn search(
     keyword: String,
     page: i64,
     sort: SearchSort,
-) -> CommandResult<SearchResult> {
+) -> CommandResult<SearchResultVariant> {
     let search_resp = jm_client
         .search(&keyword, page, sort)
         .await
         .map_err(|err| CommandError::from("搜索失败", err))?;
-    let search_result = SearchResult::from_search_resp(&app, search_resp);
+    let search_result = SearchResultVariant::from_search_resp(&app, search_resp)
+        .map_err(|err| CommandError::from("搜索失败", err))?;
     Ok(search_result)
 }
 
@@ -139,16 +140,19 @@ pub async fn get_comic(
 #[tauri::command(async)]
 #[specta::specta]
 pub async fn get_favorite_folder(
+    app: AppHandle,
     jm_client: State<'_, JmClient>,
     folder_id: i64,
     page: i64,
     sort: FavoriteSort,
-) -> CommandResult<GetFavoriteRespData> {
-    let favorite_resp_data = jm_client
+) -> CommandResult<GetFavoriteResult> {
+    let get_favorite_resp_data = jm_client
         .get_favorite_folder(folder_id, page, sort)
         .await
         .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
-    Ok(favorite_resp_data)
+    let get_favorite_result = GetFavoriteResult::from_resp_data(&app, get_favorite_resp_data)
+        .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
+    Ok(get_favorite_result)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -368,6 +372,21 @@ pub fn show_path_in_file_manager(app: AppHandle, path: &str) -> CommandResult<()
     app.opener()
         .reveal_item_in_dir(path)
         .context(format!("在文件管理器中打开`{path}`失败"))
+        .map_err(|err| CommandError::from("在文件管理器中打开失败", err))?;
+    Ok(())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn show_comic_download_dir_in_file_manager(
+    app: AppHandle,
+    comic_title: String,
+) -> CommandResult<()> {
+    let comic_download_dir = Comic::get_comic_download_dir(&app, &comic_title);
+    app.opener()
+        .reveal_item_in_dir(&comic_download_dir)
+        .context(format!("在文件管理器中打开`{comic_download_dir:?}`失败"))
         .map_err(|err| CommandError::from("在文件管理器中打开失败", err))?;
     Ok(())
 }

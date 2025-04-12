@@ -130,6 +130,16 @@ async function refreshChapters() {
   }
   store.pickedComic = result.data
 }
+
+async function showComicDownloadDirInFileManager() {
+  if (store.pickedComic === undefined) {
+    return
+  }
+  const result = await commands.showComicDownloadDirInFileManager(store.pickedComic.name)
+  if (result.status === 'error') {
+    console.error(result.error)
+  }
+}
 </script>
 
 <template>
@@ -172,6 +182,13 @@ async function refreshChapters() {
           <span class="font-bold text-xl line-clamp-2">{{ store.pickedComic.name }}</span>
           <span class="text-red">作者：{{ store.pickedComic.author }}</span>
           <span class="text-gray">标签：{{ store.pickedComic.tags }}</span>
+          <n-button
+            v-if="store.pickedComic.isDownloaded"
+            class="flex mt-auto mr-auto gap-col-2"
+            size="tiny"
+            @click="showComicDownloadDirInFileManager">
+            打开下载目录
+          </n-button>
         </div>
       </div>
     </div>

@@ -1,15 +1,15 @@
+mod get_chapter_resp_data;
 mod get_comic_resp_data;
 mod get_favorite_resp_data;
 mod get_user_profile_resp_data;
 mod search_resp;
-mod search_resp_data;
 mod toggle_favorite_resp_data;
 
+pub use get_chapter_resp_data::*;
 pub use get_comic_resp_data::*;
 pub use get_favorite_resp_data::*;
 pub use get_user_profile_resp_data::*;
 pub use search_resp::*;
-pub use search_resp_data::*;
 pub use toggle_favorite_resp_data::*;
 
 use serde::{Deserialize, Serialize};
