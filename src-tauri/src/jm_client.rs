@@ -479,9 +479,7 @@ impl JmClient {
 }
 
 pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
-    let builder = reqwest::ClientBuilder::new()
-        .cookie_provider(jar.clone())
-        .timeout(Duration::from_secs(2)); // 每个请求超过2秒就超时
+    let builder = reqwest::ClientBuilder::new().cookie_provider(jar.clone());
 
     let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
     let builder = match proxy_mode {
@@ -509,7 +507,7 @@ pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewar
     let retry_policy = ExponentialBackoff::builder()
         .base(1) // 指数为1，保证重试间隔为1秒不变
         .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
-        .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
+        .build_with_total_retry_duration(Duration::from_secs(5)); // 重试总时长为5秒
 
     reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
         .with(RetryTransientMiddleware::new_with_policy(retry_policy))
