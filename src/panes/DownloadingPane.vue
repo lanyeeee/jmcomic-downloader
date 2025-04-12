@@ -40,6 +40,28 @@ onMounted(async () => {
       progressData.downloadedImgCount = downloadedImgCount
       progressData.totalImgCount = totalImgCount
 
+      if (state === 'Completed') {
+        progressData.chapterInfo.isDownloaded = true
+
+        if (store.pickedComic !== undefined) {
+          store.pickedComic.isDownloaded = true
+        }
+
+        if (store.searchResult !== undefined) {
+          const comic = store.searchResult.content.find((comic) => comic.id === progressData.chapterInfo.comicId)
+          if (comic !== undefined) {
+            comic.isDownloaded = true
+          }
+        }
+
+        if (store.getFavoriteResult !== undefined) {
+          const comic = store.getFavoriteResult.list.find((comic) => comic.id === progressData.chapterInfo.comicId)
+          if (comic !== undefined) {
+            comic.isDownloaded = true
+          }
+        }
+      }
+
       progressData.percentage = (downloadedImgCount / totalImgCount) * 100
 
       let indicator = ''

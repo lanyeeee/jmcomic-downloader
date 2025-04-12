@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { commands, SearchRespData, SearchSort } from '../bindings.ts'
+import { commands, SearchSort } from '../bindings.ts'
 import { useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import FloatLabelInput from '../components/FloatLabelInput.vue'
@@ -23,14 +23,13 @@ const searchInput = ref<string>('')
 const searching = ref<boolean>(false)
 const sortSelected = ref<SearchSort>('Latest')
 const searchPage = ref<number>(1)
-const searchRespData = ref<SearchRespData>()
 
 const searchPageCount = computed(() => {
   const PAGE_SIZE = 80
-  if (searchRespData.value === undefined) {
+  if (store.searchResult === undefined) {
     return 0
   }
-  const total = searchRespData.value.total
+  const total = store.searchResult.total
   return Math.ceil(total / PAGE_SIZE)
 })
 
@@ -50,18 +49,18 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     searching.value = false
     return
   }
-  const searchResult = result.data
-  if ('SearchRespData' in searchResult) {
-    const respData = searchResult.SearchRespData
+  const searchResultVariant = result.data
+  if ('SearchResult' in searchResultVariant) {
+    const respData = searchResultVariant.SearchResult
     if (respData.content.length === 0) {
       message.warning('什么都没有搜到，请尝试其他关键词')
       searching.value = false
       return
     }
-    searchRespData.value = respData
+    store.searchResult = respData
     console.log(respData)
-  } else if ('Comic' in searchResult) {
-    const comic = searchResult.Comic
+  } else if ('Comic' in searchResultVariant) {
+    const comic = searchResultVariant.Comic
     store.pickedComic = comic
     console.log(comic)
     store.currentTabName = 'chapter'
@@ -101,15 +100,16 @@ async function search(keyword: string, page: number, sort: SearchSort) {
       </n-button>
     </n-input-group>
 
-    <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
+    <div v-if="store.searchResult !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
       <comic-card
-        v-for="comicInSearch in searchRespData.content"
+        v-for="comicInSearch in store.searchResult.content"
         :key="comicInSearch.id"
-        :comic-id="parseInt(comicInSearch.id)"
+        :comic-id="comicInSearch.id"
         :comic-title="comicInSearch.name"
         :comic-author="comicInSearch.author"
         :comic-category="comicInSearch.category"
-        :comic-category-sub="comicInSearch.category_sub" />
+        :comic-category-sub="comicInSearch.categorySub"
+        :comic-downloaded="comicInSearch.isDownloaded" />
     </div>
 
     <n-pagination

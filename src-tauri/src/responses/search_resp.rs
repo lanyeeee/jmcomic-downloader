@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::{GetComicRespData, SearchRespData, SeriesRespData};
+use super::{string_to_i64, ComicInSearchRespData, GetComicRespData, SeriesRespData};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,4 +35,14 @@ pub struct GetChapterRespData {
     #[serde(rename = "is_favorite")]
     pub is_favorite: bool,
     pub liked: bool,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchRespData {
+    #[serde(rename = "search_query")]
+    pub search_query: String,
+    #[serde(deserialize_with = "string_to_i64")]
+    pub total: i64,
+    pub content: Vec<ComicInSearchRespData>,
 }

@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 use crate::{
     config::Config,
     responses::{GetComicRespData, RelatedListRespData},
-    utils::{self, filename_filter},
+    utils::filename_filter,
 };
 
 use super::ChapterInfo;
@@ -46,7 +46,7 @@ pub struct Comic {
 
 impl Comic {
     pub fn from_comic_resp_data(app: &AppHandle, comic: GetComicRespData) -> Self {
-        let comic_title = utils::filename_filter(&comic.name);
+        let comic_title = &comic.name;
         let mut chapter_infos: Vec<ChapterInfo> = comic
             .series
             .into_iter()
@@ -55,10 +55,10 @@ impl Comic {
                 let order = s.sort.parse().ok()?;
                 let mut chapter_title = format!("第{order}话");
                 if !s.name.is_empty() {
-                    chapter_title.push_str(&format!(" {}", utils::filename_filter(&s.name)));
+                    chapter_title.push_str(&format!(" {}", &s.name));
                 }
                 let is_downloaded =
-                    ChapterInfo::get_is_downloaded(app, &comic_title, &chapter_title);
+                    ChapterInfo::get_is_downloaded(app, comic_title, &chapter_title);
                 let chapter_info = ChapterInfo {
                     comic_id: comic.id,
                     comic_title: comic_title.clone(),
@@ -123,7 +123,7 @@ impl Comic {
         Ok(comic)
     }
 
-    fn get_is_downloaded(app: &AppHandle, comic_title: &str) -> bool {
+    pub fn get_is_downloaded(app: &AppHandle, comic_title: &str) -> bool {
         Self::get_comic_download_dir(app, comic_title).exists()
     }
 

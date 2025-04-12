@@ -4,16 +4,17 @@ import { useStore } from '../store.ts'
 
 const store = useStore()
 
-defineProps<{
+const props = defineProps<{
   comicId: number
   comicTitle: string
   comicAuthor: string
   comicCategory: CategoryRespData
   comicCategorySub: CategorySubRespData
+  comicDownloaded: boolean
 }>()
 
-async function pickComic(aid: number) {
-  const result = await commands.getComic(aid)
+async function pickComic() {
+  const result = await commands.getComic(props.comicId)
   if (result.status === 'error') {
     console.error(result.error)
     return
@@ -22,11 +23,18 @@ async function pickComic(aid: number) {
   store.currentTabName = 'chapter'
 }
 
-async function downloadComic(aid: number) {
-  const result = await commands.downloadComic(aid)
+async function downloadComic() {
+  const result = await commands.downloadComic(props.comicId)
   if (result.status === 'error') {
     console.error(result.error)
     return
+  }
+}
+
+async function showComicDownloadDirInFileManager() {
+  const result = await commands.showComicDownloadDirInFileManager(props.comicTitle)
+  if (result.status === 'error') {
+    console.error(result.error)
   }
 }
 </script>
@@ -39,18 +47,23 @@ async function downloadComic(aid: number) {
         :src="`https://cdn-msp3.18comic.vip/media/albums/${comicId}_3x4.jpg`"
         alt=""
         referrerpolicy="no-referrer"
-        @click="pickComic(comicId)" />
+        @click="pickComic" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
           <span
             class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
-            @click="pickComic(comicId)">
+            @click="pickComic">
             {{ comicTitle }}
           </span>
           <span class="text-red">作者：{{ comicAuthor }}</span>
           <span class="text-gray">分类：{{ comicCategory.title }} {{ comicCategorySub.title }}</span>
         </div>
-        <n-button size="tiny" class="ml-auto" @click="downloadComic(comicId)">一键下载所有章节</n-button>
+        <div class="flex">
+          <n-button v-if="comicDownloaded" size="tiny" @click="showComicDownloadDirInFileManager">
+            打开下载目录
+          </n-button>
+          <n-button size="tiny" class="ml-auto" @click="downloadComic">一键下载所有章节</n-button>
+        </div>
       </div>
     </div>
   </n-card>
