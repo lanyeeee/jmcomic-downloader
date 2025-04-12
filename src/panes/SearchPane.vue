@@ -102,7 +102,14 @@ async function search(keyword: string, page: number, sort: SearchSort) {
     </n-input-group>
 
     <div v-if="searchRespData !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
-      <comic-card v-for="comicInSearch in searchRespData.content" :key="comicInSearch.id" :comic-info="comicInSearch" />
+      <comic-card
+        v-for="comicInSearch in searchRespData.content"
+        :key="comicInSearch.id"
+        :comic-id="parseInt(comicInSearch.id)"
+        :comic-title="comicInSearch.name"
+        :comic-author="comicInSearch.author"
+        :comic-category="comicInSearch.category"
+        :comic-category-sub="comicInSearch.category_sub" />
     </div>
 
     <n-pagination
