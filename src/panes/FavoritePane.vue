@@ -126,7 +126,11 @@ onMounted(async () => {
       <comic-card
         v-for="comicInFavorite in getFavoriteRespData?.list"
         :key="comicInFavorite.id"
-        :comic-info="comicInFavorite" />
+        :comic-id="parseInt(comicInFavorite.id)"
+        :comic-title="comicInFavorite.name"
+        :comic-author="comicInFavorite.author"
+        :comic-category="comicInFavorite.category"
+        :comic-category-sub="comicInFavorite.category_sub" />
     </div>
 
     <n-pagination
