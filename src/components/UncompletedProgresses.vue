@@ -268,7 +268,7 @@ function stateToColorClass(state: DownloadTaskState) {
     <span class="ml-auto select-none">左键拖动进行框选，右键打开菜单，双击暂停/继续</span>
     <div class="h-full select-none">
       <div
-        v-for="[chapterId, { state, chapterInfo, percentage, indicator }] in uncompletedProgresses"
+        v-for="[chapterId, { state, comic, chapterInfo, percentage, indicator }] in uncompletedProgresses"
         :key="chapterId"
         ref="selectableRefs"
         :data-key="chapterId"
@@ -279,8 +279,8 @@ function stateToColorClass(state: DownloadTaskState) {
         @dblclick="() => handleProgressDoubleClick(state, chapterId)"
         @contextmenu="() => handleProgressContextMenu(chapterId)">
         <div class="grid grid-cols-[1fr_1fr]">
-          <div class="text-ellipsis whitespace-nowrap overflow-hidden" :title="chapterInfo.comicTitle">
-            {{ chapterInfo.comicTitle }}
+          <div class="text-ellipsis whitespace-nowrap overflow-hidden" :title="comic.name">
+            {{ comic.name }}
           </div>
           <div class="text-ellipsis whitespace-nowrap overflow-hidden" :title="chapterInfo.chapterTitle">
             {{ chapterInfo.chapterTitle }}

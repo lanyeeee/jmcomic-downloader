@@ -97,7 +97,7 @@ pub fn cbz(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
         let chapter_title = chapter_info.chapter_title.clone();
         let err_prefix = format!("`{comic_title} - {chapter_title}`");
 
-        let chapter_download_dir = chapter_info.get_chapter_download_dir(app);
+        let chapter_download_dir = chapter_info.get_chapter_download_dir(app, comic);
         // 生成ComicInfo
         let comic_info = ComicInfo::from(comic, chapter_info);
         // 序列化ComicInfo为xml
@@ -237,7 +237,7 @@ pub fn pdf(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
     // 并发处理
     let downloaded_chapter_infos = downloaded_chapter_infos.into_par_iter();
     downloaded_chapter_infos.try_for_each(|chapter_info| -> anyhow::Result<()> {
-        let chapter_download_dir = chapter_info.get_chapter_download_dir(app);
+        let chapter_download_dir = chapter_info.get_chapter_download_dir(app, comic);
         let chapter_title = &chapter_info.chapter_title;
         let sanitized_chapter_title = filename_filter(chapter_title);
         // 创建pdf
