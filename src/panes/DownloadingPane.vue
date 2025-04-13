@@ -48,14 +48,14 @@ onMounted(async () => {
         }
 
         if (store.searchResult !== undefined) {
-          const comic = store.searchResult.content.find((comic) => comic.id === progressData.chapterInfo.comicId)
+          const comic = store.searchResult.content.find((comic) => comic.id === progressData.comic.id)
           if (comic !== undefined) {
             comic.isDownloaded = true
           }
         }
 
         if (store.getFavoriteResult !== undefined) {
-          const comic = store.getFavoriteResult.list.find((comic) => comic.id === progressData.chapterInfo.comicId)
+          const comic = store.getFavoriteResult.list.find((comic) => comic.id === progressData.comic.id)
           if (comic !== undefined) {
             comic.isDownloaded = true
           }

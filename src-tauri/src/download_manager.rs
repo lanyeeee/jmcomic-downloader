@@ -192,7 +192,7 @@ impl DownloadTask {
     }
 
     async fn download_chapter(&self) {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
         let chapter_id = self.chapter_info.chapter_id;
         // 获取此章节每张图片的下载链接以及对应的block_num
@@ -272,10 +272,12 @@ impl DownloadTask {
     }
 
     fn create_temp_download_dir(&self) -> Option<PathBuf> {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
-        let temp_download_dir = self.chapter_info.get_temp_download_dir(&self.app);
+        let temp_download_dir = self
+            .chapter_info
+            .get_temp_download_dir(&self.app, &self.comic);
         if let Err(err) = std::fs::create_dir_all(&temp_download_dir).map_err(anyhow::Error::from) {
             let err_title =
                 format!("`{comic_title} - {chapter_title}`创建目录`{temp_download_dir:?}`失败");
@@ -298,7 +300,9 @@ impl DownloadTask {
     }
 
     fn rename_temp_download_dir(&self, temp_download_dir: &PathBuf) -> anyhow::Result<()> {
-        let chapter_download_dir = self.chapter_info.get_chapter_download_dir(&self.app);
+        let chapter_download_dir = self
+            .chapter_info
+            .get_chapter_download_dir(&self.app, &self.comic);
 
         if chapter_download_dir.exists() {
             std::fs::remove_dir_all(&chapter_download_dir)
@@ -313,7 +317,7 @@ impl DownloadTask {
     }
 
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> Option<Vec<(String, u32)>> {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
         let jm_client = self.jm_client();
 
@@ -363,7 +367,7 @@ impl DownloadTask {
         temp_download_dir: &Path,
         save_paths: &[PathBuf],
     ) -> anyhow::Result<()> {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
         let entries = std::fs::read_dir(temp_download_dir)
@@ -388,7 +392,7 @@ impl DownloadTask {
         &'a self,
         permit: &mut Option<SemaphorePermit<'a>>,
     ) -> ControlFlow<()> {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
         tracing::debug!(comic_title, chapter_title, "章节开始排队");
@@ -443,7 +447,7 @@ impl DownloadTask {
         permit: &mut Option<SemaphorePermit<'a>>,
         state_receiver: &mut watch::Receiver<DownloadTaskState>,
     ) -> ControlFlow<()> {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
         self.emit_download_task_update_event();
@@ -465,7 +469,7 @@ impl DownloadTask {
     }
 
     fn set_state(&self, state: DownloadTaskState) {
-        let comic_title = &self.chapter_info.comic_title;
+        let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
         if let Err(err) = self.state_sender.send(state).map_err(anyhow::Error::from) {
@@ -559,7 +563,7 @@ impl DownloadImgTask {
     async fn download_img(&self) {
         let url = &self.url;
         let save_path = &self.save_path;
-        let comic_title = &self.download_task.chapter_info.comic_title;
+        let comic_title = &self.download_task.comic.name;
         let chapter_title = &self.download_task.chapter_info.chapter_title;
 
         if save_path.exists() {
@@ -623,7 +627,7 @@ impl DownloadImgTask {
         permit: &mut Option<SemaphorePermit<'a>>,
     ) -> ControlFlow<()> {
         let url = &self.url;
-        let comic_title = &self.download_task.chapter_info.comic_title;
+        let comic_title = &self.download_task.comic.name;
         let chapter_title = &self.download_task.chapter_info.chapter_title;
 
         tracing::trace!(comic_title, chapter_title, url, "图片开始排队");
@@ -658,7 +662,7 @@ impl DownloadImgTask {
         state_receiver: &mut watch::Receiver<DownloadTaskState>,
     ) -> ControlFlow<()> {
         let url = &self.url;
-        let comic_title = &self.download_task.chapter_info.comic_title;
+        let comic_title = &self.download_task.comic.name;
         let chapter_title = &self.download_task.chapter_info.chapter_title;
 
         let state = *state_receiver.borrow();

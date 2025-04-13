@@ -16,9 +16,12 @@ const completedProgresses = computed<[number, ProgressData][]>(() =>
 
 <template>
   <div class="h-full flex flex-col gap-row-2 px-2 overflow-auto">
-    <div class="grid grid-cols-[1fr_1fr] py-2 px-4 bg-gray-100 rounded-lg" v-for="[chapterId, { chapterInfo }] in completedProgresses" :key="chapterId">
-      <span class="text-ellipsis whitespace-nowrap overflow-hidden" :title="chapterInfo.comicTitle">
-        {{ chapterInfo.comicTitle }}
+    <div
+      class="grid grid-cols-[1fr_1fr] py-2 px-4 bg-gray-100 rounded-lg"
+      v-for="[chapterId, { comic, chapterInfo }] in completedProgresses"
+      :key="chapterId">
+      <span class="text-ellipsis whitespace-nowrap overflow-hidden" :title="comic.name">
+        {{ comic.name }}
       </span>
       <span class="text-ellipsis whitespace-nowrap overflow-hidden" :title="chapterInfo.chapterTitle">
         {{ chapterInfo.chapterTitle }}

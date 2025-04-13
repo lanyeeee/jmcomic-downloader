@@ -45,7 +45,7 @@ pub struct Comic {
 }
 
 impl Comic {
-    pub fn from_comic_resp_data(app: &AppHandle, comic: GetComicRespData) -> Self {
+    pub fn from_comic_resp_data(app: &AppHandle, comic: GetComicRespData) -> Comic {
         let comic_title = &comic.name;
         let mut chapter_infos: Vec<ChapterInfo> = comic
             .series
@@ -60,8 +60,6 @@ impl Comic {
                 let is_downloaded =
                     ChapterInfo::get_is_downloaded(app, comic_title, &chapter_title);
                 let chapter_info = ChapterInfo {
-                    comic_id: comic.id,
-                    comic_title: comic_title.clone(),
                     chapter_id,
                     chapter_title,
                     is_downloaded: Some(is_downloaded),
@@ -73,8 +71,6 @@ impl Comic {
         // 如果没有章节信息，就添加一个默认的章节信息
         if chapter_infos.is_empty() {
             chapter_infos.push(ChapterInfo {
-                comic_id: comic.id,
-                comic_title: comic_title.clone(),
                 chapter_id: comic.id,
                 chapter_title: "第1话".to_owned(),
                 is_downloaded: Some(ChapterInfo::get_is_downloaded(app, comic_title, "第1话")),
@@ -82,9 +78,9 @@ impl Comic {
             });
         }
 
-        let is_downloaded = Self::get_is_downloaded(app, &comic.name);
+        let is_downloaded = Comic::get_is_downloaded(app, &comic.name);
 
-        Self {
+        Comic {
             id: comic.id,
             name: comic.name,
             addtime: comic.addtime,
@@ -124,12 +120,12 @@ impl Comic {
     }
 
     pub fn get_is_downloaded(app: &AppHandle, comic_title: &str) -> bool {
-        Self::get_comic_download_dir(app, comic_title).exists()
+        Comic::get_comic_download_dir(app, comic_title).exists()
     }
 
     // 这里脱裤子放屁，是为了后期方便扩展，例如给漫画目录加上作者名、id等
     pub fn get_comic_download_dir(app: &AppHandle, comic_title: &str) -> PathBuf {
-        let comic_dir_name = Self::comic_dir_name(app, comic_title);
+        let comic_dir_name = Comic::comic_dir_name(app, comic_title);
         app.state::<RwLock<Config>>()
             .read()
             .download_dir
@@ -137,7 +133,7 @@ impl Comic {
     }
 
     pub fn get_comic_export_dir(app: &AppHandle, comic_title: &str) -> PathBuf {
-        let comic_dir_name = Self::comic_dir_name(app, comic_title);
+        let comic_dir_name = Comic::comic_dir_name(app, comic_title);
         app.state::<RwLock<Config>>()
             .read()
             .export_dir
