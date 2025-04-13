@@ -77,7 +77,7 @@ impl Comic {
                 comic_title: comic_title.clone(),
                 chapter_id: comic.id,
                 chapter_title: "第1话".to_owned(),
-                is_downloaded: Some(false),
+                is_downloaded: Some(ChapterInfo::get_is_downloaded(app, comic_title, "第1话")),
                 order: 1,
             });
         }
