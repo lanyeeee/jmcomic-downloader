@@ -59,8 +59,6 @@ const dropdownOptions = [
 ]
 const checkedIds = ref<number[]>([])
 const selectedIds = ref<Set<number>>(new Set())
-//记录这次框选是否改动了选中的元素
-const selectedChanged = ref<boolean>(false)
 const selectionAreaRef = ref<InstanceType<typeof SelectionArea>>()
 
 watch(
@@ -71,10 +69,6 @@ watch(
     selectionAreaRef.value?.selection?.clearSelection()
   },
 )
-
-watch(selectedIds.value, () => {
-  selectedChanged.value = true
-})
 
 function extractIds(elements: Element[]): number[] {
   return elements
