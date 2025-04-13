@@ -109,7 +109,10 @@ impl Comic {
         let mut comic = serde_json::from_str::<Comic>(&comic_json).context(format!(
             "从元数据转为Comic失败，将 {metadata_path:?} 反序列化为Comic失败"
         ))?;
-        // 这个comic中的is_downloaded字段是None，需要重新计算
+        // json中的is_downloaded字段是None，需要重新计算
+        // 既然有元数据，就说明这个漫画已经下载(文件夹存在)了，直接设置为true
+        comic.is_downloaded = Some(true);
+        // 重新计算每个章节的is_downloaded字段
         for chapter_info in &mut comic.chapter_infos {
             let comic_title = &comic.name;
             let chapter_title = &chapter_info.chapter_title;
