@@ -10,10 +10,52 @@ const dropdownX = ref<number>(0)
 const dropdownY = ref<number>(0)
 const showDropdown = ref<boolean>(false)
 const dropdownOptions = [
-  { label: '勾选', key: 'check' },
-  { label: '取消勾选', key: 'uncheck' },
-  { label: '全选', key: 'check all' },
-  { label: '取消全选', key: 'uncheck all' },
+  {
+    label: '勾选',
+    key: 'check',
+    props: {
+      onClick: () => {
+        // 只有未勾选的才会被勾选
+        ;[...selectedIds.value]
+          .filter((id) => !checkedIds.value.includes(id))
+          .forEach((id) => checkedIds.value.push(id))
+        showDropdown.value = false
+      },
+    },
+  },
+  {
+    label: '取消勾选',
+    key: 'uncheck',
+    props: {
+      onClick: () => {
+        checkedIds.value = checkedIds.value.filter((id) => !selectedIds.value.has(id))
+        showDropdown.value = false
+      },
+    },
+  },
+  {
+    label: '全选',
+    key: 'check all',
+    props: {
+      onClick: () => {
+        // 只有未锁定的才会被勾选
+        store.pickedComic?.chapterInfos
+          ?.filter((c) => c.isDownloaded !== true && !checkedIds.value.includes(c.chapterId))
+          .forEach((c) => checkedIds.value.push(c.chapterId))
+        showDropdown.value = false
+      },
+    },
+  },
+  {
+    label: '取消全选',
+    key: 'uncheck all',
+    props: {
+      onClick: () => {
+        checkedIds.value.length = 0
+        showDropdown.value = false
+      },
+    },
+  },
 ]
 const checkedIds = ref<number[]>([])
 const selectedIds = ref<Set<number>>(new Set())
@@ -62,23 +104,6 @@ function updateSelectedIds({
 }: SelectionEvent) {
   extractIds(added).forEach((id) => selectedIds.value.add(id))
   extractIds(removed).forEach((id) => selectedIds.value.delete(id))
-}
-
-function onDropdownSelect(key: 'check' | 'uncheck' | 'check all' | 'uncheck all') {
-  showDropdown.value = false
-  if (key === 'check') {
-    // 只有未勾选的才会被勾选
-    ;[...selectedIds.value].filter((id) => !checkedIds.value.includes(id)).forEach((id) => checkedIds.value.push(id))
-  } else if (key === 'uncheck') {
-    checkedIds.value = checkedIds.value.filter((id) => !selectedIds.value.has(id))
-  } else if (key === 'check all') {
-    // 只有未锁定的才会被勾选
-    store.pickedComic?.chapterInfos
-      ?.filter((c) => c.isDownloaded !== true && !checkedIds.value.includes(c.chapterId))
-      .forEach((c) => checkedIds.value.push(c.chapterId))
-  } else if (key === 'uncheck all') {
-    checkedIds.value.length = 0
-  }
 }
 
 async function onContextMenu(e: MouseEvent) {
@@ -200,8 +225,7 @@ async function showComicDownloadDirInFileManager() {
       :y="dropdownY"
       :options="dropdownOptions"
       :show="showDropdown"
-      :on-clickoutside="() => (showDropdown = false)"
-      @select="onDropdownSelect" />
+      :on-clickoutside="() => (showDropdown = false)" />
   </div>
 </template>
 
