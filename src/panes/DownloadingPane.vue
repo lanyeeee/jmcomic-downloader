@@ -45,6 +45,10 @@ onMounted(async () => {
 
         if (store.pickedComic !== undefined) {
           store.pickedComic.isDownloaded = true
+          const chapter = store.pickedComic.chapterInfos.find((chapter) => chapter.chapterId === chapterId)
+          if (chapter !== undefined) {
+            chapter.isDownloaded = true
+          }
         }
 
         if (store.searchResult !== undefined) {
