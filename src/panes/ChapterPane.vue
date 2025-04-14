@@ -98,6 +98,7 @@ watchEffect(() => {
     return
   }
   // 只保留未下载的章节
+  // TODO: 改用set效率更高
   const notDownloadedChapterIds = chapterInfos.value
     .filter((c) => c.isDownloaded !== true && !isDownloading(c.state))
     .map((c) => c.chapterId)
