@@ -1,6 +1,6 @@
 <script setup lang="tsx">
 import { ProgressData } from '../types.ts'
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watchEffect, computed, nextTick } from 'vue'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import { commands, DownloadTaskState } from '../bindings.ts'
 import { DropdownOption, NIcon, ProgressProps } from 'naive-ui'
@@ -28,9 +28,9 @@ const uncompletedProgresses = computed<[number, ProgressData][]>(() =>
     .sort((a, b) => b[1].totalImgCount - a[1].totalImgCount),
 )
 
-watch(uncompletedProgresses, () => {
+watchEffect(() => {
+  // 只保留未完成的章节id
   const uncompletedIds = new Set(uncompletedProgresses.value.map(([chapterId]) => chapterId))
-  // 只留下未完成的漫画
   selectedIds.value = new Set([...selectedIds.value].filter((chapterId) => uncompletedIds.has(chapterId)))
 })
 
