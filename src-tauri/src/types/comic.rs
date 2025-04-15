@@ -50,9 +50,11 @@ impl Comic {
         let mut chapter_infos: Vec<ChapterInfo> = comic
             .series
             .into_iter()
-            .filter_map(|s| {
+            .enumerate()
+            .filter_map(|(index, s)| {
                 let chapter_id = s.id.parse().ok()?;
-                let order = s.sort.parse().ok()?;
+                #[allow(clippy::cast_possible_wrap)]
+                let order = (index + 1) as i64;
                 let mut chapter_title = format!("第{order}话");
                 if !s.name.is_empty() {
                     chapter_title.push_str(&format!(" {}", &s.name));
