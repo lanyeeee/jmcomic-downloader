@@ -1,167 +1,152 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { commands, Config, events } from '../bindings.ts'
+import { onMounted, ref } from 'vue'
+import { commands, events } from '../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
-import { NProgress, useNotification } from 'naive-ui'
+import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
+import { useStore } from '../store.ts'
 import SettingsDialog from '../components/SettingsDialog.vue'
+import UncompletedProgresses from '../components/UncompletedProgresses.vue'
+import CompletedProgresses from '../components/CompletedProgresses.vue'
 
-type ProgressData = {
-  comicTitle: string
-  chapterTitle: string
-  downloadedCount: number
-  total: number
-  percentage: number
-  indicator: string
-}
+const store = useStore()
 
-const notification = useNotification()
-
-const config = defineModel<Config>('config', { required: true })
-
-const progresses = ref<Map<number, ProgressData>>(new Map())
-const overallProgress = ref<ProgressData>({
-  comicTitle: '总进度',
-  chapterTitle: '总进度',
-  downloadedCount: 0,
-  total: 0,
-  percentage: 0,
-  indicator: ''
-})
 const settingsDialogShowing = ref<boolean>(false)
 
-const sortedProgresses = computed(() => {
-  const progressesArray = Array.from(progresses.value.entries())
-  progressesArray.sort((a, b) => {
-    return b[1].total - a[1].total
-  })
-  return progressesArray
-})
+const downloadSpeed = ref<string>('')
 
 onMounted(async () => {
-  await events.downloadEvent.listen(({ payload: downloadEvent }) => {
-    if (downloadEvent.event == 'ChapterPending') {
-      const { chapterId, comicTitle: comicTitle, chapterTitle } = downloadEvent.data
-      const progressData: ProgressData = {
-        comicTitle,
-        chapterTitle,
-        downloadedCount: 0,
-        total: 0,
-        percentage: 0,
-        indicator: ''
-      }
-      progresses.value.set(chapterId, progressData)
-    } else if (downloadEvent.event == 'ChapterStart') {
-      const { chapterId, total } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      progressData.total = total
-    } else if (downloadEvent.event == 'ChapterEnd') {
-      const { chapterId, errMsg } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      if (errMsg !== null) {
-        notification.warning({
-          title: '下载章节失败',
-          content: errMsg,
-          meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
-        })
-      }
-      progresses.value.delete(chapterId)
-    } else if (downloadEvent.event == 'ImageSuccess') {
-      const { chapterId, current } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      progressData.downloadedCount = current
-      progressData.percentage = Math.round((progressData.downloadedCount / progressData.total) * 100)
-    } else if (downloadEvent.event == 'ImageError') {
-      const { chapterId, url, errMsg } = downloadEvent.data
-      const progressData = progresses.value.get(chapterId) as ProgressData | undefined
-      if (progressData === undefined) {
-        return
-      }
-      notification.warning({
-        title: '下载图片失败',
-        description: url,
-        content: errMsg,
-        meta: `${progressData.comicTitle} - ${progressData.chapterTitle}`
-      })
-    } else if (downloadEvent.event == 'OverallSpeed') {
-      const { speed } = downloadEvent.data
-      overallProgress.value.indicator = speed
-    } else if (downloadEvent.event == 'OverallUpdate') {
-      const { percentage, downloadedImageCount, totalImageCount } = downloadEvent.data
-      overallProgress.value.percentage = percentage
-      overallProgress.value.downloadedCount = downloadedImageCount
-      overallProgress.value.total = totalImageCount
-    }
+  await events.downloadSpeedEvent.listen(async ({ payload: { speed } }) => {
+    downloadSpeed.value = speed
   })
 
-  await events.setProxyEvent.listen(({ payload }) => {
-    if (payload.event === 'Error') {
-      notification.error({ title: '设置代理失败', description: payload.data.errMsg })
+  await events.downloadTaskEvent.listen(({ payload: { event, data } }) => {
+    if (event === 'Create') {
+      const { chapterInfo, downloadedImgCount, totalImgCount } = data
+
+      store.progresses.set(chapterInfo.chapterId, {
+        ...data,
+        percentage: 0,
+        indicator: `排队中 ${downloadedImgCount}/${totalImgCount}`,
+      })
+    } else if (event === 'Update') {
+      const { chapterId, state, downloadedImgCount, totalImgCount } = data
+
+      const progressData = store.progresses.get(chapterId)
+      if (progressData === undefined) {
+        return
+      }
+
+      progressData.state = state
+      progressData.downloadedImgCount = downloadedImgCount
+      progressData.totalImgCount = totalImgCount
+
+      if (state === 'Completed') {
+        progressData.chapterInfo.isDownloaded = true
+
+        if (store.pickedComic !== undefined) {
+          store.pickedComic.isDownloaded = true
+          const chapter = store.pickedComic.chapterInfos.find((chapter) => chapter.chapterId === chapterId)
+          if (chapter !== undefined) {
+            chapter.isDownloaded = true
+          }
+        }
+
+        if (store.searchResult !== undefined) {
+          const comic = store.searchResult.content.find((comic) => comic.id === progressData.comic.id)
+          if (comic !== undefined) {
+            comic.isDownloaded = true
+          }
+        }
+
+        if (store.getFavoriteResult !== undefined) {
+          const comic = store.getFavoriteResult.list.find((comic) => comic.id === progressData.comic.id)
+          if (comic !== undefined) {
+            comic.isDownloaded = true
+          }
+        }
+      }
+
+      progressData.percentage = (downloadedImgCount / totalImgCount) * 100
+
+      let indicator = ''
+      if (state === 'Pending') {
+        indicator = `排队中`
+      } else if (state === 'Downloading') {
+        indicator = `下载中`
+      } else if (state === 'Paused') {
+        indicator = `已暂停`
+      } else if (state === 'Cancelled') {
+        indicator = `已取消`
+      } else if (state === 'Completed') {
+        indicator = `下载完成`
+      } else if (state === 'Failed') {
+        indicator = `下载失败`
+      }
+      if (totalImgCount !== 0) {
+        indicator += ` ${downloadedImgCount}/${totalImgCount}`
+      }
+
+      progressData.indicator = indicator
     }
   })
 })
 
 async function showDownloadDirInFileManager() {
-  if (config.value === undefined) {
+  if (store.config === undefined) {
     return
   }
-  const result = await commands.showPathInFileManager(config.value.downloadDir)
+  const result = await commands.showPathInFileManager(store.config.downloadDir)
   if (result.status === 'error') {
-    notification.error({ title: '打开下载目录失败', description: result.error })
+    console.error(result.error)
   }
 }
 
 async function selectDownloadDir() {
+  if (store.config === undefined) {
+    return
+  }
+
   const selectedDirPath = await open({ directory: true })
   if (selectedDirPath === null) {
     return
   }
-  config.value.downloadDir = selectedDirPath
+
+  store.config.downloadDir = selectedDirPath
 }
 </script>
 
 <template>
-  <div>
-    <div class="flex flex-col gap-row-1">
-      <div class="flex">
-        <n-input
-          v-model:value="config.downloadDir"
-          size="tiny"
-          readonly
-          placeholder="请选择漫画目录"
-          @click="selectDownloadDir">
-          <template #prefix>下载目录：</template>
-        </n-input>
-        <n-button size="tiny" @click="showDownloadDirInFileManager">打开下载目录</n-button>
-        <n-button type="primary" secondary size="tiny" @click="settingsDialogShowing = true">更多设置</n-button>
-      </div>
-      <div class="grid grid-cols-[1fr_4fr_1fr]">
-        <span class="text-ellipsis whitespace-nowrap overflow-hidden">{{ overallProgress.chapterTitle }}</span>
-        <n-progress :percentage="overallProgress.percentage" indicator-placement="inside" :height="21">
-          {{ overallProgress.indicator }}
-        </n-progress>
-        <span>{{ overallProgress.downloadedCount }}/{{ overallProgress.total }}</span>
-      </div>
-      <div
-        class="grid grid-cols-[1fr_1fr_2fr]"
-        v-for="[chapterId, { comicTitle, chapterTitle, percentage, downloadedCount, total }] in sortedProgresses"
-        :key="chapterId">
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ comicTitle }}</span>
-        <span class="mb-1! text-ellipsis whitespace-nowrap overflow-hidden">{{ chapterTitle }}</span>
-        <span v-if="total === 0">等待中</span>
-        <n-progress v-else :percentage="percentage">{{ downloadedCount }}/{{ total }}</n-progress>
-      </div>
+  <div v-if="store.config !== undefined" class="flex flex-col gap-2 flex-1 overflow-auto">
+    <div class="flex gap-1 box-border px-2 pt-2">
+      <n-input-group class="">
+        <n-input-group-label size="small">下载目录</n-input-group-label>
+        <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
+        <n-button size="small" @click="showDownloadDirInFileManager">
+          <template #icon>
+            <n-icon>
+              <FolderOpenOutlined />
+            </n-icon>
+          </template>
+        </n-button>
+      </n-input-group>
+      <n-button size="small" @click="settingsDialogShowing = true">
+        <template #icon>
+          <n-icon>
+            <SettingOutlined />
+          </n-icon>
+        </template>
+        配置
+      </n-button>
     </div>
-    <n-modal v-model:show="settingsDialogShowing">
-      <settings-dialog v-model:showing="settingsDialogShowing" v-model:config="config" />
-    </n-modal>
+    <n-tabs class="h-full overflow-auto" type="line" size="small">
+      <n-tab-pane class="h-full p-0! overflow-auto" name="uncompleted" tab="未完成">
+        <uncompleted-progresses />
+      </n-tab-pane>
+      <n-tab-pane class="h-full p-0! overflow-auto" name="completed" tab="已完成">
+        <completed-progresses />
+      </n-tab-pane>
+    </n-tabs>
+    <span class="ml-auto mr-2 mb-2">下载速度：{{ downloadSpeed }}</span>
+    <settings-dialog v-model:showing="settingsDialogShowing" />
   </div>
 </template>

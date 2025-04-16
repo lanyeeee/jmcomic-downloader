@@ -1,29 +1,31 @@
-// TODO: 删除未使用的import
-use std::fmt::Display;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::config::Config;
-use crate::extensions::AnyhowErrorToStringChain;
-use crate::responses::{
-    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
-    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteResp,
-};
-use crate::types::{FavoriteSort, ProxyMode, SearchSort};
-use crate::{utils, SetProxyEvent};
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockDecrypt, KeyInit};
 use aes::Aes256;
 use anyhow::{anyhow, Context};
 use base64::engine::general_purpose;
 use base64::Engine;
+use bytes::Bytes;
 use parking_lot::RwLock;
 use reqwest::cookie::Jar;
+use reqwest::StatusCode;
 use reqwest_middleware::ClientWithMiddleware;
+use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
-use tauri_specta::Event;
+
+use crate::config::Config;
+use crate::download_manager::IMAGE_DOMAIN;
+use crate::extensions::AnyhowErrorToStringChain;
+use crate::responses::{
+    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
+    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
+};
+use crate::types::{FavoriteSort, ProxyMode, SearchSort};
+use crate::utils;
 
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
@@ -61,27 +63,33 @@ impl ApiPath {
 #[derive(Clone)]
 pub struct JmClient {
     app: AppHandle,
-    http_client: Arc<RwLock<ClientWithMiddleware>>,
-    jar: Arc<Jar>,
+    api_client: Arc<RwLock<ClientWithMiddleware>>,
+    api_jar: Arc<Jar>,
+    img_client: Arc<RwLock<ClientWithMiddleware>>,
 }
 
 impl JmClient {
     pub fn new(app: AppHandle) -> Self {
-        let jar = Arc::new(Jar::default());
+        let api_jar = Arc::new(Jar::default());
+        let api_client = create_api_client(&app, &api_jar);
+        let api_client = Arc::new(RwLock::new(api_client));
 
-        let http_client = create_http_client(&app, &jar);
-        let http_client = Arc::new(RwLock::new(http_client));
+        let img_client = create_img_client(&app);
+        let img_client = Arc::new(RwLock::new(img_client));
 
         Self {
             app,
-            http_client,
-            jar,
+            api_client,
+            api_jar,
+            img_client,
         }
     }
 
-    pub fn recreate_http_client(&self) {
-        let http_client = create_http_client(&self.app, &self.jar);
-        *self.http_client.write() = http_client;
+    pub fn reload_client(&self) {
+        let api_client = create_api_client(&self.app, &self.api_jar);
+        *self.api_client.write() = api_client;
+        let img_client = create_img_client(&self.app);
+        *self.img_client.write() = img_client;
     }
 
     async fn jm_request(
@@ -93,16 +101,15 @@ impl JmClient {
         ts: u64,
     ) -> anyhow::Result<reqwest::Response> {
         let tokenparam = format!("{ts},{APP_VERSION}");
-        // TODO: 直接用 ==
-        let token = if path != ApiPath::GetScrambleId {
-            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
-        } else {
+        let token = if path == ApiPath::GetScrambleId {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
+        } else {
+            utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         };
 
         let path = path.as_str();
         let request = self
-            .http_client
+            .api_client
             .read()
             .request(method, format!("https://{API_DOMAIN}{path}").as_str())
             .header("token", token)
@@ -179,9 +186,10 @@ impl JmClient {
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为GetUserProfileRespData
-        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+        let mut user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
             format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
         )?;
+        user_profile.photo = format!("https://{IMAGE_DOMAIN}/media/users/{}", user_profile.photo);
 
         Ok(user_profile)
     }
@@ -217,9 +225,10 @@ impl JmClient {
         // 解密data字段
         let data = decrypt_data(ts, data)?;
         // 尝试将解密后的data字段解析为GetUserProfileRespData
-        let user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
+        let mut user_profile = serde_json::from_str::<GetUserProfileRespData>(&data).context(
             format!("将解密后的data字段解析为GetUserProfileRespData失败: {data}"),
         )?;
+        user_profile.photo = format!("https://{IMAGE_DOMAIN}/media/users/{}", user_profile.photo);
 
         Ok(user_profile)
     }
@@ -365,7 +374,7 @@ impl JmClient {
             .nth(1)
             .and_then(|s| s.split(';').next())
             .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(220980);
+            .unwrap_or(220_980);
         Ok(scramble_id)
     }
 
@@ -414,7 +423,7 @@ impl JmClient {
         Ok(favorite)
     }
 
-    pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteResp> {
+    pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let form = json!({
             "aid": aid,
@@ -444,18 +453,33 @@ impl JmClient {
         ))?;
         // 解密data字段
         let data = decrypt_data(ts, data)?;
-        // 尝试将解密后的data字段解析为ToggleFavoriteResp
-        let toggle_favorite_resp = serde_json::from_str::<ToggleFavoriteResp>(&data).context(
-            format!("将解密后的data字段解析为ToggleFavoriteResp失败: {data}"),
-        )?;
-        Ok(toggle_favorite_resp)
+        // 尝试将解密后的data字段解析为ToggleFavoriteRespData
+        let toggle_favorite_resp_data = serde_json::from_str::<ToggleFavoriteRespData>(&data)
+            .context(format!(
+                "将解密后的data字段解析为ToggleFavoriteRespData失败: {data}"
+            ))?;
+        Ok(toggle_favorite_resp_data)
+    }
+
+    pub async fn get_img_data(&self, url: &str) -> anyhow::Result<Bytes> {
+        let request = self.img_client.read().get(url);
+
+        let http_resp = request.send().await?;
+
+        let status = http_resp.status();
+        if status != StatusCode::OK {
+            let text = http_resp.text().await?;
+            let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
+            return Err(err);
+        }
+
+        let image_data = http_resp.bytes().await?;
+        Ok(image_data)
     }
 }
 
-pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
-    let builder = reqwest::ClientBuilder::new()
-        .cookie_provider(jar.clone())
-        .timeout(Duration::from_secs(2)); // 每个请求超过2秒就超时
+pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
+    let builder = reqwest::ClientBuilder::new().cookie_provider(jar.clone());
 
     let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
     let builder = match proxy_mode {
@@ -471,20 +495,52 @@ pub fn create_http_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewa
             match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
                 Ok(proxy) => builder.proxy(proxy),
                 Err(err) => {
-                    let err = err.context(format!("JmClient设置代理 {proxy_url} 失败"));
-                    let err_msg = err.to_string_chain();
-                    // 发送设置代理失败事件
-                    let _ = SetProxyEvent::Error { err_msg }.emit(app);
+                    let err_title = format!("`JmClient`设置代理`{proxy_url}`失败");
+                    let string_chain = err.to_string_chain();
+                    tracing::error!(err_title, message = string_chain);
                     builder
                 }
             }
         }
     };
 
-    let retry_policy = reqwest_retry::policies::ExponentialBackoff::builder()
+    let retry_policy = ExponentialBackoff::builder()
         .base(1) // 指数为1，保证重试间隔为1秒不变
         .jitter(Jitter::Bounded) // 重试间隔在1秒左右波动
-        .build_with_total_retry_duration(Duration::from_secs(3)); // 重试总时长为3秒
+        .build_with_total_retry_duration(Duration::from_secs(5)); // 重试总时长为5秒
+
+    reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build()
+}
+
+pub fn create_img_client(app: &AppHandle) -> ClientWithMiddleware {
+    let builder = reqwest::ClientBuilder::new();
+
+    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let builder = match proxy_mode {
+        ProxyMode::System => builder,
+        ProxyMode::NoProxy => builder.no_proxy(),
+        ProxyMode::Custom => {
+            let config = app.state::<RwLock<Config>>();
+            let config = config.read();
+            let proxy_host = &config.proxy_host;
+            let proxy_port = &config.proxy_port;
+            let proxy_url = format!("http://{proxy_host}:{proxy_port}");
+
+            match reqwest::Proxy::all(&proxy_url).map_err(anyhow::Error::from) {
+                Ok(proxy) => builder.proxy(proxy),
+                Err(err) => {
+                    let err_title = format!("`DownloadManager`设置代理`{proxy_url}`失败");
+                    let string_chain = err.to_string_chain();
+                    tracing::error!(err_title, message = string_chain);
+                    builder
+                }
+            }
+        }
+    };
+
+    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(2);
 
     reqwest_middleware::ClientBuilder::new(builder.build().unwrap())
         .with(RetryTransientMiddleware::new_with_policy(retry_policy))
@@ -495,8 +551,7 @@ fn decrypt_data(ts: u64, data: &str) -> anyhow::Result<String> {
     // 使用Base64解码传入的数据，得到AES-256-ECB加密的数据
     let aes256_ecb_encrypted_data = general_purpose::STANDARD.decode(data)?;
     // 生成密钥
-    // TODO: 直接用format!("{ts}{APP_DATA_SECRET}")
-    let key = utils::md5_hex(&format!("{}{}", ts, APP_DATA_SECRET));
+    let key = utils::md5_hex(&format!("{ts}{APP_DATA_SECRET}"));
     // 使用AES-256-ECB进行解密
     let cipher = Aes256::new(GenericArray::from_slice(key.as_bytes()));
     let decrypted_data_with_padding: Vec<u8> = aes256_ecb_encrypted_data
