@@ -1,32 +1,40 @@
 <script setup lang="ts">
-import { Comic, commands } from '../bindings.ts'
-import { useNotification } from 'naive-ui'
-import { ComicInfo } from '../types.ts'
+import { CategoryRespData, CategorySubRespData, commands } from '../bindings.ts'
+import { useStore } from '../store.ts'
 
-defineProps<{
-  comicInfo: ComicInfo
+const store = useStore()
+
+const props = defineProps<{
+  comicId: number
+  comicTitle: string
+  comicAuthor: string
+  comicCategory: CategoryRespData
+  comicCategorySub: CategorySubRespData
+  comicDownloaded: boolean
 }>()
 
-const selectedComic = defineModel<Comic | undefined>('selectedComic', { required: true })
-const currentTabName = defineModel<'search' | 'favorite' | 'chapter'>('currentTabName', { required: true })
-
-const notification = useNotification()
-
-async function onClickItem(aid: number) {
-  const result = await commands.getComic(aid)
+async function pickComic() {
+  const result = await commands.getComic(props.comicId)
   if (result.status === 'error') {
-    notification.error({ title: '获取漫画失败', description: result.error })
+    console.error(result.error)
     return
   }
-  selectedComic.value = result.data
-  currentTabName.value = 'chapter'
+  store.pickedComic = result.data
+  store.currentTabName = 'chapter'
 }
 
-async function downloadComic(aid: number) {
-  const result = await commands.downloadComic(aid)
+async function downloadComic() {
+  const result = await commands.downloadComic(props.comicId)
   if (result.status === 'error') {
-    notification.error({ title: '下载漫画失败', description: result.error })
+    console.error(result.error)
     return
+  }
+}
+
+async function showComicDownloadDirInFileManager() {
+  const result = await commands.showComicDownloadDirInFileManager(props.comicTitle)
+  if (result.status === 'error') {
+    console.error(result.error)
   }
 }
 </script>
@@ -36,22 +44,26 @@ async function downloadComic(aid: number) {
     <div class="flex">
       <img
         class="w-24 object-cover mr-4 cursor-pointer transition-transform duration-200 hover:scale-106"
-        :src="`https://cdn-msp3.18comic.vip/media/albums/${comicInfo.id}_3x4.jpg`"
+        :src="`https://cdn-msp3.18comic.vip/media/albums/${comicId}_3x4.jpg`"
         alt=""
         referrerpolicy="no-referrer"
-        @click="onClickItem(parseInt(comicInfo.id))" />
+        @click="pickComic" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-          <!--    TODO:调整标题的最大行数，以确保漫画卡片大小一致       -->
           <span
             class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
-            @click="onClickItem(parseInt(comicInfo.id))">
-            {{ comicInfo.name }}
+            @click="pickComic">
+            {{ comicTitle }}
           </span>
-          <span class="text-red">作者：{{ comicInfo.author }}</span>
-          <span class="text-gray">分类：{{ comicInfo.category.title }} {{ comicInfo.category_sub.title }}</span>
+          <span class="text-red">作者：{{ comicAuthor }}</span>
+          <span class="text-gray">分类：{{ comicCategory.title }} {{ comicCategorySub.title }}</span>
         </div>
-        <n-button size="tiny" class="ml-auto" @click="downloadComic(parseInt(comicInfo.id))">一键下载所有章节</n-button>
+        <div class="flex">
+          <n-button v-if="comicDownloaded" size="tiny" @click="showComicDownloadDirInFileManager">
+            打开下载目录
+          </n-button>
+          <n-button size="tiny" class="ml-auto" @click="downloadComic">一键下载所有章节</n-button>
+        </div>
       </div>
     </div>
   </n-card>

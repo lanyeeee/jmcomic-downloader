@@ -5,18 +5,22 @@ use crate::extensions::AnyhowErrorToStringChain;
 
 pub type CommandResult<T> = Result<T, CommandError>;
 
-#[derive(Debug, Type)]
-pub struct CommandError(String);
-impl Serialize for CommandError {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&format!("{:#}", self.0))
-    }
+#[derive(Debug, Type, Serialize)]
+pub struct CommandError {
+    pub err_title: String,
+    pub err_message: String,
 }
-impl From<anyhow::Error> for CommandError {
-    fn from(err: anyhow::Error) -> Self {
-        Self(err.to_string_chain())
+
+impl CommandError {
+    pub fn from<E>(err_title: &str, err: E) -> Self
+    where
+        E: Into<anyhow::Error>,
+    {
+        let string_chain = err.into().to_string_chain();
+        tracing::error!(err_title, message = string_chain);
+        Self {
+            err_title: err_title.to_string(),
+            err_message: string_chain,
+        }
     }
 }

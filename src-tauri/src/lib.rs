@@ -1,4 +1,8 @@
 use anyhow::Context;
+use events::{
+    DownloadSpeedEvent, DownloadTaskEvent, ExportCbzEvent, ExportPdfEvent, LogEvent,
+    UpdateDownloadedFavoriteComicEvent,
+};
 use parking_lot::RwLock;
 use tauri::{Manager, Wry};
 
@@ -6,7 +10,6 @@ use tauri::{Manager, Wry};
 use crate::commands::*;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
-use crate::events::prelude::*;
 use crate::jm_client::JmClient;
 
 mod commands;
@@ -14,10 +17,11 @@ mod config;
 mod download_manager;
 mod errors;
 mod events;
+mod export;
 mod extensions;
 mod jm_client;
+mod logger;
 mod responses;
-mod save_archive;
 mod types;
 mod utils;
 
@@ -36,20 +40,30 @@ pub fn run() {
             login,
             search,
             get_comic,
-            get_chapter,
-            get_scramble_id,
             get_favorite_folder,
             get_user_profile,
-            download_chapters,
+            create_download_task,
+            pause_download_task,
+            resume_download_task,
+            cancel_download_task,
             download_comic,
             update_downloaded_favorite_comic,
             show_path_in_file_manager,
+            show_comic_download_dir_in_file_manager,
             sync_favorite_folder,
+            save_metadata,
+            get_downloaded_comics,
+            export_cbz,
+            export_pdf,
+            get_logs_dir_size,
         ])
         .events(tauri_specta::collect_events![
-            DownloadEvent,
-            SetProxyEvent,
+            DownloadSpeedEvent,
+            DownloadTaskEvent,
             UpdateDownloadedFavoriteComicEvent,
+            ExportCbzEvent,
+            ExportPdfEvent,
+            LogEvent,
         ]);
 
     #[cfg(debug_assertions)]
@@ -65,7 +79,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
@@ -87,6 +101,8 @@ pub fn run() {
 
             let download_manager = DownloadManager::new(app.handle().clone());
             app.manage(download_manager);
+
+            logger::init(app.handle())?;
 
             Ok(())
         })

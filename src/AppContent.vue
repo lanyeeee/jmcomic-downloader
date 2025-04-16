@@ -1,37 +1,42 @@
-<script setup lang="ts">
+<script setup lang="tsx">
 import { onMounted, ref, watch } from 'vue'
-import { Comic, commands, Config, GetUserProfileRespData } from './bindings.ts'
+import { commands } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
 import LoginDialog from './components/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
 import ChapterPane from './panes/ChapterPane.vue'
 import DownloadingPane from './panes/DownloadingPane.vue'
-import { appDataDir } from '@tauri-apps/api/path'
-import { path } from '@tauri-apps/api'
 import FavoritePane from './panes/FavoritePane.vue'
 import AboutDialog from './components/AboutDialog.vue'
+import { QuestionCircleOutlined, UserOutlined, BarsOutlined } from '@vicons/antd'
+import DownloadedPane from './panes/DownloadedPane.vue'
+import { useStore } from './store.ts'
+import LogViewer from './components/LogViewer.vue'
+
+const store = useStore()
 
 const message = useMessage()
 const notification = useNotification()
 
-const config = ref<Config>()
-const userProfile = ref<GetUserProfileRespData>()
 const loginDialogShowing = ref<boolean>(false)
 const aboutDialogShowing = ref<boolean>(false)
-const currentTabName = ref<'search' | 'favorite' | 'chapter'>('search')
-const selectedComic = ref<Comic>()
+const logViewerShowing = ref<boolean>(false)
 
 watch(
-  config,
+  () => store.config,
   async () => {
-    if (config.value === undefined) {
+    if (store.config === undefined) {
       return
     }
-    // TODO: 这里应该检查result是否为error
-    await commands.saveConfig(config.value)
+
+    const result = await commands.saveConfig(store.config)
+    if (result.status === 'error') {
+      console.error(result.error)
+      return
+    }
     message.success('保存配置成功')
   },
-  { deep: true }
+  { deep: true },
 )
 
 onMounted(async () => {
@@ -40,63 +45,120 @@ onMounted(async () => {
     event.preventDefault()
   }
   // 获取配置
-  config.value = await commands.getConfig()
+  store.config = await commands.getConfig()
   // 如果username和password不为空，尝试登录
-  if (config.value.username !== '' && config.value.password !== '') {
-    const result = await commands.login(config.value.username, config.value.password)
+  if (store.config.username !== '' && store.config.password !== '') {
+    const result = await commands.login(store.config.username, store.config.password)
     if (result.status === 'error') {
-      notification.error({ title: '自动登录失败', description: result.error })
+      console.error(result.error)
       return
     }
-    userProfile.value = result.data
+    store.userProfile = result.data
     message.success('自动登录成功')
   }
 })
 
-async function showConfigInFileManager() {
-  const configName = 'config.json'
-  const configPath = await path.join(await appDataDir(), configName)
-  const result = await commands.showPathInFileManager(configPath)
+onMounted(async () => {
+  // 检查日志目录大小
+  const result = await commands.getLogsDirSize()
   if (result.status === 'error') {
-    notification.error({ title: '打开配置目录失败', description: result.error })
+    console.error(result.error)
+    return
   }
-}
-
+  if (result.data > 50 * 1024 * 1024) {
+    notification.warning({
+      title: '日志目录大小超过50MB，请及时清理日志文件',
+      description: () => (
+        <>
+          <div>
+            点击右上角的 <span class="bg-gray-2 px-1">日志</span> 按钮
+          </div>
+          <div>
+            里边有 <span class="bg-gray-2 px-1">打开日志目录</span> 按钮
+          </div>
+          <div>
+            你也可以在里边取消勾选 <span class="bg-gray-2 px-1">输出文件日志</span>
+          </div>
+          <div>这样将不再产生文件日志</div>
+        </>
+      ),
+    })
+  }
+})
 </script>
 
 <template>
-  <div v-if="config !== undefined" class="h-screen flex flex-col">
-    <div class="h-full flex overflow-hidden">
-      <n-tabs class="basis-1/2 overflow-auto" v-model:value="currentTabName" type="line" size="small">
-        <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show:lazy">
-          <search-pane v-model:selected-comic="selectedComic" v-model:current-tab-name="currentTabName" />
-        </n-tab-pane>
-        <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show:lazy">
-          <favorite-pane
-            :user-profile="userProfile"
-            v-model:selected-comic="selectedComic"
-            v-model:current-tab-name="currentTabName" />
-        </n-tab-pane>
-        <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show:lazy">
-          <chapter-pane v-model:selected-comic="selectedComic" />
-        </n-tab-pane>
-      </n-tabs>
-      <div class="basis-1/2 flex flex-col">
-        <div class="flex">
-          <n-button type="primary" @click="loginDialogShowing = true">账号登录</n-button>
-          <n-button @click="showConfigInFileManager">打开配置目录</n-button>
-          <n-button @click="aboutDialogShowing = true">关于</n-button>
-          <div v-if="userProfile !== undefined" class="flex flex-col">
-            <!--    TODO: 显示头像    -->
-            <span class="whitespace-nowrap">{{ userProfile.username }} Lv{{ userProfile.level }}</span>
-          </div>
+  <div v-if="store.config !== undefined" class="h-screen flex overflow-hidden">
+    <n-tabs class="h-full w-1/2" v-model:value="store.currentTabName" type="line" size="small" animated>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show">
+        <search-pane />
+      </n-tab-pane>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show">
+        <favorite-pane />
+      </n-tab-pane>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="downloaded" tab="本地库存" display-directive="show">
+        <downloaded-pane />
+      </n-tab-pane>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show">
+        <chapter-pane />
+      </n-tab-pane>
+    </n-tabs>
+    <div class="w-1/2 overflow-auto flex flex-col">
+      <div class="flex px-2 gap-1">
+        <n-button type="primary" @click="loginDialogShowing = true">
+          <template #icon>
+            <n-icon>
+              <UserOutlined />
+            </n-icon>
+          </template>
+          登录
+        </n-button>
+        <n-button @click="logViewerShowing = true">
+          <template #icon>
+            <n-icon>
+              <BarsOutlined />
+            </n-icon>
+          </template>
+          日志
+        </n-button>
+        <n-button @click="aboutDialogShowing = true">
+          <template #icon>
+            <n-icon>
+              <QuestionCircleOutlined />
+            </n-icon>
+          </template>
+          关于
+        </n-button>
+        <div v-if="store.userProfile !== undefined" class="flex items-center ml-auto overflow-hidden">
+          <n-avatar
+            class="flex-shrink-0"
+            round
+            :size="32"
+            :src="store.userProfile.photo"
+            fallback-src="https://cdn-msp.18comic.vip/templates/frontend/airav/img/title-png/more-ms-jm.webp?v=2" />
+          <span class="whitespace-nowrap text-ellipsis overflow-hidden" :title="store.userProfile.username">
+            {{ store.userProfile.username }}
+          </span>
         </div>
-        <downloading-pane class="overflow-auto" v-model:config="config"></downloading-pane>
       </div>
+      <downloading-pane />
     </div>
-    <n-modal v-model:show="loginDialogShowing">
-      <login-dialog v-model:showing="loginDialogShowing" v-model:config="config" v-model:user-profile="userProfile" />
-    </n-modal>
+    <login-dialog v-model:showing="loginDialogShowing" />
     <about-dialog v-model:showing="aboutDialogShowing" />
+    <log-viewer v-model:showing="logViewerShowing" />
   </div>
 </template>
+
+<style scoped>
+:global(.n-notification-main__header) {
+  @apply break-words;
+}
+
+:global(.n-tabs-pane-wrapper) {
+  @apply h-full;
+}
+
+:deep(.n-tabs-nav) {
+  @apply px-2;
+}
+</style>
