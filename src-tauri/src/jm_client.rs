@@ -465,7 +465,6 @@ impl JmClient {
         let request = self.img_client.read().get(url);
 
         let http_resp = request.send().await?;
-
         let status = http_resp.status();
         if status != StatusCode::OK {
             let text = http_resp.text().await?;
@@ -473,7 +472,25 @@ impl JmClient {
             return Err(err);
         }
 
-        let image_data = http_resp.bytes().await?;
+        let mut image_data = http_resp.bytes().await?;
+
+        if image_data.is_empty() {
+            // 如果图片为空，说明jm那边缓存失效了，带上时间戳再次请求，以避免缓存
+            let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            let query = json!({"ts": ts});
+            let request = self.img_client.read().get(url).query(&query);
+
+            let http_resp = request.send().await?;
+            let status = http_resp.status();
+            if status != StatusCode::OK {
+                let text = http_resp.text().await?;
+                let err = anyhow!("下载图片`{url}`失败，预料之外的状态码: {text}");
+                return Err(err);
+            }
+
+            image_data = http_resp.bytes().await?;
+        }
+
         Ok(image_data)
     }
 }
