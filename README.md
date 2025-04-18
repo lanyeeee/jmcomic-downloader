@@ -12,7 +12,7 @@
 
 # 🖥️ 图形界面
 
-![image](https://github.com/user-attachments/assets/619292c1-d0ab-4b92-8601-0dfb81fd460b)
+![image](https://github.com/user-attachments/assets/2ec6e5f9-a211-4325-8671-0a15f4bcba6c)
 
 # 📖 使用方法
 
