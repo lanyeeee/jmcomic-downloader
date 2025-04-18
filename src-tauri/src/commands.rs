@@ -230,7 +230,7 @@ pub async fn download_comic(
     download_manager: State<'_, DownloadManager>,
     aid: i64,
 ) -> CommandResult<()> {
-    let comic = get_comic(app, jm_client, aid).await?;
+    let comic = get_comic(app.clone(), jm_client, aid).await?;
     let chapter_ids: Vec<i64> = comic
         .chapter_infos
         .iter()
@@ -244,6 +244,9 @@ pub async fn download_comic(
             anyhow!("漫画`{comic_title}`的所有章节都已存在于下载目录，无需重复下载"),
         ));
     }
+    // 创建下载任务前，先创建元数据
+    save_metadata(app, comic.clone())?;
+
     for chapter_id in chapter_ids {
         download_manager
             .create_download_task(comic.clone(), chapter_id)
