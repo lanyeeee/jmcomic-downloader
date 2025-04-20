@@ -14,6 +14,12 @@ body:
     attributes:
       value: |
         为了使我更好地帮助你，请提供以下信息。以及修改上方的标题
+  - type: checkboxes
+    attributes:
+      label: 复现步骤很重要
+      options:
+        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)写清楚了复现步骤
+          required: true
   - type: textarea
     id: desc
     attributes:
