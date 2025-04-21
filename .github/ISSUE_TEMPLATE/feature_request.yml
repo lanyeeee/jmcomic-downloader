@@ -1,7 +1,7 @@
 name: 功能请求
 description: 想要请求添加某个功能
 labels: [enhancement]
-title: "[功能请求] 修改我！"
+title: "[功能请求] 修改我！未修改标题的issue将被自动关闭"
 body:
   - type: markdown
     attributes:
