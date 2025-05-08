@@ -13,9 +13,9 @@ body:
   - type: checkboxes
     attributes:
       label: 复现步骤很重要
-      description: 仅提供错误信息或截图而没有复现步骤，问题难以被定位问题，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
+      description: 仅提供错误信息或截图而没有复现步骤，问题难以被定位，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
       options:
-        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)在`问题描述`中写清楚了复现步骤
+        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)在**问题描述**中写清楚了复现步骤
           required: true
   - type: textarea
     id: desc
