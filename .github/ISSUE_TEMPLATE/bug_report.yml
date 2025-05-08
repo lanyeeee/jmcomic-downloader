@@ -10,15 +10,12 @@ body:
       options:
         - label: 我尝试使用了最新版，我确定这个问题在最新版中依然存在
           required: true
-  - type: markdown
-    attributes:
-      value: |
-        为了使我更好地帮助你，请提供以下信息。以及修改上方的标题
   - type: checkboxes
     attributes:
       label: 复现步骤很重要
+      description: 仅提供错误信息或截图而没有复现步骤，问题难以被定位问题，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
       options:
-        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)写清楚了复现步骤
+        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)在`问题描述`中写清楚了复现步骤
           required: true
   - type: textarea
     id: desc
