@@ -6,24 +6,33 @@ body:
   - type: checkboxes
     attributes:
       label: 在提交BUG之前
-      description: 请先尝试使用最新版，也许这个问题已经在最新版修复
       options:
         - label: 我尝试使用了最新版，我确定这个问题在最新版中依然存在
           required: true
-  - type: checkboxes
-    attributes:
-      label: 复现步骤很重要
-      description: 仅提供错误信息或截图而没有复现步骤，问题难以被定位，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
-      options:
-        - label: 我已经参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)在**问题描述**中写清楚了复现步骤
+        - label: 我会以「一起合作来解决问题」的态度编写issue，尽力提供详细信息，而不是仅提供报错信息或截图
           required: true
   - type: textarea
     id: desc
     attributes:
       label: 问题描述
-      description: 发生了什么情况？有什么现状？复现条件是什么(哪部漫画，哪个章节)？
+      description: 发生了什么情况？有什么现状？哪部漫画？哪个章节？问题能稳定触发吗？
     validations:
       required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 这是整个issue中**最重要**的部分。请参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)编写详细的复现步骤
+      placeholder: 复现步骤是影响issue处理效率的最大因素，没有详细的复现步骤将导致问题难以被定位，开发者需要花费大量时间来回沟通以定位问题
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: 复现步骤非常重要
+      description: 仅提供报错信息或截图而没有复现步骤，问题难以被定位，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
+      options:
+        - label: 我已经参考[这个issue](https://github.com/lanyeeee/copymanga-downloader/issues/5)在**复现步骤**中编写了详细的复现步骤
+          required: true
   - type: textarea
     id: expected
     attributes:
@@ -38,6 +47,17 @@ body:
       description: 实际上发生了什么
     validations:
       required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: 请提供相关的日志信息
+      placeholder: |
+        如果相关日志比较短可以直接粘贴
+        
+        如果相关日志很长，建议将相关日志保存为txt，然后点击文本框下面小长条上传文件
+    validations:
+      required: false
   - type: textarea
     id: media
     attributes:
