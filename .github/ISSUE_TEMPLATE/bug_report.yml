@@ -9,8 +9,6 @@ body:
       options:
         - label: 我尝试使用了最新版，我确定这个问题在最新版中依然存在
           required: true
-        - label: 我会以「一起合作来解决问题」的态度编写issue，尽力提供详细信息，而不是仅提供报错信息或截图
-          required: true
   - type: textarea
     id: desc
     attributes:
@@ -23,16 +21,13 @@ body:
     attributes:
       label: 复现步骤
       description: 这是整个issue中**最重要**的部分。请参考[这个issue](https://github.com/lanyeeee/jmcomic-downloader/issues/28)编写详细的复现步骤
-      placeholder: 复现步骤是影响issue处理效率的最大因素，没有详细的复现步骤将导致问题难以被定位，开发者需要花费大量时间来回沟通以定位问题
+      placeholder: |
+        复现步骤是影响issue处理效率的最大因素
+        没有详细的复现步骤将导致问题难以被定位，开发者需要花费大量时间来回沟通以定位问题
+        仅提供报错信息或截图而没有复现步骤，问题难以被定位，也就难以被解决
+        详细的复现步骤也是对项目维护工作的尊重
     validations:
       required: true
-  - type: checkboxes
-    attributes:
-      label: 复现步骤非常重要
-      description: 仅提供报错信息或截图而没有复现步骤，问题难以被定位，也就难以被解决。详细的复现步骤也是对项目维护工作的尊重
-      options:
-        - label: 我已经参考[这个issue](https://github.com/lanyeeee/copymanga-downloader/issues/5)在**复现步骤**中编写了详细的复现步骤
-          required: true
   - type: textarea
     id: expected
     attributes:
