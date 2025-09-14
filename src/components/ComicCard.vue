@@ -11,6 +11,7 @@ const props = defineProps<{
   comicCategory: CategoryRespData
   comicCategorySub: CategorySubRespData
   comicDownloaded: boolean
+  comicDownloadDir: string
 }>()
 
 async function pickComic() {
@@ -32,7 +33,10 @@ async function downloadComic() {
 }
 
 async function showComicDownloadDirInFileManager() {
-  const result = await commands.showComicDownloadDirInFileManager(props.comicTitle)
+  if (store.config === undefined) {
+    return
+  }
+  const result = await commands.showPathInFileManager(props.comicDownloadDir)
   if (result.status === 'error') {
     console.error(result.error)
   }

@@ -1,10 +1,15 @@
+use std::{collections::HashMap, path::PathBuf};
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
 
-use crate::responses::{
-    CategoryRespData, CategorySubRespData, ComicInSearchRespData, SearchResp, SearchRespData,
+use crate::{
+    responses::{
+        CategoryRespData, CategorySubRespData, ComicInSearchRespData, SearchResp, SearchRespData,
+    },
+    utils,
 };
 
 use super::Comic;
@@ -28,7 +33,7 @@ impl SearchResultVariant {
                 Ok(SearchResultVariant::SearchResult(search_result))
             }
             SearchResp::ComicRespData(get_comic_resp) => {
-                let comic = Comic::from_comic_resp_data(app, *get_comic_resp);
+                let comic = Comic::from_comic_resp_data(app, *get_comic_resp)?;
                 Ok(SearchResultVariant::Comic(Box::new(comic)))
             }
         }
@@ -48,10 +53,13 @@ impl SearchResult {
         app: &AppHandle,
         search_resp_data: SearchRespData,
     ) -> anyhow::Result<SearchResult> {
+        let id_to_dir_map =
+            utils::create_id_to_dir_map(app).context("创建漫画ID到下载目录映射失败")?;
+
         let content = search_resp_data
             .content
             .into_iter()
-            .map(|comic| ComicInSearch::from_resp_data(app, comic))
+            .map(|comic| ComicInSearch::from_resp_data(comic, &id_to_dir_map))
             .collect::<anyhow::Result<_>>()?;
 
         let search_result = SearchResult {
@@ -77,17 +85,17 @@ pub struct ComicInSearch {
     pub is_favorite: bool,
     pub update_at: i64,
     pub is_downloaded: bool,
+    pub comic_download_dir: PathBuf,
 }
 
 impl ComicInSearch {
     pub fn from_resp_data(
-        app: &AppHandle,
         resp_data: ComicInSearchRespData,
+        id_to_dir_map: &HashMap<i64, PathBuf>,
     ) -> anyhow::Result<ComicInSearch> {
         let id: i64 = resp_data.id.parse().context("将id解析为i64失败")?;
-        let is_downloaded = Comic::get_is_downloaded(app, &resp_data.name);
 
-        let comic = ComicInSearch {
+        let mut comic = ComicInSearch {
             id,
             author: resp_data.author,
             name: resp_data.name,
@@ -97,9 +105,19 @@ impl ComicInSearch {
             liked: resp_data.liked,
             is_favorite: resp_data.is_favorite,
             update_at: resp_data.update_at,
-            is_downloaded,
+            is_downloaded: false,
+            comic_download_dir: PathBuf::new(),
         };
 
+        comic.update_fields(id_to_dir_map);
+
         Ok(comic)
+    }
+
+    pub fn update_fields(&mut self, id_to_dir_map: &HashMap<i64, PathBuf>) {
+        if let Some(comic_download_dir) = id_to_dir_map.get(&self.id) {
+            self.comic_download_dir = comic_download_dir.clone();
+            self.is_downloaded = true;
+        }
     }
 }
