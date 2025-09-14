@@ -109,7 +109,8 @@ async function search(keyword: string, page: number, sort: SearchSort) {
         :comic-author="comicInSearch.author"
         :comic-category="comicInSearch.category"
         :comic-category-sub="comicInSearch.categorySub"
-        :comic-downloaded="comicInSearch.isDownloaded" />
+        :comic-downloaded="comicInSearch.isDownloaded"
+        :comic-download-dir="comicInSearch.comicDownloadDir" />
     </div>
 
     <n-pagination

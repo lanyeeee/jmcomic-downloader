@@ -130,7 +130,8 @@ onMounted(async () => {
         :comic-author="comicInFavorite.author"
         :comic-category="comicInFavorite.category"
         :comic-category-sub="comicInFavorite.categorySub"
-        :comic-downloaded="comicInFavorite.isDownloaded" />
+        :comic-downloaded="comicInFavorite.isDownloaded"
+        :comic-download-dir="comicInFavorite.comicDownloadDir" />
     </div>
 
     <n-pagination

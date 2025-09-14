@@ -1,42 +1,37 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tauri::AppHandle;
-
-use crate::utils::filename_filter;
-
-use super::Comic;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterInfo {
     pub chapter_id: i64,
     pub chapter_title: String,
+    pub order: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_downloaded: Option<bool>,
-    pub order: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chapter_download_dir: Option<PathBuf>,
 }
 
 impl ChapterInfo {
-    pub fn get_is_downloaded(app: &AppHandle, comic_title: &str, chapter_title: &str) -> bool {
-        let comic_download_dir = Comic::get_comic_download_dir(app, comic_title);
+    pub fn get_chapter_download_dir_name(&self) -> anyhow::Result<String> {
+        let chapter_download_dir = self
+            .chapter_download_dir
+            .as_ref()
+            .context("`chapter_download_dir`字段为`None`")?;
 
-        let chapter_title = filename_filter(chapter_title);
-        comic_download_dir.join(chapter_title).exists()
-    }
+        let chapter_download_dir_name = chapter_download_dir
+            .file_name()
+            .context(format!(
+                "获取`{}`的目录名失败",
+                chapter_download_dir.display()
+            ))?
+            .to_string_lossy()
+            .to_string();
 
-    pub fn get_temp_download_dir(&self, app: &AppHandle, comic: &Comic) -> PathBuf {
-        let comic_download_dir = Comic::get_comic_download_dir(app, &comic.name);
-
-        let chapter_title = filename_filter(&self.chapter_title);
-        comic_download_dir.join(format!(".下载中-{chapter_title}")) // 以 `.下载中-` 开头，表示是临时目录
-    }
-
-    pub fn get_chapter_download_dir(&self, app: &AppHandle, comic: &Comic) -> PathBuf {
-        let comic_download_dir = Comic::get_comic_download_dir(app, &comic.name);
-
-        let chapter_title = filename_filter(&self.chapter_title);
-        comic_download_dir.join(chapter_title)
+        Ok(chapter_download_dir_name)
     }
 }

@@ -1,14 +1,17 @@
+use std::{collections::HashMap, path::PathBuf};
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
 
-use crate::responses::{
-    CategoryRespData, CategorySubRespData, ComicInFavoriteRespData, FavoriteFolderRespData,
-    GetFavoriteRespData,
+use crate::{
+    responses::{
+        CategoryRespData, CategorySubRespData, ComicInFavoriteRespData, FavoriteFolderRespData,
+        GetFavoriteRespData,
+    },
+    utils,
 };
-
-use super::Comic;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -24,10 +27,13 @@ impl GetFavoriteResult {
         app: &AppHandle,
         resp_data: GetFavoriteRespData,
     ) -> anyhow::Result<GetFavoriteResult> {
+        let id_to_dir_map =
+            utils::create_id_to_dir_map(app).context("创建漫画ID到下载目录映射失败")?;
+
         let list = resp_data
             .list
             .into_iter()
-            .map(|comic| ComicInFavorite::from_resp_data(app, comic))
+            .map(|comic| ComicInFavorite::from_resp_data(comic, &id_to_dir_map))
             .collect::<anyhow::Result<_>>()?;
 
         let total: i64 = resp_data.total.parse().context("将total解析为i64失败")?;
@@ -56,17 +62,17 @@ pub struct ComicInFavorite {
     pub category: CategoryRespData,
     pub category_sub: CategorySubRespData,
     pub is_downloaded: bool,
+    pub comic_download_dir: PathBuf,
 }
 
 impl ComicInFavorite {
     pub fn from_resp_data(
-        app: &AppHandle,
         resp_data: ComicInFavoriteRespData,
+        id_to_dir_map: &HashMap<i64, PathBuf>,
     ) -> anyhow::Result<ComicInFavorite> {
         let id: i64 = resp_data.id.parse().context("将id解析为i64失败")?;
-        let is_downloaded = Comic::get_is_downloaded(app, &resp_data.name);
 
-        let comic = ComicInFavorite {
+        let mut comic = ComicInFavorite {
             id,
             author: resp_data.author,
             description: resp_data.description,
@@ -76,9 +82,19 @@ impl ComicInFavorite {
             image: resp_data.image,
             category: resp_data.category,
             category_sub: resp_data.category_sub,
-            is_downloaded,
+            is_downloaded: false,
+            comic_download_dir: PathBuf::new(),
         };
 
+        comic.update_fields(id_to_dir_map);
+
         Ok(comic)
+    }
+
+    pub fn update_fields(&mut self, id_to_dir_map: &HashMap<i64, PathBuf>) {
+        if let Some(comic_download_dir) = id_to_dir_map.get(&self.id) {
+            self.comic_download_dir = comic_download_dir.clone();
+            self.is_downloaded = true;
+        }
     }
 }

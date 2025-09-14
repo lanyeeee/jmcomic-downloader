@@ -147,12 +147,6 @@ async function downloadChapters() {
   if (store.pickedComic === undefined) {
     return
   }
-  // 创建下载任务前，先创建元数据
-  const result = await commands.saveMetadata(store.pickedComic!)
-  if (result.status === 'error') {
-    console.error(result.error)
-    return
-  }
   // 下载勾选的章节
   const chapterIdsToDownload = store.pickedComic.chapterInfos
     .filter((c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId))
@@ -182,7 +176,14 @@ async function showComicDownloadDirInFileManager() {
   if (store.pickedComic === undefined) {
     return
   }
-  const result = await commands.showComicDownloadDirInFileManager(store.pickedComic.name)
+
+  const comicDownloadDir = store.pickedComic.comicDownloadDir
+  if (comicDownloadDir === undefined || comicDownloadDir === null) {
+    console.error('comicDownloadDir的值为undefined或null')
+    return
+  }
+
+  const result = await commands.showPathInFileManager(comicDownloadDir)
   if (result.status === 'error') {
     console.error(result.error)
   }
