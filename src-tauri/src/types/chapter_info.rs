@@ -34,4 +34,29 @@ impl ChapterInfo {
 
         Ok(chapter_download_dir_name)
     }
+
+    pub fn save_chapter_metadata(&self) -> anyhow::Result<()> {
+        let mut chapter_info = self.clone();
+        // 将is_downloaded和chapter_download_dir字段设置为None
+        // 这样能使这些字段在序列化时被忽略
+        chapter_info.is_downloaded = None;
+        chapter_info.chapter_download_dir = None;
+
+        let chapter_download_dir = self
+            .chapter_download_dir
+            .as_ref()
+            .context("`chapter_download_dir`字段为`None`")?;
+        let metadata_path = chapter_download_dir.join("章节元数据.json");
+
+        std::fs::create_dir_all(chapter_download_dir)
+            .context(format!("创建目录`{}`失败", chapter_download_dir.display()))?;
+
+        let chapter_json =
+            serde_json::to_string_pretty(&chapter_info).context("将ChapterInfo序列化为json失败")?;
+
+        std::fs::write(&metadata_path, chapter_json)
+            .context(format!("写入文件`{}`失败", metadata_path.display()))?;
+
+        Ok(())
+    }
 }

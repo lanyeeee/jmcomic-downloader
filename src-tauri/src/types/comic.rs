@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -112,6 +112,13 @@ impl Comic {
         let id_to_dir_map =
             utils::create_id_to_dir_map(app).context("创建漫画ID到下载目录映射失败")?;
 
+        // TODO: 这是为了兼容v0.15.4及之前的版本，后续需要移除，计划在v0.17.0之后移除
+        if let Some(comic_download_dir) = id_to_dir_map.get(&comic.id) {
+            comic
+                .create_chapter_metadata_for_old_version(comic_download_dir)
+                .context("为旧版本创建章节元数据失败")?;
+        }
+
         comic
             .update_fields(&id_to_dir_map)
             .context(format!("`{}`更新Comic的字段失败", comic.name))?;
@@ -120,8 +127,8 @@ impl Comic {
     }
 
     pub fn update_fields(&mut self, id_to_dir_map: &HashMap<i64, PathBuf>) -> anyhow::Result<()> {
-        if let Some(download_dir) = id_to_dir_map.get(&self.id) {
-            self.comic_download_dir = Some(download_dir.clone());
+        if let Some(comic_download_dir) = id_to_dir_map.get(&self.id) {
+            self.comic_download_dir = Some(comic_download_dir.clone());
             self.is_downloaded = Some(true);
 
             self.update_chapter_infos_fields()
@@ -142,7 +149,14 @@ impl Comic {
         let parent = metadata_path
             .parent()
             .context(format!("`{}`没有父目录", metadata_path.display()))?;
-        comic.comic_download_dir = Some(parent.to_path_buf());
+        let comic_download_dir = parent.to_path_buf();
+
+        // TODO: 这是为了兼容v0.15.4及之前的版本，后续需要移除，计划在v0.17.0之后移除
+        comic
+            .create_chapter_metadata_for_old_version(&comic_download_dir)
+            .context("为旧版本创建章节元数据失败")?;
+
+        comic.comic_download_dir = Some(comic_download_dir);
         comic.is_downloaded = Some(true);
 
         comic
@@ -193,6 +207,36 @@ impl Comic {
         Ok(comic_export_dir)
     }
 
+    pub fn save_comic_metadata(&self) -> anyhow::Result<()> {
+        let mut comic = self.clone();
+        // 将漫画的is_downloaded和comic_download_dir字段设置为None
+        // 这样能使这些字段在序列化时被忽略
+        comic.is_downloaded = None;
+        comic.comic_download_dir = None;
+        for chapter in &mut comic.chapter_infos {
+            // 将章节的is_downloaded和chapter_download_dir字段设置为None
+            // 这样能使这些字段在序列化时被忽略
+            chapter.is_downloaded = None;
+            chapter.chapter_download_dir = None;
+        }
+
+        let comic_download_dir = self
+            .comic_download_dir
+            .as_ref()
+            .context("`comic_download_dir`字段为`None`")?;
+        let metadata_path = comic_download_dir.join("元数据.json");
+
+        std::fs::create_dir_all(comic_download_dir)
+            .context(format!("创建目录`{}`失败", comic_download_dir.display()))?;
+
+        let comic_json = serde_json::to_string_pretty(&comic).context("将Comic序列化为json失败")?;
+
+        std::fs::write(&metadata_path, comic_json)
+            .context(format!("写入文件`{}`失败", metadata_path.display()))?;
+
+        Ok(())
+    }
+
     fn update_chapter_infos_fields(&mut self) -> anyhow::Result<()> {
         let Some(comic_download_dir) = &self.comic_download_dir else {
             return Err(anyhow!("`comic_download_dir`字段为`None`"));
@@ -238,6 +282,37 @@ impl Comic {
                 chapter_info.is_downloaded = Some(true);
             }
         }
+        Ok(())
+    }
+
+    fn create_chapter_metadata_for_old_version(
+        &self,
+        comic_download_dir: &Path,
+    ) -> anyhow::Result<()> {
+        let mut chapter_dirs = HashSet::new();
+        for entry in std::fs::read_dir(comic_download_dir)?.filter_map(Result::ok) {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if !file_type.is_dir() {
+                continue;
+            }
+            chapter_dirs.insert(entry.path());
+        }
+
+        for chapter_info in &self.chapter_infos {
+            let old_chapter_dir = comic_download_dir.join(&chapter_info.chapter_title);
+            let old_chapter_dir_exists = chapter_dirs.contains(&old_chapter_dir);
+            let old_chapter_metadata_exists = old_chapter_dir.join("章节元数据.json").exists();
+            if old_chapter_dir_exists && !old_chapter_metadata_exists {
+                // 如果旧版本的章节目录存在，但没有元数据文件，就创建一个
+                let mut info = chapter_info.clone();
+                info.chapter_download_dir = Some(old_chapter_dir);
+                info.is_downloaded = Some(true);
+                info.save_chapter_metadata()?;
+            }
+        }
+
         Ok(())
     }
 }

@@ -205,7 +205,7 @@ impl DownloadTask {
         let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
         let chapter_id = self.chapter_info.chapter_id;
-        if let Err(err) = self.save_comic_metadata() {
+        if let Err(err) = self.comic.save_comic_metadata() {
             let err_title = format!("`{comic_title}`保存元数据失败");
             let string_chain = err.to_string_chain();
             tracing::error!(err_title, message = string_chain);
@@ -285,7 +285,7 @@ impl DownloadTask {
             return;
         }
 
-        if let Err(err) = self.save_chapter_metadata() {
+        if let Err(err) = self.chapter_info.save_chapter_metadata() {
             let err_title = format!("`{comic_title} - {chapter_title}`保存元数据失败");
             let string_chain = err.to_string_chain();
             tracing::error!(err_title, message = string_chain);
@@ -437,63 +437,6 @@ impl DownloadTask {
             chapter_title,
             "清理临时下载目录`{temp_download_dir:?}`成功"
         );
-
-        Ok(())
-    }
-
-    fn save_comic_metadata(&self) -> anyhow::Result<()> {
-        let mut comic = self.comic.as_ref().clone();
-        // 将漫画的is_downloaded和comic_download_dir字段设置为None
-        // 这样能使这些字段在序列化时被忽略
-        comic.is_downloaded = None;
-        comic.comic_download_dir = None;
-        for chapter in &mut comic.chapter_infos {
-            // 将章节的is_downloaded和chapter_download_dir字段设置为None
-            // 这样能使这些字段在序列化时被忽略
-            chapter.is_downloaded = None;
-            chapter.chapter_download_dir = None;
-        }
-
-        let comic_download_dir = self
-            .comic
-            .comic_download_dir
-            .as_ref()
-            .context("`comic_download_dir`字段为`None`")?;
-        let metadata_path = comic_download_dir.join("元数据.json");
-
-        std::fs::create_dir_all(comic_download_dir)
-            .context(format!("创建目录`{}`失败", comic_download_dir.display()))?;
-
-        let comic_json = serde_json::to_string_pretty(&comic).context("将Comic序列化为json失败")?;
-
-        std::fs::write(&metadata_path, comic_json)
-            .context(format!("写入文件`{}`失败", metadata_path.display()))?;
-
-        Ok(())
-    }
-
-    fn save_chapter_metadata(&self) -> anyhow::Result<()> {
-        let mut chapter_info = self.chapter_info.as_ref().clone();
-        // 将is_downloaded和chapter_download_dir字段设置为None
-        // 这样能使这些字段在序列化时被忽略
-        chapter_info.is_downloaded = None;
-        chapter_info.chapter_download_dir = None;
-
-        let chapter_download_dir = self
-            .chapter_info
-            .chapter_download_dir
-            .as_ref()
-            .context("`chapter_download_dir`字段为`None`")?;
-        let metadata_path = chapter_download_dir.join("章节元数据.json");
-
-        std::fs::create_dir_all(chapter_download_dir)
-            .context(format!("创建目录`{}`失败", chapter_download_dir.display()))?;
-
-        let chapter_json =
-            serde_json::to_string_pretty(&chapter_info).context("将ChapterInfo序列化为json失败")?;
-
-        std::fs::write(&metadata_path, chapter_json)
-            .context(format!("写入文件`{}`失败", metadata_path.display()))?;
 
         Ok(())
     }
@@ -910,6 +853,7 @@ impl Comic {
         for chapter_info in &mut self.chapter_infos {
             let chapter_title = &chapter_info.chapter_title;
 
+            // TODO: id不用clone
             let dir_fmt_params = DirFmtParams {
                 comic_id: self.id.clone(),
                 comic_title: self.name.clone(),
