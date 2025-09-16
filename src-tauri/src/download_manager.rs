@@ -510,7 +510,7 @@ impl DownloadTask {
                 tracing::debug!(comic_title, chapter_title, "章节暂停中");
                 if let Some(permit) = permit.take() {
                     drop(permit);
-                };
+                }
                 ControlFlow::Continue(())
             }
             DownloadTaskState::Cancelled => {
@@ -724,7 +724,7 @@ impl DownloadImgTask {
                 tracing::trace!(comic_title, chapter_title, url, "图片暂停下载");
                 if let Some(permit) = permit.take() {
                     drop(permit);
-                };
+                }
                 ControlFlow::Continue(())
             }
             DownloadTaskState::Cancelled => {
@@ -853,12 +853,11 @@ impl Comic {
         for chapter_info in &mut self.chapter_infos {
             let chapter_title = &chapter_info.chapter_title;
 
-            // TODO: id不用clone
             let dir_fmt_params = DirFmtParams {
-                comic_id: self.id.clone(),
+                comic_id: self.id,
                 comic_title: self.name.clone(),
                 author: self.author.join(", "),
-                chapter_id: chapter_info.chapter_id.clone(),
+                chapter_id: chapter_info.chapter_id,
                 chapter_title: chapter_info.chapter_title.clone(),
                 order: chapter_info.order,
             };

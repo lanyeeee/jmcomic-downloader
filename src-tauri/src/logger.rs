@@ -107,7 +107,7 @@ pub fn reload_file_logger() -> anyhow::Result<()> {
 pub fn disable_file_logger() -> anyhow::Result<()> {
     if let Some(guard) = GUARD.get().context("GUARD未初始化")?.lock().take() {
         drop(guard);
-    };
+    }
     Ok(())
 }
 
