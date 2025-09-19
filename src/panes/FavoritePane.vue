@@ -122,7 +122,7 @@ onMounted(async () => {
     </div>
 
     <div v-if="store.getFavoriteResult !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
-      <comic-card
+      <ComicCard
         v-for="comicInFavorite in store.getFavoriteResult?.list"
         :key="comicInFavorite.id"
         :comic-id="comicInFavorite.id"

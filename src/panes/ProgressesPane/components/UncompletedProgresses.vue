@@ -1,10 +1,10 @@
 <script setup lang="tsx">
-import { ProgressData } from '../types.ts'
+import { ProgressData } from '../../../types.ts'
 import { ref, watchEffect, computed, nextTick } from 'vue'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
-import { commands, DownloadTaskState } from '../bindings.ts'
+import { commands, DownloadTaskState } from '../../../bindings.ts'
 import { DropdownOption, NIcon, ProgressProps } from 'naive-ui'
-import { useStore } from '../store.ts'
+import { useStore } from '../../../store.ts'
 import {
   CheckOutlined,
   DeleteOutlined,

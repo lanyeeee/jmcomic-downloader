@@ -2,16 +2,16 @@
 import { onMounted, ref, watch } from 'vue'
 import { commands } from './bindings.ts'
 import { useMessage, useNotification } from 'naive-ui'
-import LoginDialog from './components/LoginDialog.vue'
+import LoginDialog from './dialogs/LoginDialog.vue'
 import SearchPane from './panes/SearchPane.vue'
 import ChapterPane from './panes/ChapterPane.vue'
-import DownloadingPane from './panes/DownloadingPane.vue'
+import ProgressesPane from './panes/ProgressesPane/ProgressesPane.vue'
 import FavoritePane from './panes/FavoritePane.vue'
-import AboutDialog from './components/AboutDialog.vue'
+import AboutDialog from './dialogs/AboutDialog.vue'
 import { QuestionCircleOutlined, UserOutlined, BarsOutlined } from '@vicons/antd'
 import DownloadedPane from './panes/DownloadedPane.vue'
 import { useStore } from './store.ts'
-import LogViewer from './components/LogViewer.vue'
+import LogDialog from './dialogs/LogDialog.vue'
 
 const store = useStore()
 
@@ -91,16 +91,16 @@ onMounted(async () => {
   <div v-if="store.config !== undefined" class="h-screen flex overflow-hidden">
     <n-tabs class="h-full w-1/2" v-model:value="store.currentTabName" type="line" size="small" animated>
       <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show">
-        <search-pane />
+        <SearchPane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show">
-        <favorite-pane />
+        <FavoritePane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="downloaded" tab="本地库存" display-directive="show">
-        <downloaded-pane />
+        <DownloadedPane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="chapter" tab="章节详情" display-directive="show">
-        <chapter-pane />
+        <ChapterPane />
       </n-tab-pane>
     </n-tabs>
     <div class="w-1/2 overflow-auto flex flex-col">
@@ -141,11 +141,11 @@ onMounted(async () => {
           </span>
         </div>
       </div>
-      <downloading-pane />
+      <ProgressesPane />
     </div>
-    <login-dialog v-model:showing="loginDialogShowing" />
-    <about-dialog v-model:showing="aboutDialogShowing" />
-    <log-viewer v-model:showing="logViewerShowing" />
+    <LoginDialog v-model:showing="loginDialogShowing" />
+    <AboutDialog v-model:showing="aboutDialogShowing" />
+    <LogDialog v-model:showing="logViewerShowing" />
   </div>
 </template>
 

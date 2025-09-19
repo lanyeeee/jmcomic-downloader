@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { commands } from '../bindings.ts'
 import { useMessage } from 'naive-ui'
-import FloatLabelInput from './FloatLabelInput.vue'
+import FloatLabelInput from '../components/FloatLabelInput.vue'
 import { useStore } from '../store.ts'
 
 const store = useStore()

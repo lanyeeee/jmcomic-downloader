@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ProgressData } from '../types.ts'
+import { ProgressData } from '../../../types.ts'
 import { computed } from 'vue'
-import { useStore } from '../store.ts'
+import { useStore } from '../../../store.ts'
 
 const store = useStore()
 

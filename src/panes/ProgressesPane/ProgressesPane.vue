@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { commands, events } from '../bindings.ts'
+import { commands, events } from '../../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
 import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
-import { useStore } from '../store.ts'
-import SettingsDialog from '../components/SettingsDialog.vue'
-import UncompletedProgresses from '../components/UncompletedProgresses.vue'
-import CompletedProgresses from '../components/CompletedProgresses.vue'
-import { ProgressData } from '../types.ts'
+import { useStore } from '../../store.ts'
+import SettingsDialog from '../../dialogs/SettingsDialog.vue'
+import UncompletedProgresses from './components/UncompletedProgresses.vue'
+import CompletedProgresses from './components/CompletedProgresses.vue'
+import { ProgressData } from '../../types.ts'
 
 const store = useStore()
 
@@ -166,13 +166,13 @@ async function selectDownloadDir() {
     </div>
     <n-tabs class="h-full overflow-auto" type="line" size="small">
       <n-tab-pane class="h-full p-0! overflow-auto" name="uncompleted" tab="未完成">
-        <uncompleted-progresses />
+        <UncompletedProgresses />
       </n-tab-pane>
       <n-tab-pane class="h-full p-0! overflow-auto" name="completed" tab="已完成">
-        <completed-progresses />
+        <CompletedProgresses />
       </n-tab-pane>
     </n-tabs>
     <span class="ml-auto mr-2 mb-2">下载速度：{{ downloadSpeed }}</span>
-    <settings-dialog v-model:showing="settingsDialogShowing" />
+    <SettingsDialog v-model:showing="settingsDialogShowing" />
   </div>
 </template>
