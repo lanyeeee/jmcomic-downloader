@@ -90,9 +90,10 @@ pub fn run() {
                 .app_data_dir()
                 .context("failed to get app data dir")?;
 
-            std::fs::create_dir_all(&app_data_dir)
-                .context(format!("failed to create app data dir: {app_data_dir:?}"))?;
-            println!("app data dir: {app_data_dir:?}");
+            std::fs::create_dir_all(&app_data_dir).context(format!(
+                "failed to create app data dir: {}",
+                app_data_dir.display()
+            ))?;
 
             let config = RwLock::new(Config::new(app.handle())?);
             app.manage(config);

@@ -332,7 +332,8 @@ impl DownloadTask {
         tracing::trace!(
             comic_title,
             chapter_title,
-            "创建临时下载目录`{temp_download_dir:?}`成功"
+            "创建临时下载目录`{}`成功",
+            temp_download_dir.display()
         );
 
         Some(temp_download_dir)
@@ -423,19 +424,23 @@ impl DownloadTask {
         let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
-        let entries = std::fs::read_dir(temp_download_dir)
-            .context(format!("读取临时下载目录`{temp_download_dir:?}`失败"))?;
+        let entries = std::fs::read_dir(temp_download_dir).context(format!(
+            "读取临时下载目录`{}`失败",
+            temp_download_dir.display()
+        ))?;
 
         for path in entries.filter_map(Result::ok).map(|entry| entry.path()) {
             if !save_paths.contains(&path) {
-                std::fs::remove_file(&path).context(format!("删除临时下载目录的`{path:?}`失败"))?;
+                std::fs::remove_file(&path)
+                    .context(format!("删除临时下载目录的`{}`失败", path.display()))?;
             }
         }
 
         tracing::trace!(
             comic_title,
             chapter_title,
-            "清理临时下载目录`{temp_download_dir:?}`成功"
+            "清理临时下载目录`{}`成功",
+            temp_download_dir.display()
         );
 
         Ok(())
@@ -660,7 +665,8 @@ impl DownloadImgTask {
             url,
             comic_title,
             chapter_title,
-            "图片成功保存到`{save_path:?}`"
+            "图片成功保存到`{}`",
+            save_path.display()
         );
 
         // 记录下载字节数
@@ -793,7 +799,8 @@ async fn save_img(
             }
         }
         // 保存编码后的图片数据
-        std::fs::write(&save_path, dst_img_data).context(format!("保存图片`{save_path:?}`失败"))?;
+        std::fs::write(&save_path, dst_img_data)
+            .context(format!("保存图片`{}`失败", save_path.display()))?;
         Ok(())
     };
     // 因为图像处理是CPU密集型操作，所以使用rayon并发处理
