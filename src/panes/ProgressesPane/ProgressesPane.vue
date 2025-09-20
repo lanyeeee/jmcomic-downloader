@@ -8,6 +8,9 @@ import SettingsDialog from '../../dialogs/SettingsDialog.vue'
 import UncompletedProgresses from './components/UncompletedProgresses.vue'
 import CompletedProgresses from './components/CompletedProgresses.vue'
 import { ProgressData } from '../../types.ts'
+import ExportProgresses from './components/ExportProgresses.vue'
+
+export type ProgressesPaneTabName = 'uncompleted' | 'completed' | 'export'
 
 const store = useStore()
 
@@ -142,7 +145,7 @@ async function selectDownloadDir() {
 </script>
 
 <template>
-  <div v-if="store.config !== undefined" class="flex flex-col gap-2 flex-1 overflow-auto">
+  <div v-if="store.config !== undefined" class="flex flex-col flex-1 overflow-auto">
     <div class="flex gap-1 box-border px-2 pt-2">
       <n-input-group class="">
         <n-input-group-label size="small">下载目录</n-input-group-label>
@@ -164,15 +167,21 @@ async function selectDownloadDir() {
         配置
       </n-button>
     </div>
-    <n-tabs class="h-full overflow-auto" type="line" size="small">
+    <n-tabs class="h-full overflow-auto" v-model:value="store.progressesPaneTabName" type="line" size="small">
       <n-tab-pane class="h-full p-0! overflow-auto" name="uncompleted" tab="未完成">
         <UncompletedProgresses />
       </n-tab-pane>
       <n-tab-pane class="h-full p-0! overflow-auto" name="completed" tab="已完成">
         <CompletedProgresses />
       </n-tab-pane>
+      <n-tab-pane class="h-full p-0! overflow-auto" name="export" tab="导出进度" display-directive="show">
+        <ExportProgresses />
+      </n-tab-pane>
+
+      <template #suffix>
+        <span class="whitespace-nowrap text-ellipsis overflow-hidden">{{ downloadSpeed }}</span>
+      </template>
     </n-tabs>
-    <span class="ml-auto mr-2 mb-2">下载速度：{{ downloadSpeed }}</span>
     <SettingsDialog v-model:showing="settingsDialogShowing" />
   </div>
 </template>

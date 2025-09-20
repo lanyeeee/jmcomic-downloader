@@ -178,7 +178,11 @@ pub fn cbz(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
     // 标记为成功，后面drop时就不会发送Error事件
     error_event_guard.success = true;
     // 发送导出cbz完成事件
-    let _ = ExportCbzEvent::End { uuid: event_uuid }.emit(app);
+    let _ = ExportCbzEvent::End {
+        uuid: event_uuid,
+        chapter_export_dir,
+    }
+    .emit(app);
 
     Ok(())
 }
@@ -299,7 +303,11 @@ pub fn pdf(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
     // 标记为成功，后面drop时就不会发送CreateError事件
     create_error_event_guard.success = true;
     // 发送创建pdf完成事件
-    let _ = ExportPdfEvent::CreateEnd { uuid: event_uuid }.emit(app);
+    let _ = ExportPdfEvent::CreateEnd {
+        uuid: event_uuid,
+        chapter_export_dir,
+    }
+    .emit(app);
 
     let event_uuid = uuid::Uuid::new_v4().to_string();
     // 发送开始合并pdf事件
@@ -323,7 +331,11 @@ pub fn pdf(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
     // 标记为成功，后面drop时就不会发送MergeError事件
     merge_error_event_guard.success = true;
     // 发送合并pdf完成事件
-    let _ = ExportPdfEvent::MergeEnd { uuid: event_uuid }.emit(app);
+    let _ = ExportPdfEvent::MergeEnd {
+        uuid: event_uuid,
+        chapter_export_dir: save_path,
+    }
+    .emit(app);
     Ok(())
 }
 
