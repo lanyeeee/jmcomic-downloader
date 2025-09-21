@@ -8,7 +8,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ComicCard: typeof import('./src/components/ComicCard.vue')['default']
-    DownloadedComicCard: typeof import('./src/components/DownloadedComicCard.vue')['default']
     FloatLabelInput: typeof import('./src/components/FloatLabelInput.vue')['default']
     NA: typeof import('naive-ui')['NA']
     NAvatar: typeof import('naive-ui')['NAvatar']
