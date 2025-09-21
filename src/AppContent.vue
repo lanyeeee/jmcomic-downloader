@@ -9,7 +9,7 @@ import ProgressesPane from './panes/ProgressesPane/ProgressesPane.vue'
 import FavoritePane from './panes/FavoritePane.vue'
 import AboutDialog from './dialogs/AboutDialog.vue'
 import { QuestionCircleOutlined, UserOutlined, BarsOutlined } from '@vicons/antd'
-import DownloadedPane from './panes/DownloadedPane.vue'
+import DownloadedPane from './panes/DownloadedPane/DownloadedPane.vue'
 import { useStore } from './store.ts'
 import LogDialog from './dialogs/LogDialog.vue'
 
