@@ -235,7 +235,7 @@ function useDropdown() {
     <n-input-group class="box-border px-2 pt-2">
       <n-input-group-label size="small">导出目录</n-input-group-label>
       <n-input v-model:value="store.config.exportDir" size="small" readonly @click="selectExportDir" />
-      <n-button size="small" @click="showExportDirInFileManager">
+      <n-button class="w-10" size="small" @click="showExportDirInFileManager">
         <template #icon>
           <n-icon size="20">
             <PhFolderOpen />
@@ -243,13 +243,13 @@ function useDropdown() {
         </template>
       </n-button>
     </n-input-group>
-    <div class="flex gap-2 items-center py-0.5 px-2 select-none">
+    <div class="flex gap-2 items-center px-2 select-none">
       <div class="animate-pulse text-sm text-red flex flex-col">
         <div>左键拖动进行框选，右键打开菜单</div>
         <div>右边的按钮作用于勾选项</div>
       </div>
-      <n-button class="ml-auto" type="primary" ghost size="small" @click="exportCbz">导出cbz</n-button>
-      <n-button type="primary" ghost size="small" @click="exportPdf">导出pdf</n-button>
+      <n-button class="ml-auto" type="primary" size="small" @click="exportCbz">导出cbz</n-button>
+      <n-button type="primary" size="small" @click="exportPdf">导出pdf</n-button>
     </div>
     <SelectionArea
       class="flex flex-col overflow-auto box-border px-2 selection-container mb-2"

@@ -146,11 +146,11 @@ async function selectDownloadDir() {
 
 <template>
   <div v-if="store.config !== undefined" class="flex flex-col flex-1 overflow-auto">
-    <div class="flex gap-1 box-border px-2 pt-2">
+    <div class="flex gap-1 box-border px-2 pt-2.5">
       <n-input-group class="">
         <n-input-group-label size="small">下载目录</n-input-group-label>
         <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
-        <n-button size="small" @click="showDownloadDirInFileManager">
+        <n-button class="w-10" size="small" @click="showDownloadDirInFileManager">
           <template #icon>
             <n-icon size="20">
               <PhFolderOpen />

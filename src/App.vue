@@ -6,11 +6,29 @@ import { GlobalThemeOverrides } from 'naive-ui'
 
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#FF7A00FF',
-    primaryColorHover: '#FFB152FF',
-    primaryColorPressed: '#D96200FF',
-    primaryColorSuppl: '#FFB152FF'
-  }
+    primaryColor: '#FF7A00',
+    primaryColorHover: '#FFB152',
+    primaryColorPressed: '#D96200',
+    primaryColorSuppl: '#FFB152',
+    borderRadius: '4px',
+    borderRadiusSmall: '3px',
+    heightMedium: '32px',
+  },
+  Button: {
+    paddingSmall: '0 8px',
+    paddingMedium: '0 12px',
+  },
+  Radio: {
+    buttonColorActive: '#FF7A00',
+    buttonTextColorActive: '#FFF',
+  },
+  Dropdown: {
+    borderRadius: '5px',
+    padding: '6px 2px',
+    optionColorHover: '#FF7A00',
+    optionTextColorHover: '#FFF',
+    optionHeightMedium: '28px',
+  },
 }
 </script>
 

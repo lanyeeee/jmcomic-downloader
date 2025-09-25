@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { commands } from '../bindings.ts'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { path } from '@tauri-apps/api'
 import { appDataDir } from '@tauri-apps/api/path'
 import { useStore } from '../store.ts'
@@ -12,8 +12,6 @@ const showing = defineModel<boolean>('showing', { required: true })
 const dirFmt = ref<string>(store.config?.dirFmt ?? '')
 
 const proxyHost = ref<string>(store.config?.proxyHost ?? '')
-
-const disableProxyHostAndPort = computed(() => store.config?.proxyMode !== 'Custom')
 
 async function showConfigInFileManager() {
   const configName = 'config.json'
@@ -27,10 +25,10 @@ async function showConfigInFileManager() {
 
 <template>
   <n-modal v-if="store.config !== undefined" v-model:show="showing">
-    <n-dialog :showIcon="false" title="设置" content-style="" @close="showing = false">
-      <div class="flex flex-col gap-row-2">
+    <n-dialog :showIcon="false" title="配置" content-style="" @close="showing = false">
+      <div class="flex flex-col">
+        <span class="mr-2 font-bold">下载格式</span>
         <n-radio-group v-model:value="store.config.downloadFormat">
-          下载格式：
           <n-tooltip placement="top" trigger="hover">
             <template #trigger>
               <n-radio value="Jpeg">jpg</n-radio>
@@ -46,7 +44,6 @@ async function showConfigInFileManager() {
             3. 编码速度最快
             <br />
           </n-tooltip>
-
           <n-tooltip placement="top" trigger="hover">
             <template #trigger>
               <n-radio value="Png">png</n-radio>
@@ -59,7 +56,6 @@ async function showConfigInFileManager() {
             3. 编码速度最慢
             <br />
           </n-tooltip>
-
           <n-tooltip placement="top" trigger="hover">
             <template #trigger>
               <n-radio value="Webp">webp</n-radio>
@@ -79,17 +75,15 @@ async function showConfigInFileManager() {
           </n-tooltip>
         </n-radio-group>
 
-        <n-radio-group v-model:value="store.config.proxyMode">
-          代理类型：
-          <n-radio value="System">系统代理</n-radio>
-          <n-radio value="NoProxy">直连</n-radio>
-          <n-radio value="Custom">自定义</n-radio>
+        <span class="mr-2 font-bold mt-2">代理类型</span>
+        <n-radio-group v-model:value="store.config.proxyMode" size="small">
+          <n-radio-button value="System">系统代理</n-radio-button>
+          <n-radio-button value="NoProxy">直连</n-radio-button>
+          <n-radio-button value="Custom">自定义</n-radio-button>
         </n-radio-group>
-
-        <n-input-group>
+        <n-input-group v-if="store.config.proxyMode === 'Custom'" class="mt-1">
           <n-input-group-label size="small">http://</n-input-group-label>
           <n-input
-            :disabled="disableProxyHostAndPort"
             v-model:value="proxyHost"
             size="small"
             placeholder=""
@@ -97,13 +91,13 @@ async function showConfigInFileManager() {
             @keydown.enter="store.config.proxyHost = proxyHost" />
           <n-input-group-label size="small">:</n-input-group-label>
           <n-input-number
-            :disabled="disableProxyHostAndPort"
             v-model:value="store.config.proxyPort"
             size="small"
             placeholder=""
             :parse="(x: string) => parseInt(x)" />
         </n-input-group>
 
+        <span class="mr-2 font-bold mt-2">下载目录格式</span>
         <n-tooltip placement="top" trigger="hover" width="550">
           <div>
             可以用斜杠
@@ -151,18 +145,15 @@ async function showConfigInFileManager() {
             <span class="bg-gray-200 rounded-md px-2 w-fit">1 - 第1话</span>
           </div>
           <template #trigger>
-            <n-input-group class="box-border">
-              <n-input-group-label size="small">下载目录格式</n-input-group-label>
-              <n-input
-                v-model:value="dirFmt"
-                size="small"
-                @blur="store.config.dirFmt = dirFmt"
-                @keydown.enter="store.config.dirFmt = dirFmt" />
-            </n-input-group>
+            <n-input
+              v-model:value="dirFmt"
+              size="small"
+              @blur="store.config.dirFmt = dirFmt"
+              @keydown.enter="store.config.dirFmt = dirFmt" />
           </template>
         </n-tooltip>
 
-        <n-button class="ml-auto mt-2" size="small" @click="showConfigInFileManager">打开配置目录</n-button>
+        <n-button class="ml-auto mt-4" size="small" @click="showConfigInFileManager">打开配置目录</n-button>
       </div>
     </n-dialog>
   </n-modal>
