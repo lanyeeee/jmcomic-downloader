@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@phosphor-icons/vue':
+        specifier: ^2.2.1
+        version: 2.2.1(vue@3.5.13(typescript@5.6.2))
       '@tauri-apps/api':
         specifier: '>=2.0.0-rc.0'
         version: 2.0.0-rc.6
@@ -17,9 +20,6 @@ importers:
       '@tauri-apps/plugin-shell':
         specifier: '>=2.0.0-rc.0'
         version: 2.0.0-rc.1
-      '@vicons/antd':
-        specifier: ^0.13.0
-        version: 0.13.0
       '@viselect/vue':
         specifier: ^3.9.0
         version: 3.9.0(vue@3.5.13(typescript@5.6.2))
@@ -635,6 +635,12 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
+  '@phosphor-icons/vue@2.2.1':
+    resolution: {integrity: sha512-3RNg1utc2Z5RwPKWFkW3eXI/0BfQAwXgtFxPUPeSzi55jGYUq16b+UqcgbKLazWFlwg5R92OCLKjDiJjeiJcnA==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      vue: '>=3.2.39'
+
   '@polka/url@1.0.0-next.28':
     resolution: {integrity: sha512-8LduaNlMZGwdZ6qWrKlfa+2M4gahzFkprZiAt2TF8uS0qQgBizKXpXURqvTJ4WtmupWxaLqjRb2UCTe72mu+Aw==}
 
@@ -958,9 +964,6 @@ packages:
     resolution: {integrity: sha512-7UH36o7UEwMbrifuvTj6wOPJZ3DNK21HO+ACOlFaM9HGVmlEUEuzC5fRVid0Q/zRlo0URaI/82TkvEh3sUU8Zg==}
     peerDependencies:
       vite: ^2.9.0 || ^3.0.0-0 || ^4.0.0 || ^5.0.0-0
-
-  '@vicons/antd@0.13.0':
-    resolution: {integrity: sha512-yrUGoUSz2BbGupk9ghQOahc04n5H3MwUDM9pVPsLh9U1uqB47oRWZvYRiZaT1JKPqgTgSE6BXcVw4i9MOF4M+g==}
 
   '@viselect/vanilla@3.9.0':
     resolution: {integrity: sha512-E9eBgoi/crJ0SlZMAc+Yst7nU324LZ5LLvcXjzWEcrfllscdpTml2OLOKHC7O8Bbz19OybSLv6VexxnjlJrLxQ==}
@@ -2614,6 +2617,10 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.17.1
 
+  '@phosphor-icons/vue@2.2.1(vue@3.5.13(typescript@5.6.2))':
+    dependencies:
+      vue: 3.5.13(typescript@5.6.2)
+
   '@polka/url@1.0.0-next.28': {}
 
   '@rollup/pluginutils@5.1.2(rollup@4.22.5)':
@@ -2971,8 +2978,6 @@ snapshots:
     transitivePeerDependencies:
       - rollup
       - supports-color
-
-  '@vicons/antd@0.13.0': {}
 
   '@viselect/vanilla@3.9.0': {}
 

@@ -3,10 +3,11 @@ import { Comic, commands } from '../../bindings.ts'
 import { computed, nextTick, ref, watch, watchEffect } from 'vue'
 import DownloadedComicCard from './components/DownloadedComicCard.vue'
 import { open } from '@tauri-apps/plugin-dialog'
-import { FolderOpenOutlined } from '@vicons/antd'
+import { PhFolderOpen } from '@phosphor-icons/vue'
 import { useStore } from '../../store.ts'
-import { DropdownOption } from 'naive-ui'
+import { DropdownOption, NIcon } from 'naive-ui'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
+import { PhChecks, PhCheck, PhX } from '@phosphor-icons/vue'
 
 const store = useStore()
 
@@ -167,6 +168,11 @@ function useDropdown() {
     {
       label: '勾选',
       key: 'check',
+      icon: () => (
+        <NIcon size="20">
+          <PhCheck />
+        </NIcon>
+      ),
       props: {
         onClick: () => {
           selectedIds.value.forEach((id) => checkedIds.value.add(id))
@@ -177,6 +183,11 @@ function useDropdown() {
     {
       label: '取消勾选',
       key: 'uncheck',
+      icon: () => (
+        <NIcon size="20">
+          <PhX />
+        </NIcon>
+      ),
       props: {
         onClick: () => {
           selectedIds.value.forEach((id) => checkedIds.value.delete(id))
@@ -187,6 +198,11 @@ function useDropdown() {
     {
       label: '全选',
       key: 'select-all',
+      icon: () => (
+        <NIcon size="20">
+          <PhChecks />
+        </NIcon>
+      ),
       props: {
         onClick: () => {
           currentPageComics.value.forEach((comic) => selectedIds.value.add(comic.id))
@@ -221,8 +237,8 @@ function useDropdown() {
       <n-input v-model:value="store.config.exportDir" size="small" readonly @click="selectExportDir" />
       <n-button size="small" @click="showExportDirInFileManager">
         <template #icon>
-          <n-icon>
-            <FolderOpenOutlined />
+          <n-icon size="20">
+            <PhFolderOpen />
           </n-icon>
         </template>
       </n-button>

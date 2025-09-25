@@ -2,7 +2,7 @@
 import { events } from '../../../bindings.ts'
 import { onMounted, ref, watchEffect, nextTick } from 'vue'
 import { NIcon, DropdownOption } from 'naive-ui'
-import { CheckOutlined, DeleteOutlined } from '@vicons/antd'
+import { PhChecks, PhTrash } from '@phosphor-icons/vue'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import ExportProgress from './ExportProgress.vue'
 
@@ -196,8 +196,8 @@ function useDropdown() {
       label: '全选',
       key: 'check all',
       icon: () => (
-        <NIcon>
-          <CheckOutlined />
+        <NIcon size="20">
+          <PhChecks />
         </NIcon>
       ),
       props: {
@@ -212,7 +212,7 @@ function useDropdown() {
       key: 'delete',
       icon: () => (
         <NIcon size="20">
-          <DeleteOutlined />
+          <PhTrash />
         </NIcon>
       ),
       props: {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LoadingOutlined } from '@vicons/antd'
+import { PhCircleNotch } from '@phosphor-icons/vue'
 import { ProgressData } from './ExportProgresses.vue'
 import { commands } from '../../../bindings.ts'
 
@@ -7,7 +7,6 @@ const props = defineProps<{
   p: ProgressData
   handleContextMenu: (p: ProgressData) => void
 }>()
-
 
 async function showChapterExportDirInFileManager() {
   if (props.p.chapterExportDir === undefined) {
@@ -29,7 +28,7 @@ async function showChapterExportDirInFileManager() {
 
     <div v-if="p.state === 'Processing'" class="flex">
       <n-icon class="text-blue-5 mr-2" :size="20">
-        <LoadingOutlined class="animate-spin" />
+        <PhCircleNotch class="animate-spin" />
       </n-icon>
       <n-progress class="text-blue-5" :percentage="p.percentage" processing>
         {{ p.indicator }}

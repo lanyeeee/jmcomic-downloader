@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { commands, events } from '../../bindings.ts'
 import { open } from '@tauri-apps/plugin-dialog'
-import { FolderOpenOutlined, SettingOutlined } from '@vicons/antd'
+import { PhFolderOpen, PhGearSix } from '@phosphor-icons/vue'
 import { useStore } from '../../store.ts'
 import SettingsDialog from '../../dialogs/SettingsDialog.vue'
 import UncompletedProgresses from './components/UncompletedProgresses.vue'
@@ -152,16 +152,16 @@ async function selectDownloadDir() {
         <n-input v-model:value="store.config.downloadDir" size="small" readonly @click="selectDownloadDir" />
         <n-button size="small" @click="showDownloadDirInFileManager">
           <template #icon>
-            <n-icon>
-              <FolderOpenOutlined />
+            <n-icon size="20">
+              <PhFolderOpen />
             </n-icon>
           </template>
         </n-button>
       </n-input-group>
       <n-button size="small" @click="settingsDialogShowing = true">
         <template #icon>
-          <n-icon>
-            <SettingOutlined />
+          <n-icon size="20">
+            <PhGearSix />
           </n-icon>
         </template>
         配置

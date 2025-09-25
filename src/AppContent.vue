@@ -8,7 +8,7 @@ import ChapterPane from './panes/ChapterPane.vue'
 import ProgressesPane from './panes/ProgressesPane/ProgressesPane.vue'
 import FavoritePane from './panes/FavoritePane.vue'
 import AboutDialog from './dialogs/AboutDialog.vue'
-import { QuestionCircleOutlined, UserOutlined, BarsOutlined } from '@vicons/antd'
+import { PhInfo, PhUser, PhClockCounterClockwise } from '@phosphor-icons/vue'
 import DownloadedPane from './panes/DownloadedPane/DownloadedPane.vue'
 import { useStore } from './store.ts'
 import LogDialog from './dialogs/LogDialog.vue'
@@ -108,23 +108,23 @@ onMounted(async () => {
         <n-button type="primary" @click="loginDialogShowing = true">
           <template #icon>
             <n-icon>
-              <UserOutlined />
+              <PhUser />
             </n-icon>
           </template>
           登录
         </n-button>
         <n-button @click="logViewerShowing = true">
           <template #icon>
-            <n-icon>
-              <BarsOutlined />
+            <n-icon size="20">
+              <PhClockCounterClockwise />
             </n-icon>
           </template>
           日志
         </n-button>
         <n-button @click="aboutDialogShowing = true">
           <template #icon>
-            <n-icon>
-              <QuestionCircleOutlined />
+            <n-icon size="20">
+              <PhInfo />
             </n-icon>
           </template>
           关于
