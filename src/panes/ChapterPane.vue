@@ -3,6 +3,8 @@ import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import { computed, nextTick, ref, watch, watchEffect } from 'vue'
 import { ChapterInfo, commands, DownloadTaskState } from '../bindings.ts'
 import { useStore } from '../store.ts'
+import { PhFolderOpen } from '@phosphor-icons/vue'
+import IconButton from '../components/IconButton.vue'
 
 const store = useStore()
 
@@ -229,22 +231,18 @@ function isDownloading(state: State) {
 
     <div v-if="store.pickedComic !== undefined" class="flex p-2 pt-0">
       <img
-        class="w-24 mr-4"
+        class="w-24 mr-4 object-cover"
         :src="`https://cdn-msp3.18comic.vip/media/albums/${store.pickedComic.id}_3x4.jpg`"
         alt=""
         referrerpolicy="no-referrer" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-          <span class="font-bold text-xl line-clamp-2">{{ store.pickedComic.name }}</span>
+          <span class="font-bold text-lg line-clamp-2">{{ store.pickedComic.name }}</span>
           <span class="text-red">作者：{{ store.pickedComic.author }}</span>
           <span class="text-gray">标签：{{ store.pickedComic.tags }}</span>
-          <n-button
-            v-if="store.pickedComic.isDownloaded"
-            class="flex mt-auto mr-auto gap-col-2"
-            size="tiny"
-            @click="showComicDownloadDirInFileManager">
-            打开下载目录
-          </n-button>
+          <IconButton v-if="store.pickedComic.isDownloaded" class="w-fit" title="打开下载目录" @click="showComicDownloadDirInFileManager">
+            <PhFolderOpen :size="24" />
+          </IconButton>
         </div>
       </div>
     </div>

@@ -70,7 +70,7 @@ async function showComicDownloadDirInFileManager() {
       referrerpolicy="no-referrer" />
     <div class="flex flex-col w-full">
       <span
-        class="font-bold text-xl line-clamp-3 cursor-pointer transition-colors duration-200 hover:text-blue-5"
+        class="font-bold text-lg line-clamp-2 cursor-pointer transition-colors duration-200 hover:text-blue-5"
         @click="pickComic">
         {{ comic.name }}
       </span>
