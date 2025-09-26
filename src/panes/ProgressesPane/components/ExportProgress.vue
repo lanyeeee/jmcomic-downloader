@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { PhCircleNotch } from '@phosphor-icons/vue'
+import { PhCircleNotch, PhFolderOpen } from '@phosphor-icons/vue'
 import { ProgressData } from './ExportProgresses.vue'
 import { commands } from '../../../bindings.ts'
+import IconButton from '../../../components/IconButton.vue'
 
 const props = defineProps<{
   p: ProgressData
@@ -41,12 +42,12 @@ async function showChapterExportDirInFileManager() {
       <span>{{ p.indicator }}</span>
     </div>
 
-    <n-button
+    <IconButton
+      class="ml-auto"
+      title="打开导出目录"
       v-if="p.chapterExportDir !== undefined"
-      class="w-fit"
-      size="tiny"
       @click="showChapterExportDirInFileManager">
-      打开导出目录
-    </n-button>
+      <PhFolderOpen :size="24" />
+    </IconButton>
   </div>
 </template>
