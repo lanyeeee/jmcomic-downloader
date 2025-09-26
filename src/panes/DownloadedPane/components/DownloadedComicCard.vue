@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Comic, commands } from '../../../bindings.ts'
 import { useStore } from '../../../store.ts'
+import { PhFilePdf, PhFileZip, PhFolderOpen } from '@phosphor-icons/vue'
+import IconButton from '../../../components/IconButton.vue'
 
 const store = useStore()
 
@@ -74,9 +76,17 @@ async function showComicDownloadDirInFileManager() {
       </span>
       <span class="text-red">作者：{{ comic.author }}</span>
       <div class="flex mt-auto gap-col-2">
-        <n-button size="tiny" @click="showComicDownloadDirInFileManager">打开下载目录</n-button>
-        <n-button class="ml-auto" size="tiny" @click="exportCbz">导出cbz</n-button>
-        <n-button size="tiny" @click="exportPdf">导出pdf</n-button>
+        <IconButton title="打开下载目录" @click="showComicDownloadDirInFileManager">
+          <PhFolderOpen :size="24" />
+        </IconButton>
+
+        <IconButton class="ml-auto" title="导出cbz" @click="exportCbz">
+          <PhFileZip :size="24" />
+        </IconButton>
+
+        <IconButton title="导出pdf" @click="exportPdf">
+          <PhFilePdf :size="24" />
+        </IconButton>
       </div>
     </div>
   </div>
