@@ -227,33 +227,15 @@ impl DownloadTask {
         let Some(temp_download_dir) = self.create_temp_download_dir() else {
             return;
         };
-        // 从配置文件获取图片格式
-        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
-        // 图片下载路径
-        let save_paths: Vec<PathBuf> = urls_with_block_num
-            .iter()
-            .enumerate()
-            .map(|(i, _)| {
-                let extension = download_format.as_str();
-                temp_download_dir.join(format!("{:03}.{extension}", i + 1))
-            })
-            .collect();
         // 清理临时下载目录中与`config.download_format`对不上的文件
-        if let Err(err) = self.clean_temp_download_dir(&temp_download_dir, &save_paths) {
-            let err_title = format!("`{comic_title} - {chapter_title}`清理临时下载目录失败");
-            let string_chain = err.to_string_chain();
-            tracing::error!(err_title, message = string_chain);
-
-            self.set_state(DownloadTaskState::Failed);
-            self.emit_download_task_update_event();
-
-            return;
-        }
+        self.clean_temp_download_dir(&temp_download_dir);
 
         let mut join_set = JoinSet::new();
-        for ((url, block_num), save_path) in urls_with_block_num.into_iter().zip(save_paths) {
+        for (i, (url, block_num)) in urls_with_block_num.into_iter().enumerate() {
             // 创建下载任务
-            let download_img_task = DownloadImgTask::new(self, url, save_path, block_num);
+            let temp_download_dir = temp_download_dir.clone();
+            let download_img_task =
+                DownloadImgTask::new(self, url, i, temp_download_dir, block_num);
             join_set.spawn(download_img_task.process());
         }
         join_set.join_all().await;
@@ -400,12 +382,15 @@ impl DownloadTask {
             .filter_map(|filename| {
                 let file_path = Path::new(&filename);
                 let ext = file_path.extension()?.to_str()?.to_lowercase();
-                if ext != "webp" {
+                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
+                if ext == "gif" {
+                    return Some((url, 0));
+                } else if ext != "webp" {
                     return None;
                 }
+
                 let filename_without_ext = file_path.file_stem()?.to_str()?;
                 let block_num = calculate_block_num(scramble_id, chapter_id, filename_without_ext);
-                let url = format!("https://{IMAGE_DOMAIN}/media/photos/{chapter_id}/{filename}");
                 Some((url, block_num))
             })
             .collect();
@@ -416,23 +401,40 @@ impl DownloadTask {
     }
 
     /// 删除临时下载目录中与`config.download_format`对不上的文件
-    fn clean_temp_download_dir(
-        &self,
-        temp_download_dir: &Path,
-        save_paths: &[PathBuf],
-    ) -> anyhow::Result<()> {
+    fn clean_temp_download_dir(&self, temp_download_dir: &Path) {
         let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
 
-        let entries = std::fs::read_dir(temp_download_dir).context(format!(
-            "读取临时下载目录`{}`失败",
-            temp_download_dir.display()
-        ))?;
+        let entries = match std::fs::read_dir(temp_download_dir).map_err(anyhow::Error::from) {
+            Ok(entries) => entries,
+            Err(err) => {
+                let err_title = format!(
+                    "`{comic_title}`读取临时下载目录`{}`失败",
+                    temp_download_dir.display()
+                );
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
+                return;
+            }
+        };
 
+        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
+        let extension = download_format.extension();
         for path in entries.filter_map(Result::ok).map(|entry| entry.path()) {
-            if !save_paths.contains(&path) {
-                std::fs::remove_file(&path)
-                    .context(format!("删除临时下载目录的`{}`失败", path.display()))?;
+            // path有扩展名，且能转换为utf8，并与`config.download_format`一致或是gif，则保留
+            let should_keep = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext == "gif" || ext == extension);
+            if should_keep {
+                continue;
+            }
+            // 否则删除文件
+            if let Err(err) = std::fs::remove_file(&path).map_err(anyhow::Error::from) {
+                let err_title =
+                    format!("`{comic_title}`删除临时下载目录的`{}`失败", path.display());
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
             }
         }
 
@@ -442,8 +444,6 @@ impl DownloadTask {
             "清理临时下载目录`{}`成功",
             temp_download_dir.display()
         );
-
-        Ok(())
     }
 
     async fn acquire_chapter_permit<'a>(
@@ -569,7 +569,8 @@ struct DownloadImgTask {
     download_manager: DownloadManager,
     download_task: DownloadTask,
     url: String,
-    save_path: PathBuf,
+    index: usize,
+    temp_download_path: PathBuf,
     block_num: u32,
 }
 
@@ -577,7 +578,8 @@ impl DownloadImgTask {
     pub fn new(
         download_task: &DownloadTask,
         url: String,
-        save_path: PathBuf,
+        index: usize,
+        temp_download_path: PathBuf,
         block_num: u32,
     ) -> Self {
         Self {
@@ -585,7 +587,8 @@ impl DownloadImgTask {
             download_manager: download_task.download_manager.clone(),
             download_task: download_task.clone(),
             url,
-            save_path,
+            index,
+            temp_download_path,
             block_num,
         }
     }
@@ -620,11 +623,18 @@ impl DownloadImgTask {
 
     async fn download_img(&self) {
         let url = &self.url;
-        let save_path = &self.save_path;
         let comic_title = &self.download_task.comic.name;
         let chapter_title = &self.download_task.chapter_info.chapter_title;
+        let temp_download_path = &self.temp_download_path;
 
-        if save_path.exists() {
+        let index_filename = format!("{:04}", self.index + 1);
+        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
+        let ext = download_format.extension();
+
+        let user_format_path = temp_download_path.join(format!("{index_filename}.{ext}"));
+        let gif_path = temp_download_path.join(format!("{index_filename}.gif"));
+
+        if user_format_path.exists() || gif_path.exists() {
             // 如果图片已经存在，直接返回
             self.download_task
                 .downloaded_img_count
@@ -638,7 +648,7 @@ impl DownloadImgTask {
 
         tracing::trace!(url, comic_title, chapter_title, "开始下载图片");
 
-        let img_data = match self.jm_client().get_img_data(url).await {
+        let (img_data, format) = match self.jm_client().get_img_data_and_format(url).await {
             Ok(data) => data,
             Err(err) => {
                 let err_title = format!("下载图片`{url}`失败");
@@ -651,10 +661,15 @@ impl DownloadImgTask {
 
         tracing::trace!(url, comic_title, chapter_title, "图片成功下载到内存");
 
-        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
+        let save_path = if format == ImageFormat::Gif {
+            gif_path
+        } else {
+            user_format_path
+        };
+
         let block_num = self.block_num;
         // 保存图片
-        if let Err(err) = save_img(save_path.clone(), download_format, block_num, img_data).await {
+        if let Err(err) = save_img(&save_path, download_format, block_num, img_data, format).await {
             let err_title = format!("保存图片`{url}`失败");
             let string_chain = err.to_string_chain();
             tracing::error!(err_title, message = string_chain);
@@ -763,12 +778,22 @@ fn calculate_block_num(scramble_id: i64, id: i64, filename: &str) -> u32 {
 }
 
 async fn save_img(
-    save_path: PathBuf,
+    save_path: &Path,
     download_format: DownloadFormat,
     block_num: u32,
     src_img_data: Bytes,
+    src_format: ImageFormat,
 ) -> anyhow::Result<()> {
+    // TODO: 如果src_format是WebP，download_format也是WebP，且block_num为0，也可以直接保存
+    if src_format == ImageFormat::Gif {
+        // 如果是GIF格式，直接保存
+        std::fs::write(save_path, src_img_data)
+            .context(format!("保存图片`{}`失败", save_path.display()))?;
+        return Ok(());
+    }
+
     // 图像处理的闭包
+    let save_path = save_path.to_path_buf();
     let process_img = move || -> anyhow::Result<()> {
         let mut src_img = image::load_from_memory(&src_img_data)
             .context("解码图片失败")?

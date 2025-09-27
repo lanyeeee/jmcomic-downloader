@@ -10,7 +10,7 @@ pub enum DownloadFormat {
 }
 
 impl DownloadFormat {
-    pub fn as_str(self) -> &'static str {
+    pub fn extension(self) -> &'static str {
         match self {
             DownloadFormat::Jpeg => "jpg",
             DownloadFormat::Png => "png",
