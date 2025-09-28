@@ -41,6 +41,8 @@ pub fn run() {
             search,
             get_comic,
             get_favorite_folder,
+            get_weekly_info,
+            get_weekly,
             get_user_profile,
             create_download_task,
             pause_download_task,
@@ -57,6 +59,7 @@ pub fn run() {
             get_synced_comic,
             get_synced_comic_in_favorite,
             get_synced_comic_in_search,
+            get_synced_comic_in_weekly,
         ])
         .events(tauri_specta::collect_events![
             DownloadSpeedEvent,
