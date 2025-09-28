@@ -51,6 +51,22 @@ async getFavoriteFolder(folderId: number, page: number, sort: FavoriteSort) : Pr
     else return { status: "error", error: e  as any };
 }
 },
+async getWeeklyInfo() : Promise<Result<GetWeeklyInfoRespData, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_weekly_info") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getWeekly(categoryId: string, typeId: string) : Promise<Result<GetWeeklyResult, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_weekly", { categoryId, typeId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getUserProfile() : Promise<Result<GetUserProfileRespData, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_user_profile") };
@@ -173,6 +189,14 @@ async getSyncedComicInSearch(comic: ComicInSearch) : Promise<Result<ComicInSearc
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getSyncedComicInWeekly(comic: ComicInWeekly) : Promise<Result<ComicInWeekly, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_synced_comic_in_weekly", { comic }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -201,12 +225,16 @@ updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 
 /** user-defined types **/
 
+export type Category = { id: string | null; title: string | null }
+export type CategoryInWeeklyInfo = { id: string; title: string; time: string }
 export type CategoryRespData = { id: string | null; title: string | null }
+export type CategorySub = { id: string | null; title: string | null }
 export type CategorySubRespData = { id: string | null; title: string | null }
 export type ChapterInfo = { chapterId: number; chapterTitle: string; order: number; isDownloaded?: boolean | null; chapterDownloadDir?: string | null }
 export type Comic = { id: number; name: string; addtime: string; description: string; total_views: string; likes: string; chapterInfos: ChapterInfo[]; series_id: string; comment_total: string; author: string[]; tags: string[]; works: string[]; actors: string[]; related_list: RelatedListRespData[]; liked: boolean; is_favorite: boolean; is_aids: boolean; isDownloaded?: boolean | null; comicDownloadDir?: string | null }
 export type ComicInFavorite = { id: number; author: string; description: string | null; name: string; latestEp: string | null; latestEpAid: string | null; image: string; category: CategoryRespData; categorySub: CategorySubRespData; isDownloaded: boolean; comicDownloadDir: string }
 export type ComicInSearch = { id: number; author: string; name: string; image: string; category: CategoryRespData; categorySub: CategorySubRespData; liked: boolean; isFavorite: boolean; updateAt: number; isDownloaded: boolean; comicDownloadDir: string }
+export type ComicInWeekly = { id: number; author: string; description: string; name: string; image: string; category: Category; category_sub: CategorySub; liked: boolean; is_favorite: boolean; update_at: number; is_downloaded: boolean; comic_download_dir: string }
 export type CommandError = { err_title: string; err_message: string }
 export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
@@ -219,6 +247,8 @@ export type FavoriteFolderRespData = { FID: string; UID: string; name: string }
 export type FavoriteSort = "FavoriteTime" | "UpdateTime"
 export type GetFavoriteResult = { list: ComicInFavorite[]; folderList: FavoriteFolderRespData[]; total: number; count: number }
 export type GetUserProfileRespData = { uid: string; username: string; email: string; emailverified: string; photo: string; fname: string; gender: string; message: string | null; coin: number; album_favorites: number; s: string; level_name: string; level: number; nextLevelExp: number; exp: string; expPercent: number; album_favorites_max: number; ad_free: boolean; charge: string; jar: string; invitation_qrcode: string; invitation_url: string; invited_cnt: string }
+export type GetWeeklyInfoRespData = { categories: CategoryInWeeklyInfo[]; type: WeeklyType[] }
+export type GetWeeklyResult = { total: number; list: ComicInWeekly[] }
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key in string]: JsonValue }
 export type LogEvent = { timestamp: string; level: LogLevel; fields: { [key in string]: JsonValue }; target: string; filename: string; line_number: number }
 export type LogLevel = "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR"
@@ -228,6 +258,7 @@ export type SearchResult = { searchQuery: string; total: number; content: ComicI
 export type SearchResultVariant = { SearchResult: SearchResult } | { Comic: Comic }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type UpdateDownloadedFavoriteComicEvent = { event: "GettingFolders" } | { event: "GettingComics"; data: { total: number } } | { event: "ComicGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
+export type WeeklyType = { id: string; title: string }
 
 /** tauri-specta globals **/
 

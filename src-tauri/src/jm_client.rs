@@ -22,8 +22,9 @@ use crate::config::Config;
 use crate::download_manager::IMAGE_DOMAIN;
 use crate::extensions::AnyhowErrorToStringChain;
 use crate::responses::{
-    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
-    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
+    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData,
+    GetWeeklyInfoRespData, GetWeeklyRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
+    ToggleFavoriteRespData,
 };
 use crate::types::{FavoriteSort, ProxyMode, SearchSort};
 use crate::utils;
@@ -44,6 +45,8 @@ enum ApiPath {
     GetChapter,
     GetScrambleId,
     GetFavoriteFolder,
+    GetWeeklyInfo,
+    GetWeekly,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -57,6 +60,8 @@ impl ApiPath {
             ApiPath::GetChapter => "/chapter",
             ApiPath::GetScrambleId => "/chapter_view_template",
             ApiPath::GetFavoriteFolder => "/favorite",
+            ApiPath::GetWeeklyInfo => "/week",
+            ApiPath::GetWeekly => "/week/filter",
         }
     }
 }
@@ -422,6 +427,76 @@ impl JmClient {
             "将解密后的data字段解析为GetFavoriteRespData失败: {data}"
         ))?;
         Ok(favorite)
+    }
+
+    pub async fn get_weekly_info(&self) -> anyhow::Result<GetWeeklyInfoRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let http_resp = self.jm_get(ApiPath::GetWeeklyInfo, None, ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取每周必看信息失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取每周必看信息失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp.data.as_str().context(format!(
+            "获取每周必看信息失败，data字段不是字符串: {jm_resp:?}"
+        ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为GetWeeklyInfoRespData
+        let weekly_info = serde_json::from_str::<GetWeeklyInfoRespData>(&data).context(format!(
+            "将解密后的data字段解析为GetWeeklyInfoRespData失败: {data}"
+        ))?;
+        Ok(weekly_info)
+    }
+
+    pub async fn get_weekly(
+        &self,
+        category_id: &str,
+        type_id: &str,
+    ) -> anyhow::Result<GetWeeklyRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({
+            "id": category_id,
+            "type": type_id,
+        });
+        let http_resp = self.jm_get(ApiPath::GetWeekly, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取每周必看信息失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取每周必看信息失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp.data.as_str().context(format!(
+            "获取每周必看信息失败，data字段不是字符串: {jm_resp:?}"
+        ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为GetWeeklyRespData
+        let get_weekly_resp_data = serde_json::from_str::<GetWeeklyRespData>(&data).context(
+            format!("将解密后的data字段解析为GetWeeklyRespData失败: {data}"),
+        )?;
+        Ok(get_weekly_resp_data)
     }
 
     pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteRespData> {

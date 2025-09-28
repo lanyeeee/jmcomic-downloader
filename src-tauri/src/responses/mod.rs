@@ -2,6 +2,8 @@ mod get_chapter_resp_data;
 mod get_comic_resp_data;
 mod get_favorite_resp_data;
 mod get_user_profile_resp_data;
+mod get_weekly_info_resp_data;
+mod get_weekly_resp_data;
 mod search_resp;
 mod toggle_favorite_resp_data;
 
@@ -9,6 +11,8 @@ pub use get_chapter_resp_data::*;
 pub use get_comic_resp_data::*;
 pub use get_favorite_resp_data::*;
 pub use get_user_profile_resp_data::*;
+pub use get_weekly_info_resp_data::*;
+pub use get_weekly_resp_data::*;
 pub use search_resp::*;
 pub use toggle_favorite_resp_data::*;
 
@@ -46,7 +50,7 @@ pub struct CategorySubRespData {
     pub title: Option<String>,
 }
 
-fn string_to_i64<'de, D>(d: D) -> Result<i64, D::Error>
+pub fn string_to_i64<'de, D>(d: D) -> Result<i64, D::Error>
 where
     D: serde::Deserializer<'de>,
 {

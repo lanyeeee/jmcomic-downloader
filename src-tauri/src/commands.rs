@@ -19,10 +19,10 @@ use crate::errors::{CommandError, CommandResult};
 use crate::events::UpdateDownloadedFavoriteComicEvent;
 use crate::extensions::{AnyhowErrorToStringChain, WalkDirEntryExt};
 use crate::jm_client::JmClient;
-use crate::responses::GetUserProfileRespData;
+use crate::responses::{GetUserProfileRespData, GetWeeklyInfoRespData};
 use crate::types::{
-    Comic, ComicInFavorite, ComicInSearch, FavoriteSort, GetFavoriteResult, SearchResultVariant,
-    SearchSort,
+    Comic, ComicInFavorite, ComicInSearch, ComicInWeekly, FavoriteSort, GetFavoriteResult,
+    GetWeeklyResult, SearchResultVariant, SearchSort,
 };
 use crate::{export, logger, utils};
 
@@ -162,6 +162,37 @@ pub async fn get_favorite_folder(
     let get_favorite_result = GetFavoriteResult::from_resp_data(&app, get_favorite_resp_data)
         .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
     Ok(get_favorite_result)
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn get_weekly_info(
+    jm_client: State<'_, JmClient>,
+) -> CommandResult<GetWeeklyInfoRespData> {
+    let weekly_info = jm_client
+        .get_weekly_info()
+        .await
+        .map_err(|err| CommandError::from("获取每周必看信息失败", err))?;
+    Ok(weekly_info)
+}
+
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn get_weekly(
+    app: AppHandle,
+    jm_client: State<'_, JmClient>,
+    category_id: String,
+    type_id: String,
+) -> CommandResult<GetWeeklyResult> {
+    let get_weekly_resp_data = jm_client
+        .get_weekly(&category_id, &type_id)
+        .await
+        .map_err(|err| CommandError::from("获取每周必看失败", err))?;
+
+    let get_weekly_result = GetWeeklyResult::from_resp_data(&app, get_weekly_resp_data)
+        .map_err(|err| CommandError::from("获取每周必看失败", err))?;
+
+    Ok(get_weekly_result)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -612,6 +643,25 @@ pub fn get_synced_comic_in_search(
         .context("创建漫画ID到下载目录映射失败")
         .map_err(|err| {
             let err_title = format!("漫画`{}`同步ComicInSearch的字段失败", comic.name);
+            CommandError::from(&err_title, err)
+        })?;
+
+    comic.update_fields(&id_to_dir_map);
+
+    Ok(comic)
+}
+
+#[allow(clippy::needless_pass_by_value)]
+#[tauri::command(async)]
+#[specta::specta]
+pub fn get_synced_comic_in_weekly(
+    app: AppHandle,
+    mut comic: ComicInWeekly,
+) -> CommandResult<ComicInWeekly> {
+    let id_to_dir_map = utils::create_id_to_dir_map(&app)
+        .context("创建漫画ID到下载目录映射失败")
+        .map_err(|err| {
+            let err_title = format!("漫画`{}`同步ComicInWeekly的字段失败", comic.name);
             CommandError::from(&err_title, err)
         })?;
 
