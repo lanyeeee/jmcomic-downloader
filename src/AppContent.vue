@@ -12,6 +12,7 @@ import { PhInfo, PhUser, PhClockCounterClockwise } from '@phosphor-icons/vue'
 import DownloadedPane from './panes/DownloadedPane/DownloadedPane.vue'
 import { useStore } from './store.ts'
 import LogDialog from './dialogs/LogDialog.vue'
+import WeeklyPane from './panes/WeeklyPane.vue'
 
 const store = useStore()
 
@@ -90,11 +91,14 @@ onMounted(async () => {
 <template>
   <div v-if="store.config !== undefined" class="h-screen flex overflow-hidden">
     <n-tabs class="h-full w-1/2" v-model:value="store.currentTabName" type="line" size="small" animated>
-      <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="漫画搜索" display-directive="show">
+      <n-tab-pane class="h-full overflow-auto p-0!" name="search" tab="搜索" display-directive="show">
         <SearchPane />
       </n-tab-pane>
-      <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="漫画收藏" display-directive="show">
+      <n-tab-pane class="h-full overflow-auto p-0!" name="favorite" tab="收藏夹" display-directive="show">
         <FavoritePane />
+      </n-tab-pane>
+      <n-tab-pane class="h-full overflow-auto p-0!" name="weekly" tab="每周必看" display-directive="show">
+        <WeeklyPane />
       </n-tab-pane>
       <n-tab-pane class="h-full overflow-auto p-0!" name="downloaded" tab="本地库存" display-directive="show">
         <DownloadedPane />
