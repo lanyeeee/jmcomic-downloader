@@ -49,6 +49,7 @@ onMounted(async () => {
         await syncPickedComic()
         await syncComicInSearch(progressData)
         await syncComicInFavorite(progressData)
+        await syncComicInWeekly(progressData)
       }
 
       progressData.percentage = (downloadedImgCount / totalImgCount) * 100
@@ -113,6 +114,22 @@ async function syncComicInFavorite(progressData: ProgressData) {
     return
   }
   const result = await commands.getSyncedComicInFavorite(comic)
+  if (result.status === 'error') {
+    console.error(result.error)
+    return
+  }
+  Object.assign(comic, { ...result.data })
+}
+
+async function syncComicInWeekly(progressData: ProgressData) {
+  if (store.getWeeklyResult === undefined) {
+    return
+  }
+  const comic = store.getWeeklyResult.list.find((comic) => comic.id === progressData.comic.id)
+  if (comic === undefined) {
+    return
+  }
+  const result = await commands.getSyncedComicInWeekly(comic)
   if (result.status === 'error') {
     console.error(result.error)
     return
