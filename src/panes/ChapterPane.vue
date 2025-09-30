@@ -172,6 +172,7 @@ async function refreshChapters() {
     return
   }
   store.pickedComic = result.data
+  // TODO: 如果pickedComic已下载，则更新元数据
 }
 
 async function showComicDownloadDirInFileManager() {
@@ -240,7 +241,11 @@ function isDownloading(state: State) {
           <span class="font-bold text-lg line-clamp-2">{{ store.pickedComic.name }}</span>
           <span class="text-red">作者：{{ store.pickedComic.author }}</span>
           <span class="text-gray">标签：{{ store.pickedComic.tags }}</span>
-          <IconButton v-if="store.pickedComic.isDownloaded" class="w-fit" title="打开下载目录" @click="showComicDownloadDirInFileManager">
+          <IconButton
+            v-if="store.pickedComic.isDownloaded"
+            class="w-fit"
+            title="打开下载目录"
+            @click="showComicDownloadDirInFileManager">
             <PhFolderOpen :size="24" />
           </IconButton>
         </div>

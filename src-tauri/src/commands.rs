@@ -391,6 +391,8 @@ pub async fn update_downloaded_favorite_comic(
                 .any(|chapter_info| chapter_info.is_downloaded == Some(true))
         })
         .collect::<Vec<_>>();
+    // TODO: 更新已下载漫画的元数据
+
     // 把已下载漫画中的未下载章节添加到下载队列中
     for comic in downloaded_comics {
         let chapter_ids_to_download = comic
