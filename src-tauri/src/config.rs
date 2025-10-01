@@ -18,6 +18,10 @@ pub struct Config {
     pub proxy_host: String,
     pub proxy_port: u16,
     pub enable_file_logger: bool,
+    pub chapter_concurrency: usize,
+    pub chapter_download_interval_sec: u64,
+    pub img_concurrency: usize,
+    pub img_download_interval_sec: u64,
 }
 
 impl Config {
@@ -83,6 +87,10 @@ impl Config {
             proxy_host: "127.0.0.1".to_string(),
             proxy_port: 7890,
             enable_file_logger: true,
+            chapter_concurrency: 3,
+            chapter_download_interval_sec: 0,
+            img_concurrency: 20,
+            img_download_interval_sec: 0,
         }
     }
 }

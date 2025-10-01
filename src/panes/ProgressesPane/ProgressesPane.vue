@@ -23,6 +23,13 @@ onMounted(async () => {
     downloadSpeed.value = speed
   })
 
+  await events.downloadSleepingEvent.listen(async ({ payload: { id, remainingSec } }) => {
+    const progressData = store.progresses.get(id)
+    if (progressData !== undefined) {
+      progressData.indicator = `将在${remainingSec}秒后继续下载`
+    }
+  })
+
   await events.downloadTaskEvent.listen(async ({ payload: { event, data } }) => {
     if (event === 'Create') {
       const { chapterInfo, downloadedImgCount, totalImgCount } = data
