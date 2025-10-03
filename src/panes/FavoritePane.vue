@@ -5,6 +5,7 @@ import { MessageReactive, useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import { SelectProps } from 'naive-ui'
 import { useStore } from '../store.ts'
+import DownloadAllFavoriteButton from '../components/DownloadAllFavoriteButton.vue'
 
 const store = useStore()
 
@@ -117,7 +118,11 @@ onMounted(async () => {
         :show-checkmark="false"
         size="small"
         @update-value="getFavourite(folderIdSelected, 1, $event)" />
-      <n-button size="small" @click="updateDownloadedFavoriteComic">更新漫画</n-button>
+      <download-all-favorite-button />
+    </div>
+
+    <div v-if="store.getFavoriteResult !== undefined" class="flex box-border px-2 gap-2">
+      <n-button class="ml-auto" size="small" @click="updateDownloadedFavoriteComic">更新漫画</n-button>
       <n-button size="small" type="primary" secondary @click="syncFavoriteFolder">收藏不对点我</n-button>
     </div>
 

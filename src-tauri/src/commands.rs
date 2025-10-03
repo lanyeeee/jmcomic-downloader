@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
+use std::time::Duration;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use anyhow::{anyhow, Context};
@@ -11,18 +12,19 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
+use tokio::time::sleep;
 use walkdir::WalkDir;
 
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::errors::{CommandError, CommandResult};
-use crate::events::UpdateDownloadedFavoriteComicEvent;
+use crate::events::{DownloadAllFavoritesEvent, UpdateDownloadedFavoriteComicEvent};
 use crate::extensions::{AnyhowErrorToStringChain, WalkDirEntryExt};
 use crate::jm_client::JmClient;
 use crate::responses::{GetUserProfileRespData, GetWeeklyInfoRespData};
 use crate::types::{
-    Comic, ComicInFavorite, ComicInSearch, ComicInWeekly, FavoriteSort, GetFavoriteResult,
-    GetWeeklyResult, SearchResultVariant, SearchSort,
+    ChapterInfo, Comic, ComicInFavorite, ComicInSearch, ComicInWeekly, FavoriteSort,
+    GetFavoriteResult, GetWeeklyResult, SearchResultVariant, SearchSort,
 };
 use crate::{export, logger, utils};
 
@@ -135,12 +137,8 @@ pub async fn get_comic(
     jm_client: State<'_, JmClient>,
     aid: i64,
 ) -> CommandResult<Comic> {
-    let comic_resp_data = jm_client
-        .get_comic(aid)
+    let comic = utils::get_comic(app, &jm_client, aid)
         .await
-        .map_err(|err| CommandError::from(&format!("获取ID为`{aid}`的漫画信息失败"), err))?;
-
-    let comic = Comic::from_comic_resp_data(&app, comic_resp_data)
         .map_err(|err| CommandError::from(&format!("获取ID为`{aid}`的漫画信息失败"), err))?;
 
     Ok(comic)
@@ -270,7 +268,9 @@ pub async fn download_comic(
     download_manager: State<'_, DownloadManager>,
     aid: i64,
 ) -> CommandResult<()> {
-    let comic = get_comic(app.clone(), jm_client, aid).await?;
+    let comic = utils::get_comic(app, &jm_client, aid)
+        .await
+        .map_err(|err| CommandError::from(&format!("获取ID为`{aid}`的漫画信息失败"), err))?;
 
     let comic_title = &comic.name;
 
@@ -293,6 +293,131 @@ pub async fn download_comic(
     }
 
     tracing::debug!("一键下载漫画成功，已为所有需要下载的章节创建下载任务");
+    Ok(())
+}
+
+#[allow(clippy::cast_possible_wrap)]
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn download_all_favorites(
+    app: AppHandle,
+    config: State<'_, RwLock<Config>>,
+    jm_client: State<'_, JmClient>,
+    download_manager: State<'_, DownloadManager>,
+) -> CommandResult<()> {
+    let jm_client = jm_client.inner().clone();
+    let mut favorite_comics = Vec::new();
+    // 发送正在获取收藏夹事件
+    let _ = DownloadAllFavoritesEvent::GetFavoritesStart.emit(&app);
+    // 获取收藏夹第一页
+    let first_page = jm_client
+        .get_favorite_folder(0, 1, FavoriteSort::FavoriteTime)
+        .await
+        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+    favorite_comics.extend(first_page.list);
+    // 计算总页数
+    let count = first_page.count;
+    let total = first_page
+        .total
+        .parse::<i64>()
+        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+    let page_count = (total / count) + 1;
+    // 获取收藏夹剩余页
+    let mut join_set = JoinSet::new();
+    for page in 2..=page_count {
+        let jm_client = jm_client.clone();
+        join_set.spawn(async move {
+            let page = jm_client
+                .get_favorite_folder(0, page, FavoriteSort::FavoriteTime)
+                .await?;
+            Ok::<_, anyhow::Error>(page)
+        });
+    }
+    // 等待所有请求完成
+    while let Some(Ok(get_favorite_result)) = join_set.join_next().await {
+        // 如果有请求失败，直接返回错误
+        let page = get_favorite_result.map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+        favorite_comics.extend(page.list);
+    }
+    // 至此，收藏夹已经全部获取完毕
+    let total = favorite_comics.len() as i64;
+
+    let interval_sec = config.read().download_all_favorites_interval_sec;
+    for (i, favorite_comic) in favorite_comics.into_iter().enumerate() {
+        let comic_title = &favorite_comic.name;
+        let comic_id = match favorite_comic
+            .id
+            .parse::<i64>()
+            .context("将id解析为i64失败")
+        {
+            Ok(id) => id,
+            Err(err) => {
+                let err_title = format!("下载收藏夹过程中，获取漫画`{comic_title}`失败，已跳过");
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
+                sleep(Duration::from_secs(interval_sec)).await;
+                continue;
+            }
+        };
+
+        let comic = match utils::get_comic(app.clone(), &jm_client, comic_id)
+            .await
+            .context(format!("获取ID为`{comic_id}`的漫画失败"))
+        {
+            Ok(comic) => comic,
+            Err(err) => {
+                let err_title = format!("下载收藏夹过程中，获取漫画`{comic_title}`失败，已跳过");
+                let err = err.context("可能是频率太高，请手动去`配置`里调整`下载整个收藏夹时，每处理完一个收藏夹中的漫画后休息`");
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
+                sleep(Duration::from_secs(interval_sec)).await;
+                continue;
+            }
+        };
+
+        let current = (i + 1) as i64;
+        let _ = DownloadAllFavoritesEvent::GetComicsProgress { current, total }.emit(&app);
+
+        // 给每个漫画未下载的章节创建下载任务
+        let chapter_infos: Vec<&ChapterInfo> = comic
+            .chapter_infos
+            .iter()
+            .filter(|chapter_info| chapter_info.is_downloaded != Some(true))
+            .collect();
+
+        if chapter_infos.is_empty() {
+            sleep(Duration::from_secs(interval_sec)).await;
+            continue;
+        }
+
+        let _ = DownloadAllFavoritesEvent::StartCreateDownloadTasks {
+            comic_id: comic.id,
+            comic_title: comic.name.clone(),
+            current: 0,
+            total: chapter_infos.len() as i64,
+        }
+        .emit(&app);
+
+        for (current, chapter_info) in chapter_infos.into_iter().enumerate() {
+            let current = current as i64 + 1;
+            let _ = download_manager.create_download_task(comic.clone(), chapter_info.chapter_id);
+
+            let _ = DownloadAllFavoritesEvent::CreatingDownloadTask {
+                comic_id: comic.id,
+                current,
+            }
+            .emit(&app);
+
+            sleep(Duration::from_millis(100)).await;
+        }
+
+        let _ = DownloadAllFavoritesEvent::EndCreateDownloadTasks { comic_id: comic.id }.emit(&app);
+
+        sleep(Duration::from_secs(interval_sec)).await;
+    }
+    // 至此，所有收藏夹漫画的下载任务已经全部创建完毕
+    let _ = DownloadAllFavoritesEvent::GetComicsEnd.emit(&app);
+
     Ok(())
 }
 
