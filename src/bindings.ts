@@ -115,6 +115,14 @@ async downloadComic(aid: number) : Promise<Result<null, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async downloadAllFavorites() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("download_all_favorites") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateDownloadedFavoriteComic() : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_downloaded_favorite_comic") };
@@ -204,6 +212,7 @@ async getSyncedComicInWeekly(comic: ComicInWeekly) : Promise<Result<ComicInWeekl
 
 
 export const events = __makeEvents__<{
+downloadAllFavoritesEvent: DownloadAllFavoritesEvent,
 downloadSleepingEvent: DownloadSleepingEvent,
 downloadSpeedEvent: DownloadSpeedEvent,
 downloadTaskEvent: DownloadTaskEvent,
@@ -212,6 +221,7 @@ exportPdfEvent: ExportPdfEvent,
 logEvent: LogEvent,
 updateDownloadedFavoriteComicEvent: UpdateDownloadedFavoriteComicEvent
 }>({
+downloadAllFavoritesEvent: "download-all-favorites-event",
 downloadSleepingEvent: "download-sleeping-event",
 downloadSpeedEvent: "download-speed-event",
 downloadTaskEvent: "download-task-event",
@@ -238,7 +248,8 @@ export type ComicInFavorite = { id: number; author: string; description: string 
 export type ComicInSearch = { id: number; author: string; name: string; image: string; category: CategoryRespData; categorySub: CategorySubRespData; liked: boolean; isFavorite: boolean; updateAt: number; isDownloaded: boolean; comicDownloadDir: string }
 export type ComicInWeekly = { id: number; author: string; description: string; name: string; image: string; category: Category; category_sub: CategorySub; liked: boolean; is_favorite: boolean; update_at: number; is_downloaded: boolean; comic_download_dir: string }
 export type CommandError = { err_title: string; err_message: string }
-export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number; downloadAllFavoritesIntervalSec: number }
+export type DownloadAllFavoritesEvent = { event: "GetFavoritesStart" } | { event: "GetComicsProgress"; data: { current: number; total: number } } | { event: "StartCreateDownloadTasks"; data: { comicId: number; comicTitle: string; current: number; total: number } } | { event: "CreatingDownloadTask"; data: { comicId: number; current: number } } | { event: "EndCreateDownloadTasks"; data: { comicId: number } } | { event: "GetComicsEnd" }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type DownloadSleepingEvent = { id: number; remainingSec: number }
 export type DownloadSpeedEvent = { speed: string }
