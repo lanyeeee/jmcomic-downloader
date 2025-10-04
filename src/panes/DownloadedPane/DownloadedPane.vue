@@ -8,6 +8,7 @@ import { useStore } from '../../store.ts'
 import { DropdownOption, NIcon } from 'naive-ui'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import { PhChecks, PhCheck, PhX } from '@phosphor-icons/vue'
+import UpdateDownloadedComicsButton from './components/UpdateDownloadedComicsButton.vue'
 
 const store = useStore()
 
@@ -232,17 +233,20 @@ function useDropdown() {
 
 <template>
   <div v-if="store.config !== undefined" class="h-full flex flex-col">
-    <n-input-group class="box-border px-2 pt-2">
-      <n-input-group-label size="small">导出目录</n-input-group-label>
-      <n-input v-model:value="store.config.exportDir" size="small" readonly @click="selectExportDir" />
-      <n-button class="w-10" size="small" @click="showExportDirInFileManager">
-        <template #icon>
-          <n-icon size="20">
-            <PhFolderOpen />
-          </n-icon>
-        </template>
-      </n-button>
-    </n-input-group>
+    <div class="flex gap-1 box-border px-2 pt-2">
+      <n-input-group>
+        <n-input-group-label size="small">导出目录</n-input-group-label>
+        <n-input v-model:value="store.config.exportDir" size="small" readonly @click="selectExportDir" />
+        <n-button class="w-10" size="small" @click="showExportDirInFileManager">
+          <template #icon>
+            <n-icon size="20">
+              <PhFolderOpen />
+            </n-icon>
+          </template>
+        </n-button>
+      </n-input-group>
+      <update-downloaded-comics-button />
+    </div>
     <div class="flex gap-2 items-center px-2 select-none">
       <div class="animate-pulse text-sm text-red flex flex-col">
         <div>左键拖动进行框选，右键打开菜单</div>

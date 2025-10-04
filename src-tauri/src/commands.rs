@@ -7,7 +7,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context};
 use indexmap::IndexMap;
 use parking_lot::{Mutex, RwLock};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 use tokio::sync::Semaphore;
@@ -18,7 +18,9 @@ use walkdir::WalkDir;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::errors::{CommandError, CommandResult};
-use crate::events::{DownloadAllFavoritesEvent, UpdateDownloadedFavoriteComicEvent};
+use crate::events::{
+    DownloadAllFavoritesEvent, UpdateDownloadedComicsEvent, UpdateDownloadedFavoriteComicEvent,
+};
 use crate::extensions::{AnyhowErrorToStringChain, WalkDirEntryExt};
 use crate::jm_client::JmClient;
 use crate::responses::{GetUserProfileRespData, GetWeeklyInfoRespData};
@@ -417,6 +419,99 @@ pub async fn download_all_favorites(
     }
     // 至此，所有收藏夹漫画的下载任务已经全部创建完毕
     let _ = DownloadAllFavoritesEvent::GetComicsEnd.emit(&app);
+
+    Ok(())
+}
+
+#[allow(clippy::cast_possible_wrap)]
+#[tauri::command(async)]
+#[specta::specta]
+pub async fn update_downloaded_comics(
+    app: AppHandle,
+    config: State<'_, RwLock<Config>>,
+    jm_client: State<'_, JmClient>,
+    download_manager: State<'_, DownloadManager>,
+) -> CommandResult<()> {
+    // 从下载目录中获取已下载的漫画
+    let downloaded_comics = get_downloaded_comics(app.state::<RwLock<Config>>());
+
+    let total = downloaded_comics.len() as i64;
+    let interval_sec = config.read().update_downloaded_comics_interval_sec;
+    let _ = UpdateDownloadedComicsEvent::GetComicStart { total }.emit(&app);
+
+    for (i, downloaded_comic) in downloaded_comics.into_iter().enumerate() {
+        let comic_title = &downloaded_comic.name;
+        let comic_id = downloaded_comic.id;
+        let current = (i + 1) as i64;
+        let _ = UpdateDownloadedComicsEvent::GetComicProgress { current, total }.emit(&app);
+
+        let comic = match utils::get_comic(app.clone(), &jm_client, comic_id)
+            .await
+            .context(format!("获取ID为`{comic_id}`的漫画失败"))
+        {
+            Ok(comic) => comic,
+            Err(err) => {
+                let err_title = format!("更新库存过程中，获取漫画`{comic_title}`失败，已跳过");
+                let err = err.context("可能是频率太高，请手动去`配置`里调整`更新库存时，每处理完一个已下载的漫画后休息`");
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
+                sleep(Duration::from_secs(interval_sec)).await;
+                continue;
+            }
+        };
+
+        // 至少有一个章节已下载
+        let has_downloaded_chapter = comic
+            .chapter_infos
+            .iter()
+            .any(|chapter_info| chapter_info.is_downloaded == Some(true));
+
+        if !has_downloaded_chapter {
+            sleep(Duration::from_secs(interval_sec)).await;
+            continue;
+        }
+
+        let chapter_infos: Vec<&ChapterInfo> = comic
+            .chapter_infos
+            .iter()
+            .filter(|chapter| chapter.is_downloaded != Some(true))
+            .collect();
+
+        if chapter_infos.is_empty() {
+            sleep(Duration::from_secs(interval_sec)).await;
+            continue;
+        }
+
+        let _ = UpdateDownloadedComicsEvent::CreateDownloadTasksStart {
+            comic_id: comic.id,
+            comic_title: comic.name.clone(),
+            current: 0,
+            total: chapter_infos.len() as i64,
+        }
+        .emit(&app);
+
+        for (i, chapter_info) in chapter_infos.into_iter().enumerate() {
+            let chapter_id = chapter_info.chapter_id;
+            let current = (i + 1) as i64;
+
+            let _ = download_manager.create_download_task(comic.clone(), chapter_id);
+
+            let _ = UpdateDownloadedComicsEvent::CreateDownloadTaskProgress {
+                comic_id: comic.id,
+                current,
+            }
+            .emit(&app);
+
+            sleep(Duration::from_millis(100)).await;
+        }
+
+        let _ =
+            UpdateDownloadedComicsEvent::CreateDownloadTasksEnd { comic_id: comic.id }.emit(&app);
+
+        sleep(Duration::from_secs(interval_sec)).await;
+    }
+
+    let _ = UpdateDownloadedComicsEvent::GetComicEnd.emit(&app);
 
     Ok(())
 }

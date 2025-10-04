@@ -133,6 +133,16 @@ async function showConfigInFileManager() {
               :parse="(x: string) => Number(x)" />
             <n-input-group-label size="small">秒</n-input-group-label>
           </n-input-group>
+          <n-input-group>
+            <n-input-group-label size="small">更新库存时，每处理完一个已下载的漫画后休息</n-input-group-label>
+            <n-input-number
+              class="w-full"
+              v-model:value="store.config.updateDownloadedComicsIntervalSec"
+              size="small"
+              :min="0"
+              :parse="(x: string) => Number(x)" />
+            <n-input-group-label size="small">秒</n-input-group-label>
+          </n-input-group>
         </div>
 
         <span class="mr-2 font-bold mt-2">代理类型</span>

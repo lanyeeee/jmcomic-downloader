@@ -123,6 +123,14 @@ async downloadAllFavorites() : Promise<Result<null, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async updateDownloadedComics() : Promise<Result<null, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_comics") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateDownloadedFavoriteComic() : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_downloaded_favorite_comic") };
@@ -219,6 +227,7 @@ downloadTaskEvent: DownloadTaskEvent,
 exportCbzEvent: ExportCbzEvent,
 exportPdfEvent: ExportPdfEvent,
 logEvent: LogEvent,
+updateDownloadedComicsEvent: UpdateDownloadedComicsEvent,
 updateDownloadedFavoriteComicEvent: UpdateDownloadedFavoriteComicEvent
 }>({
 downloadAllFavoritesEvent: "download-all-favorites-event",
@@ -228,6 +237,7 @@ downloadTaskEvent: "download-task-event",
 exportCbzEvent: "export-cbz-event",
 exportPdfEvent: "export-pdf-event",
 logEvent: "log-event",
+updateDownloadedComicsEvent: "update-downloaded-comics-event",
 updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
 })
 
@@ -248,7 +258,7 @@ export type ComicInFavorite = { id: number; author: string; description: string 
 export type ComicInSearch = { id: number; author: string; name: string; image: string; category: CategoryRespData; categorySub: CategorySubRespData; liked: boolean; isFavorite: boolean; updateAt: number; isDownloaded: boolean; comicDownloadDir: string }
 export type ComicInWeekly = { id: number; author: string; description: string; name: string; image: string; category: Category; category_sub: CategorySub; liked: boolean; is_favorite: boolean; update_at: number; is_downloaded: boolean; comic_download_dir: string }
 export type CommandError = { err_title: string; err_message: string }
-export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number; downloadAllFavoritesIntervalSec: number }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number; downloadAllFavoritesIntervalSec: number; updateDownloadedComicsIntervalSec: number }
 export type DownloadAllFavoritesEvent = { event: "GetFavoritesStart" } | { event: "GetComicsProgress"; data: { current: number; total: number } } | { event: "StartCreateDownloadTasks"; data: { comicId: number; comicTitle: string; current: number; total: number } } | { event: "CreatingDownloadTask"; data: { comicId: number; current: number } } | { event: "EndCreateDownloadTasks"; data: { comicId: number } } | { event: "GetComicsEnd" }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type DownloadSleepingEvent = { id: number; remainingSec: number }
@@ -271,6 +281,7 @@ export type RelatedListRespData = { id: string; author: string; name: string; im
 export type SearchResult = { searchQuery: string; total: number; content: ComicInSearch[] }
 export type SearchResultVariant = { SearchResult: SearchResult } | { Comic: Comic }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
+export type UpdateDownloadedComicsEvent = { event: "GetComicStart"; data: { total: number } } | { event: "GetComicProgress"; data: { current: number; total: number } } | { event: "CreateDownloadTasksStart"; data: { comicId: number; comicTitle: string; current: number; total: number } } | { event: "CreateDownloadTaskProgress"; data: { comicId: number; current: number } } | { event: "CreateDownloadTasksEnd"; data: { comicId: number } } | { event: "GetComicEnd" }
 export type UpdateDownloadedFavoriteComicEvent = { event: "GettingFolders" } | { event: "GettingComics"; data: { total: number } } | { event: "ComicGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 export type WeeklyType = { id: string; title: string }
 
