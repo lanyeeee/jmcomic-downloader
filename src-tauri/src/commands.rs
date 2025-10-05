@@ -1,16 +1,13 @@
 use std::path::PathBuf;
-use std::sync::atomic::AtomicI64;
-use std::sync::Arc;
 use std::time::Duration;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use anyhow::{anyhow, Context};
 use indexmap::IndexMap;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
-use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use walkdir::WalkDir;
@@ -18,9 +15,7 @@ use walkdir::WalkDir;
 use crate::config::Config;
 use crate::download_manager::DownloadManager;
 use crate::errors::{CommandError, CommandResult};
-use crate::events::{
-    DownloadAllFavoritesEvent, UpdateDownloadedComicsEvent, UpdateDownloadedFavoriteComicEvent,
-};
+use crate::events::{DownloadAllFavoritesEvent, UpdateDownloadedComicsEvent};
 use crate::extensions::{AnyhowErrorToStringChain, WalkDirEntryExt};
 use crate::jm_client::JmClient;
 use crate::responses::{GetUserProfileRespData, GetWeeklyInfoRespData};
@@ -512,123 +507,6 @@ pub async fn update_downloaded_comics(
     }
 
     let _ = UpdateDownloadedComicsEvent::GetComicEnd.emit(&app);
-
-    Ok(())
-}
-
-#[allow(clippy::cast_possible_wrap)]
-#[tauri::command(async)]
-#[specta::specta]
-pub async fn update_downloaded_favorite_comic(
-    app: AppHandle,
-    jm_client: State<'_, JmClient>,
-    download_manager: State<'_, DownloadManager>,
-) -> CommandResult<()> {
-    let jm_client = jm_client.inner().clone();
-    // TODO: 在join_set里返回page.list，然后在.join_next()里处理，这样就不用锁了
-    let favorite_comics = Arc::new(Mutex::new(vec![]));
-    // 发送正在获取收藏夹事件
-    let _ = UpdateDownloadedFavoriteComicEvent::GettingFolders.emit(&app);
-    // 获取收藏夹第一页
-    let first_page = jm_client
-        .get_favorite_folder(0, 1, FavoriteSort::FavoriteTime)
-        .await
-        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-    favorite_comics.lock().extend(first_page.list);
-    // 计算总页数
-    let count = first_page.count;
-    let total = first_page
-        .total
-        .parse::<i64>()
-        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-    let page_count = (total / count) + 1;
-    // 获取收藏夹剩余页
-    let mut join_set = JoinSet::new();
-    for page in 2..=page_count {
-        let jm_client = jm_client.clone();
-        let favorite_comics = favorite_comics.clone();
-        join_set.spawn(async move {
-            let page = jm_client
-                .get_favorite_folder(0, page, FavoriteSort::FavoriteTime)
-                .await?;
-            favorite_comics.lock().extend(page.list);
-            Ok::<(), anyhow::Error>(())
-        });
-    }
-    // 等待所有请求完成
-    while let Some(Ok(get_favorite_result)) = join_set.join_next().await {
-        // 如果有请求失败，直接返回错误
-        get_favorite_result.map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-    }
-    // 至此，收藏夹已经全部获取完毕
-    let favorite_comics = std::mem::take(&mut *favorite_comics.lock());
-    // TODO: 在join_set里返回comic，然后在.join_next()里处理，这样就不用锁了
-    let comics = Arc::new(Mutex::new(vec![]));
-    // 限制并发数为10
-    let sem = Arc::new(Semaphore::new(10));
-    let current = Arc::new(AtomicI64::new(0));
-    // 发送正在获取收藏夹漫画详情事件
-    let total = favorite_comics.len() as i64;
-    let _ = UpdateDownloadedFavoriteComicEvent::GettingComics { total }.emit(&app);
-    // 获取收藏夹漫画的详细信息
-    for favorite_comic in favorite_comics {
-        let sem = sem.clone();
-        let aid = favorite_comic
-            .id
-            .parse::<i64>()
-            .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-        let jm_client = jm_client.clone();
-        let app = app.clone();
-        let comics = comics.clone();
-        let current = current.clone();
-        join_set.spawn(async move {
-            let permit = sem.acquire().await?;
-            let comic_resp_data = jm_client.get_comic(aid).await?;
-            drop(permit);
-            let comic = Comic::from_comic_resp_data(&app, comic_resp_data)?;
-            comics.lock().push(comic);
-            let current = current.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-            // 发送获取到收藏夹漫画详情事件
-            let _ = UpdateDownloadedFavoriteComicEvent::ComicGot { current, total }.emit(&app);
-            Ok::<(), anyhow::Error>(())
-        });
-    }
-    // 等待所有请求完成
-    while let Some(Ok(get_comic_result)) = join_set.join_next().await {
-        // 如果有请求失败，直接返回错误
-        // TODO: 如果遇到某个漫画获取失败，应该报错然后继续处理其他漫画，而不是直接返回错误
-        get_comic_result.map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-    }
-    // 至此，收藏夹漫画的详细信息已经全部获取完毕
-    let comics = std::mem::take(&mut *comics.lock());
-    // 过滤出已下载的漫画(至少有一个章节已下载)
-    let downloaded_comics = comics
-        .into_iter()
-        .filter(|comic| {
-            comic
-                .chapter_infos
-                .iter()
-                .any(|chapter_info| chapter_info.is_downloaded == Some(true))
-        })
-        .collect::<Vec<_>>();
-    // TODO: 更新已下载漫画的元数据
-
-    // 把已下载漫画中的未下载章节添加到下载队列中
-    for comic in downloaded_comics {
-        let chapter_ids_to_download = comic
-            .chapter_infos
-            .iter()
-            .filter(|chapter| chapter.is_downloaded != Some(true))
-            .map(|chapter| chapter.chapter_id);
-
-        for chapter_id in chapter_ids_to_download {
-            download_manager
-                .create_download_task(comic.clone(), chapter_id)
-                .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
-        }
-    }
-    // 发送下载任务创建完成事件
-    let _ = UpdateDownloadedFavoriteComicEvent::DownloadTaskCreated.emit(&app);
 
     Ok(())
 }

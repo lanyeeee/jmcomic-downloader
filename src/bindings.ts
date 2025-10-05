@@ -131,14 +131,6 @@ async updateDownloadedComics() : Promise<Result<null, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async updateDownloadedFavoriteComic() : Promise<Result<null, CommandError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_favorite_comic") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async showPathInFileManager(path: string) : Promise<Result<null, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("show_path_in_file_manager", { path }) };
@@ -227,8 +219,7 @@ downloadTaskEvent: DownloadTaskEvent,
 exportCbzEvent: ExportCbzEvent,
 exportPdfEvent: ExportPdfEvent,
 logEvent: LogEvent,
-updateDownloadedComicsEvent: UpdateDownloadedComicsEvent,
-updateDownloadedFavoriteComicEvent: UpdateDownloadedFavoriteComicEvent
+updateDownloadedComicsEvent: UpdateDownloadedComicsEvent
 }>({
 downloadAllFavoritesEvent: "download-all-favorites-event",
 downloadSleepingEvent: "download-sleeping-event",
@@ -237,8 +228,7 @@ downloadTaskEvent: "download-task-event",
 exportCbzEvent: "export-cbz-event",
 exportPdfEvent: "export-pdf-event",
 logEvent: "log-event",
-updateDownloadedComicsEvent: "update-downloaded-comics-event",
-updateDownloadedFavoriteComicEvent: "update-downloaded-favorite-comic-event"
+updateDownloadedComicsEvent: "update-downloaded-comics-event"
 })
 
 /** user-defined constants **/
@@ -282,7 +272,6 @@ export type SearchResult = { searchQuery: string; total: number; content: ComicI
 export type SearchResultVariant = { SearchResult: SearchResult } | { Comic: Comic }
 export type SearchSort = "Latest" | "View" | "Picture" | "Like"
 export type UpdateDownloadedComicsEvent = { event: "GetComicStart"; data: { total: number } } | { event: "GetComicProgress"; data: { current: number; total: number } } | { event: "CreateDownloadTasksStart"; data: { comicId: number; comicTitle: string; current: number; total: number } } | { event: "CreateDownloadTaskProgress"; data: { comicId: number; current: number } } | { event: "CreateDownloadTasksEnd"; data: { comicId: number } } | { event: "GetComicEnd" }
-export type UpdateDownloadedFavoriteComicEvent = { event: "GettingFolders" } | { event: "GettingComics"; data: { total: number } } | { event: "ComicGot"; data: { current: number; total: number } } | { event: "DownloadTaskCreated" }
 export type WeeklyType = { id: string; title: string }
 
 /** tauri-specta globals **/

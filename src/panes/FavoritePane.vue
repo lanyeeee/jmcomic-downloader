@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { commands, events, FavoriteSort } from '../bindings.ts'
-import { MessageReactive, useMessage } from 'naive-ui'
+import { computed, ref, watch } from 'vue'
+import { commands, FavoriteSort } from '../bindings.ts'
+import { useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import { SelectProps } from 'naive-ui'
 import { useStore } from '../store.ts'
@@ -70,37 +70,6 @@ async function syncFavoriteFolder() {
   await getFavourite(0, 1, 'FavoriteTime')
   message.success('收藏夹已同步')
 }
-
-async function updateDownloadedFavoriteComic() {
-  const result = await commands.updateDownloadedFavoriteComic()
-  if (result.status === 'error') {
-    updateMessage?.destroy()
-    console.error(result.error)
-    return
-  }
-}
-
-let updateMessage: MessageReactive | undefined
-onMounted(async () => {
-  await events.updateDownloadedFavoriteComicEvent.listen(({ payload: updateEvent }) => {
-    if (updateEvent.event === 'GettingFolders') {
-      updateMessage = message.loading('正在获取收藏夹', { duration: 0 })
-    } else if (updateEvent.event === 'GettingComics' && updateMessage !== undefined) {
-      const { total } = updateEvent.data
-      updateMessage.content = `正在获取收藏夹中的漫画(0/${total})`
-    } else if (updateEvent.event === 'ComicGot' && updateMessage !== undefined) {
-      const { current, total } = updateEvent.data
-      updateMessage.content = `正在获取收藏夹中的漫画(${current}/${total})`
-    } else if (updateEvent.event === 'DownloadTaskCreated' && updateMessage !== undefined) {
-      updateMessage.type = 'success'
-      updateMessage.content = '已为需要更新的章节创建下载任务'
-      setTimeout(() => {
-        updateMessage?.destroy()
-        updateMessage = undefined
-      }, 3000)
-    }
-  })
-})
 </script>
 
 <template>
@@ -122,7 +91,16 @@ onMounted(async () => {
     </div>
 
     <div v-if="store.getFavoriteResult !== undefined" class="flex box-border px-2 gap-2">
-      <n-button class="ml-auto" size="small" @click="updateDownloadedFavoriteComic">更新漫画</n-button>
+      <n-tooltip placement="top" trigger="hover">
+        <span>已弃用，请改用</span>
+        <span class="bg-gray-2/30 px-1 rounded">本地库存</span>
+        <span>中的</span>
+        <span class="bg-gray-2/30 px-1 rounded">更新库存</span>
+        <span>按钮</span>
+        <template #trigger>
+          <n-button disabled class="ml-auto" size="small">更新漫画</n-button>
+        </template>
+      </n-tooltip>
       <n-button size="small" type="primary" secondary @click="syncFavoriteFolder">收藏不对点我</n-button>
     </div>
 

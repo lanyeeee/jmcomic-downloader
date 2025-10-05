@@ -98,22 +98,6 @@ pub enum UpdateDownloadedComicsEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[serde(tag = "event", content = "data")]
-pub enum UpdateDownloadedFavoriteComicEvent {
-    #[serde(rename_all = "camelCase")]
-    GettingFolders,
-
-    #[serde(rename_all = "camelCase")]
-    GettingComics { total: i64 },
-
-    #[serde(rename_all = "camelCase")]
-    ComicGot { current: i64, total: i64 },
-
-    #[serde(rename_all = "camelCase")]
-    DownloadTaskCreated,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
-#[serde(tag = "event", content = "data")]
 pub enum ExportCbzEvent {
     #[serde(rename_all = "camelCase")]
     Start {
