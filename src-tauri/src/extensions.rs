@@ -1,3 +1,8 @@
+use parking_lot::RwLock;
+use tauri::{Manager, State};
+
+use crate::{config::Config, download_manager::DownloadManager, jm_client::JmClient};
+
 pub trait AnyhowErrorToStringChain {
     /// 将 `anyhow::Error` 转换为chain格式
     /// # Example
@@ -58,5 +63,23 @@ impl WalkDirEntryExt for walkdir::DirEntry {
         }
 
         true
+    }
+}
+
+pub trait AppHandleExt {
+    fn get_config(&self) -> State<RwLock<Config>>;
+    fn get_jm_client(&self) -> State<JmClient>;
+    fn get_download_manager(&self) -> State<DownloadManager>;
+}
+
+impl AppHandleExt for tauri::AppHandle {
+    fn get_config(&self) -> State<RwLock<Config>> {
+        self.state::<RwLock<Config>>()
+    }
+    fn get_jm_client(&self) -> State<JmClient> {
+        self.state::<JmClient>()
+    }
+    fn get_download_manager(&self) -> State<DownloadManager> {
+        self.state::<DownloadManager>()
     }
 }

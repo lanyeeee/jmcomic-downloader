@@ -4,8 +4,7 @@ use std::time::Duration;
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
 use anyhow::{anyhow, Context};
 use indexmap::IndexMap;
-use parking_lot::RwLock;
-use tauri::{AppHandle, Manager, State};
+use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 use tokio::task::JoinSet;
@@ -13,11 +12,9 @@ use tokio::time::sleep;
 use walkdir::WalkDir;
 
 use crate::config::Config;
-use crate::download_manager::DownloadManager;
 use crate::errors::{CommandError, CommandResult};
 use crate::events::{DownloadAllFavoritesEvent, UpdateDownloadedComicsEvent};
-use crate::extensions::{AnyhowErrorToStringChain, WalkDirEntryExt};
-use crate::jm_client::JmClient;
+use crate::extensions::{AnyhowErrorToStringChain, AppHandleExt, WalkDirEntryExt};
 use crate::responses::{GetUserProfileRespData, GetWeeklyInfoRespData};
 use crate::types::{
     ChapterInfo, Comic, ComicInFavorite, ComicInSearch, ComicInWeekly, FavoriteSort,
@@ -34,19 +31,17 @@ pub fn greet(name: &str) -> String {
 #[tauri::command]
 #[specta::specta]
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_config(config: State<RwLock<Config>>) -> Config {
-    config.read().clone()
+pub fn get_config(app: AppHandle) -> Config {
+    app.get_config().read().clone()
 }
 
 #[tauri::command(async)]
 #[specta::specta]
 #[allow(clippy::needless_pass_by_value)]
-pub fn save_config(
-    app: AppHandle,
-    jm_client: State<JmClient>,
-    config_state: State<RwLock<Config>>,
-    config: Config,
-) -> CommandResult<()> {
+pub fn save_config(app: AppHandle, config: Config) -> CommandResult<()> {
+    let config_state = app.get_config();
+    let jm_client = app.get_jm_client();
+
     let proxy_changed = {
         let config_state = config_state.read();
         config_state.proxy_mode != config.proxy_mode
@@ -86,26 +81,30 @@ pub fn save_config(
 #[tauri::command]
 #[specta::specta]
 pub async fn login(
-    jm_client: State<'_, JmClient>,
+    app: AppHandle,
     username: String,
     password: String,
 ) -> CommandResult<GetUserProfileRespData> {
+    let jm_client = app.get_jm_client();
+
     let user_profile = jm_client
         .login(&username, &password)
         .await
         .map_err(|err| CommandError::from("登录失败", err))?;
+
     Ok(user_profile)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_user_profile(
-    jm_client: State<'_, JmClient>,
-) -> CommandResult<GetUserProfileRespData> {
+pub async fn get_user_profile(app: AppHandle) -> CommandResult<GetUserProfileRespData> {
+    let jm_client = app.get_jm_client();
+
     let user_profile = jm_client
         .get_user_profile()
         .await
         .map_err(|err| CommandError::from("获取用户信息失败", err))?;
+
     Ok(user_profile)
 }
 
@@ -113,28 +112,27 @@ pub async fn get_user_profile(
 #[specta::specta]
 pub async fn search(
     app: AppHandle,
-    jm_client: State<'_, JmClient>,
     keyword: String,
     page: i64,
     sort: SearchSort,
 ) -> CommandResult<SearchResultVariant> {
+    let jm_client = app.get_jm_client();
+
     let search_resp = jm_client
         .search(&keyword, page, sort)
         .await
         .map_err(|err| CommandError::from("搜索失败", err))?;
+
     let search_result = SearchResultVariant::from_search_resp(&app, search_resp)
         .map_err(|err| CommandError::from("搜索失败", err))?;
+
     Ok(search_result)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_comic(
-    app: AppHandle,
-    jm_client: State<'_, JmClient>,
-    aid: i64,
-) -> CommandResult<Comic> {
-    let comic = utils::get_comic(app, &jm_client, aid)
+pub async fn get_comic(app: AppHandle, aid: i64) -> CommandResult<Comic> {
+    let comic = utils::get_comic(app.clone(), aid)
         .await
         .map_err(|err| CommandError::from(&format!("获取ID为`{aid}`的漫画信息失败"), err))?;
 
@@ -145,29 +143,33 @@ pub async fn get_comic(
 #[specta::specta]
 pub async fn get_favorite_folder(
     app: AppHandle,
-    jm_client: State<'_, JmClient>,
     folder_id: i64,
     page: i64,
     sort: FavoriteSort,
 ) -> CommandResult<GetFavoriteResult> {
+    let jm_client = app.get_jm_client();
+
     let get_favorite_resp_data = jm_client
         .get_favorite_folder(folder_id, page, sort)
         .await
         .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
+
     let get_favorite_result = GetFavoriteResult::from_resp_data(&app, get_favorite_resp_data)
         .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
+
     Ok(get_favorite_result)
 }
 
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn get_weekly_info(
-    jm_client: State<'_, JmClient>,
-) -> CommandResult<GetWeeklyInfoRespData> {
+pub async fn get_weekly_info(app: AppHandle) -> CommandResult<GetWeeklyInfoRespData> {
+    let jm_client = app.get_jm_client();
+
     let weekly_info = jm_client
         .get_weekly_info()
         .await
         .map_err(|err| CommandError::from("获取每周必看信息失败", err))?;
+
     Ok(weekly_info)
 }
 
@@ -175,10 +177,11 @@ pub async fn get_weekly_info(
 #[specta::specta]
 pub async fn get_weekly(
     app: AppHandle,
-    jm_client: State<'_, JmClient>,
     category_id: String,
     type_id: String,
 ) -> CommandResult<GetWeeklyResult> {
+    let jm_client = app.get_jm_client();
+
     let get_weekly_resp_data = jm_client
         .get_weekly(&category_id, &type_id)
         .await
@@ -193,18 +196,17 @@ pub async fn get_weekly(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
-pub fn create_download_task(
-    download_manager: State<DownloadManager>,
-    comic: Comic,
-    chapter_id: i64,
-) -> CommandResult<()> {
+pub fn create_download_task(app: AppHandle, comic: Comic, chapter_id: i64) -> CommandResult<()> {
+    let download_manager = app.get_download_manager();
     let comic_title = comic.name.clone();
+
     download_manager
         .create_download_task(comic, chapter_id)
         .map_err(|err| {
             let err_title = format!("`{comic_title}`的章节ID为`{chapter_id}`的下载任务创建失败");
             CommandError::from(&err_title, err)
         })?;
+
     tracing::debug!("创建章节ID为`{chapter_id}`的下载任务成功");
     Ok(())
 }
@@ -212,15 +214,15 @@ pub fn create_download_task(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
-pub fn pause_download_task(
-    download_manager: State<DownloadManager>,
-    chapter_id: i64,
-) -> CommandResult<()> {
+pub fn pause_download_task(app: AppHandle, chapter_id: i64) -> CommandResult<()> {
+    let download_manager = app.get_download_manager();
+
     download_manager
         .pause_download_task(chapter_id)
         .map_err(|err| {
             CommandError::from(&format!("暂停章节ID为`{chapter_id}`的下载任务失败"), err)
         })?;
+
     tracing::debug!("暂停章节ID为`{chapter_id}`的下载任务成功");
     Ok(())
 }
@@ -228,15 +230,15 @@ pub fn pause_download_task(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
-pub fn resume_download_task(
-    download_manager: State<DownloadManager>,
-    chapter_id: i64,
-) -> CommandResult<()> {
+pub fn resume_download_task(app: AppHandle, chapter_id: i64) -> CommandResult<()> {
+    let download_manager = app.get_download_manager();
+
     download_manager
         .resume_download_task(chapter_id)
         .map_err(|err| {
             CommandError::from(&format!("恢复章节ID为`{chapter_id}`的下载任务失败"), err)
         })?;
+
     tracing::debug!("恢复章节ID为`{chapter_id}`的下载任务成功");
     Ok(())
 }
@@ -244,28 +246,25 @@ pub fn resume_download_task(
 #[allow(clippy::needless_pass_by_value)]
 #[tauri::command(async)]
 #[specta::specta]
-pub fn cancel_download_task(
-    download_manager: State<DownloadManager>,
-    chapter_id: i64,
-) -> CommandResult<()> {
+pub fn cancel_download_task(app: AppHandle, chapter_id: i64) -> CommandResult<()> {
+    let download_manager = app.get_download_manager();
+
     download_manager
         .cancel_download_task(chapter_id)
         .map_err(|err| {
             CommandError::from(&format!("取消章节ID为`{chapter_id}`的下载任务失败"), err)
         })?;
+
     tracing::debug!("取消章节ID为`{chapter_id}`的下载任务成功");
     Ok(())
 }
 
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn download_comic(
-    app: AppHandle,
-    jm_client: State<'_, JmClient>,
-    download_manager: State<'_, DownloadManager>,
-    aid: i64,
-) -> CommandResult<()> {
-    let comic = utils::get_comic(app, &jm_client, aid)
+pub async fn download_comic(app: AppHandle, aid: i64) -> CommandResult<()> {
+    let download_manager = app.get_download_manager();
+
+    let comic = utils::get_comic(app.clone(), aid)
         .await
         .map_err(|err| CommandError::from(&format!("获取ID为`{aid}`的漫画信息失败"), err))?;
 
@@ -296,13 +295,11 @@ pub async fn download_comic(
 #[allow(clippy::cast_possible_wrap)]
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn download_all_favorites(
-    app: AppHandle,
-    config: State<'_, RwLock<Config>>,
-    jm_client: State<'_, JmClient>,
-    download_manager: State<'_, DownloadManager>,
-) -> CommandResult<()> {
-    let jm_client = jm_client.inner().clone();
+pub async fn download_all_favorites(app: AppHandle) -> CommandResult<()> {
+    let config = app.get_config();
+    let jm_client = app.get_jm_client().inner().clone();
+    let download_manager = app.get_download_manager();
+
     let mut favorite_comics = Vec::new();
     // 发送正在获取收藏夹事件
     let _ = DownloadAllFavoritesEvent::GetFavoritesStart.emit(&app);
@@ -357,10 +354,7 @@ pub async fn download_all_favorites(
             }
         };
 
-        let comic = match utils::get_comic(app.clone(), &jm_client, comic_id)
-            .await
-            .context(format!("获取ID为`{comic_id}`的漫画失败"))
-        {
+        let comic = match utils::get_comic(app.clone(), comic_id).await {
             Ok(comic) => comic,
             Err(err) => {
                 let err_title = format!("下载收藏夹过程中，获取漫画`{comic_title}`失败，已跳过");
@@ -421,14 +415,12 @@ pub async fn download_all_favorites(
 #[allow(clippy::cast_possible_wrap)]
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn update_downloaded_comics(
-    app: AppHandle,
-    config: State<'_, RwLock<Config>>,
-    jm_client: State<'_, JmClient>,
-    download_manager: State<'_, DownloadManager>,
-) -> CommandResult<()> {
+pub async fn update_downloaded_comics(app: AppHandle) -> CommandResult<()> {
+    let config = app.get_config();
+    let download_manager = app.get_download_manager();
+
     // 从下载目录中获取已下载的漫画
-    let downloaded_comics = get_downloaded_comics(app.state::<RwLock<Config>>());
+    let downloaded_comics = get_downloaded_comics(app.clone());
 
     let total = downloaded_comics.len() as i64;
     let interval_sec = config.read().update_downloaded_comics_interval_sec;
@@ -440,7 +432,7 @@ pub async fn update_downloaded_comics(
         let current = (i + 1) as i64;
         let _ = UpdateDownloadedComicsEvent::GetComicProgress { current, total }.emit(&app);
 
-        let comic = match utils::get_comic(app.clone(), &jm_client, comic_id)
+        let comic = match utils::get_comic(app.clone(), comic_id)
             .await
             .context(format!("获取ID为`{comic_id}`的漫画失败"))
         {
@@ -524,7 +516,8 @@ pub fn show_path_in_file_manager(app: AppHandle, path: &str) -> CommandResult<()
 
 #[tauri::command(async)]
 #[specta::specta]
-pub async fn sync_favorite_folder(jm_client: State<'_, JmClient>) -> CommandResult<()> {
+pub async fn sync_favorite_folder(app: AppHandle) -> CommandResult<()> {
+    let jm_client = app.get_jm_client();
     // 同步收藏夹的方式是随便收藏一个漫画
     // 调用两次toggle是因为要把新收藏的漫画取消收藏
     let task1 = jm_client.toggle_favorite_comic(468_984);
@@ -545,8 +538,8 @@ pub async fn sync_favorite_folder(jm_client: State<'_, JmClient>) -> CommandResu
 #[allow(clippy::too_many_lines)]
 #[tauri::command(async)]
 #[specta::specta]
-pub fn get_downloaded_comics(config: State<RwLock<Config>>) -> Vec<Comic> {
-    let download_dir = config.read().download_dir.clone();
+pub fn get_downloaded_comics(app: AppHandle) -> Vec<Comic> {
+    let download_dir = app.get_config().read().download_dir.clone();
     // 遍历下载目录，获取所有漫画元数据文件的路径和修改时间
     let mut metadata_path_with_modify_time = Vec::new();
     for entry in WalkDir::new(&download_dir)

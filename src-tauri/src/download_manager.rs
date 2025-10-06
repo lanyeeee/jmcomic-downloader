@@ -14,16 +14,14 @@ use image::{ImageFormat, RgbImage};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tauri_specta::Event;
 use tokio::sync::{watch, Semaphore, SemaphorePermit};
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 
-use crate::config::Config;
 use crate::events::{DownloadSleepingEvent, DownloadTaskEvent};
-use crate::extensions::AnyhowErrorToStringChain;
-use crate::jm_client::JmClient;
+use crate::extensions::{AnyhowErrorToStringChain, AppHandleExt};
 use crate::types::{ChapterInfo, Comic, DownloadFormat};
 use crate::utils::filename_filter;
 use crate::{utils, DownloadSpeedEvent};
@@ -60,7 +58,7 @@ pub enum DownloadTaskState {
 impl DownloadManager {
     pub fn new(app: AppHandle) -> Self {
         let (chapter_concurrency, img_concurrency) = {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             (config.chapter_concurrency, config.img_concurrency)
         };
@@ -162,7 +160,7 @@ impl DownloadTask {
             .cloned()
             .context(format!("未找到章节ID为`{chapter_id}`的章节信息"))?;
 
-        let download_manager = app.state::<DownloadManager>().inner().clone();
+        let download_manager = app.get_download_manager().inner().clone();
         let (state_sender, _) = watch::channel(DownloadTaskState::Pending);
 
         let task = Self {
@@ -363,7 +361,7 @@ impl DownloadTask {
     async fn get_urls_with_block_num(&self, chapter_id: i64) -> Option<Vec<(String, u32)>> {
         let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
-        let jm_client = self.jm_client();
+        let jm_client = self.app.get_jm_client();
 
         let res = tokio::try_join!(
             jm_client.get_scramble_id(chapter_id),
@@ -426,7 +424,7 @@ impl DownloadTask {
             }
         };
 
-        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
+        let download_format = self.app.get_config().read().download_format;
         let extension = download_format.extension();
         for path in entries.filter_map(Result::ok).map(|entry| entry.path()) {
             // path有扩展名，且能转换为utf8，并与`config.download_format`一致或是gif，则保留
@@ -535,11 +533,7 @@ impl DownloadTask {
     }
 
     async fn sleep_between_chapter(&self) {
-        let mut remaining_sec = self
-            .app
-            .state::<RwLock<Config>>()
-            .read()
-            .chapter_download_interval_sec;
+        let mut remaining_sec = self.app.get_config().read().chapter_download_interval_sec;
         while remaining_sec > 0 {
             // 发送章节休眠事件
             let _ = DownloadSleepingEvent {
@@ -582,10 +576,6 @@ impl DownloadTask {
             total_img_count: self.total_img_count.load(Ordering::Relaxed),
         }
         .emit(&self.app);
-    }
-
-    fn jm_client(&self) -> JmClient {
-        self.app.state::<JmClient>().inner().clone()
     }
 }
 
@@ -654,7 +644,7 @@ impl DownloadImgTask {
         let temp_download_path = &self.temp_download_path;
 
         let index_filename = format!("{:04}", self.index + 1);
-        let download_format = self.app.state::<RwLock<Config>>().read().download_format;
+        let download_format = self.app.get_config().read().download_format;
         let ext = download_format.extension();
 
         let user_format_path = temp_download_path.join(format!("{index_filename}.{ext}"));
@@ -674,7 +664,7 @@ impl DownloadImgTask {
 
         tracing::trace!(url, comic_title, chapter_title, "开始下载图片");
 
-        let (img_data, format) = match self.jm_client().get_img_data_and_format(url).await {
+        let (img_data, format) = match self.app.get_jm_client().get_img_data_and_format(url).await {
             Ok(data) => data,
             Err(err) => {
                 let err_title = format!("下载图片`{url}`失败");
@@ -721,11 +711,7 @@ impl DownloadImgTask {
 
         self.download_task.emit_download_task_update_event();
 
-        let img_download_interval_sec = self
-            .app
-            .state::<RwLock<Config>>()
-            .read()
-            .img_download_interval_sec;
+        let img_download_interval_sec = self.app.get_config().read().img_download_interval_sec;
         sleep(Duration::from_secs(img_download_interval_sec)).await;
     }
 
@@ -787,10 +773,6 @@ impl DownloadImgTask {
             }
             _ => ControlFlow::Continue(()),
         }
-    }
-
-    fn jm_client(&self) -> JmClient {
-        self.app.state::<JmClient>().inner().clone()
     }
 }
 
@@ -990,7 +972,7 @@ impl ChapterInfo {
             .collect();
 
         let (download_dir, dir_fmt) = {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             (config.download_dir.clone(), config.dir_fmt.clone())
         };

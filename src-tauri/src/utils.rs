@@ -1,11 +1,13 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Context;
-use parking_lot::RwLock;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use walkdir::WalkDir;
 
-use crate::{config::Config, extensions::WalkDirEntryExt, jm_client::JmClient, types::Comic};
+use crate::{
+    extensions::{AppHandleExt, WalkDirEntryExt},
+    types::Comic,
+};
 
 pub fn filename_filter(s: &str) -> String {
     s.chars()
@@ -34,7 +36,7 @@ pub fn md5_hex(data: &str) -> String {
 
 pub fn create_id_to_dir_map(app: &AppHandle) -> anyhow::Result<HashMap<i64, PathBuf>> {
     let mut id_to_dir_map: HashMap<i64, PathBuf> = HashMap::new();
-    let download_dir = app.state::<RwLock<Config>>().read().download_dir.clone();
+    let download_dir = app.get_config().read().download_dir.clone();
     if !download_dir.exists() {
         return Ok(id_to_dir_map);
     }
@@ -67,7 +69,9 @@ pub fn create_id_to_dir_map(app: &AppHandle) -> anyhow::Result<HashMap<i64, Path
     Ok(id_to_dir_map)
 }
 
-pub async fn get_comic(app: AppHandle, jm_client: &JmClient, aid: i64) -> anyhow::Result<Comic> {
+pub async fn get_comic(app: AppHandle, aid: i64) -> anyhow::Result<Comic> {
+    let jm_client = app.get_jm_client();
+
     let comic_resp_data = jm_client.get_comic(aid).await?;
 
     let comic = Comic::from_comic_resp_data(&app, comic_resp_data)?;

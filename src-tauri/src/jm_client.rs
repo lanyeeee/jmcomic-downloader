@@ -16,11 +16,10 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::config::Config;
 use crate::download_manager::IMAGE_DOMAIN;
-use crate::extensions::AnyhowErrorToStringChain;
+use crate::extensions::{AnyhowErrorToStringChain, AppHandleExt};
 use crate::responses::{
     GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData,
     GetWeeklyInfoRespData, GetWeeklyRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
@@ -589,12 +588,12 @@ impl JmClient {
 pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
     let builder = reqwest::ClientBuilder::new().cookie_provider(jar.clone());
 
-    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let proxy_mode = app.get_config().read().proxy_mode.clone();
     let builder = match proxy_mode {
         ProxyMode::System => builder,
         ProxyMode::NoProxy => builder.no_proxy(),
         ProxyMode::Custom => {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;
@@ -625,12 +624,12 @@ pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewar
 pub fn create_img_client(app: &AppHandle) -> ClientWithMiddleware {
     let builder = reqwest::ClientBuilder::new();
 
-    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let proxy_mode = app.get_config().read().proxy_mode.clone();
     let builder = match proxy_mode {
         ProxyMode::System => builder,
         ProxyMode::NoProxy => builder.no_proxy(),
         ProxyMode::Custom => {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;
