@@ -3,6 +3,8 @@ import { SelectionArea, SelectionEvent } from '@viselect/vue'
 import { computed, nextTick, ref, watch, watchEffect } from 'vue'
 import { ChapterInfo, commands, DownloadTaskState } from '../bindings.ts'
 import { useStore } from '../store.ts'
+import { PhFolderOpen } from '@phosphor-icons/vue'
+import IconButton from '../components/IconButton.vue'
 
 const store = useStore()
 
@@ -147,12 +149,6 @@ async function downloadChapters() {
   if (store.pickedComic === undefined) {
     return
   }
-  // 创建下载任务前，先创建元数据
-  const result = await commands.saveMetadata(store.pickedComic!)
-  if (result.status === 'error') {
-    console.error(result.error)
-    return
-  }
   // 下载勾选的章节
   const chapterIdsToDownload = store.pickedComic.chapterInfos
     .filter((c) => c.isDownloaded !== true && checkedIds.value.includes(c.chapterId))
@@ -176,13 +172,21 @@ async function refreshChapters() {
     return
   }
   store.pickedComic = result.data
+  // TODO: 如果pickedComic已下载，则更新元数据
 }
 
 async function showComicDownloadDirInFileManager() {
   if (store.pickedComic === undefined) {
     return
   }
-  const result = await commands.showComicDownloadDirInFileManager(store.pickedComic.name)
+
+  const comicDownloadDir = store.pickedComic.comicDownloadDir
+  if (comicDownloadDir === undefined || comicDownloadDir === null) {
+    console.error('comicDownloadDir的值为undefined或null')
+    return
+  }
+
+  const result = await commands.showPathInFileManager(comicDownloadDir)
   if (result.status === 'error') {
     console.error(result.error)
   }
@@ -228,22 +232,22 @@ function isDownloading(state: State) {
 
     <div v-if="store.pickedComic !== undefined" class="flex p-2 pt-0">
       <img
-        class="w-24 mr-4"
+        class="w-24 mr-4 object-cover"
         :src="`https://cdn-msp3.18comic.vip/media/albums/${store.pickedComic.id}_3x4.jpg`"
         alt=""
         referrerpolicy="no-referrer" />
       <div class="flex flex-col w-full justify-between">
         <div class="flex flex-col">
-          <span class="font-bold text-xl line-clamp-2">{{ store.pickedComic.name }}</span>
+          <span class="font-bold text-lg line-clamp-2">{{ store.pickedComic.name }}</span>
           <span class="text-red">作者：{{ store.pickedComic.author }}</span>
           <span class="text-gray">标签：{{ store.pickedComic.tags }}</span>
-          <n-button
+          <IconButton
             v-if="store.pickedComic.isDownloaded"
-            class="flex mt-auto mr-auto gap-col-2"
-            size="tiny"
+            class="w-fit"
+            title="打开下载目录"
             @click="showComicDownloadDirInFileManager">
-            打开下载目录
-          </n-button>
+            <PhFolderOpen :size="24" />
+          </IconButton>
         </div>
       </div>
     </div>

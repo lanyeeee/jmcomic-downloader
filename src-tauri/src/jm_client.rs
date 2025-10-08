@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context};
 use base64::engine::general_purpose;
 use base64::Engine;
 use bytes::Bytes;
+use image::ImageFormat;
 use parking_lot::RwLock;
 use reqwest::cookie::Jar;
 use reqwest::StatusCode;
@@ -15,14 +16,14 @@ use reqwest_middleware::ClientWithMiddleware;
 use reqwest_retry::policies::ExponentialBackoff;
 use reqwest_retry::{Jitter, RetryTransientMiddleware};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
-use crate::config::Config;
 use crate::download_manager::IMAGE_DOMAIN;
-use crate::extensions::AnyhowErrorToStringChain;
+use crate::extensions::{AnyhowErrorToStringChain, AppHandleExt};
 use crate::responses::{
-    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData, JmResp,
-    RedirectRespData, SearchResp, SearchRespData, ToggleFavoriteRespData,
+    GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData,
+    GetWeeklyInfoRespData, GetWeeklyRespData, JmResp, RedirectRespData, SearchResp, SearchRespData,
+    ToggleFavoriteRespData,
 };
 use crate::types::{FavoriteSort, ProxyMode, SearchSort};
 use crate::utils;
@@ -43,6 +44,8 @@ enum ApiPath {
     GetChapter,
     GetScrambleId,
     GetFavoriteFolder,
+    GetWeeklyInfo,
+    GetWeekly,
 }
 impl ApiPath {
     fn as_str(&self) -> &'static str {
@@ -56,6 +59,8 @@ impl ApiPath {
             ApiPath::GetChapter => "/chapter",
             ApiPath::GetScrambleId => "/chapter_view_template",
             ApiPath::GetFavoriteFolder => "/favorite",
+            ApiPath::GetWeeklyInfo => "/week",
+            ApiPath::GetWeekly => "/week/filter",
         }
     }
 }
@@ -423,6 +428,76 @@ impl JmClient {
         Ok(favorite)
     }
 
+    pub async fn get_weekly_info(&self) -> anyhow::Result<GetWeeklyInfoRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let http_resp = self.jm_get(ApiPath::GetWeeklyInfo, None, ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取每周必看信息失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取每周必看信息失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp.data.as_str().context(format!(
+            "获取每周必看信息失败，data字段不是字符串: {jm_resp:?}"
+        ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为GetWeeklyInfoRespData
+        let weekly_info = serde_json::from_str::<GetWeeklyInfoRespData>(&data).context(format!(
+            "将解密后的data字段解析为GetWeeklyInfoRespData失败: {data}"
+        ))?;
+        Ok(weekly_info)
+    }
+
+    pub async fn get_weekly(
+        &self,
+        category_id: &str,
+        type_id: &str,
+    ) -> anyhow::Result<GetWeeklyRespData> {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let query = json!({
+            "id": category_id,
+            "type": type_id,
+        });
+        let http_resp = self.jm_get(ApiPath::GetWeekly, Some(query), ts).await?;
+        // 检查http响应状态码
+        let status = http_resp.status();
+        let body = http_resp.text().await?;
+        if status != reqwest::StatusCode::OK {
+            return Err(anyhow!(
+                "获取每周必看信息失败，预料之外的状态码({status}): {body}"
+            ));
+        }
+        // 尝试将body解析为JmResp
+        let jm_resp = serde_json::from_str::<JmResp>(&body)
+            .context(format!("将body解析为JmResp失败: {body}"))?;
+        // 检查JmResp的code字段
+        if jm_resp.code != 200 {
+            return Err(anyhow!("获取每周必看信息失败，预料之外的code: {jm_resp:?}"));
+        }
+        // 检查JmResp的data字段
+        let data = jm_resp.data.as_str().context(format!(
+            "获取每周必看信息失败，data字段不是字符串: {jm_resp:?}"
+        ))?;
+        // 解密data字段
+        let data = decrypt_data(ts, data)?;
+        // 尝试将解密后的data字段解析为GetWeeklyRespData
+        let get_weekly_resp_data = serde_json::from_str::<GetWeeklyRespData>(&data).context(
+            format!("将解密后的data字段解析为GetWeeklyRespData失败: {data}"),
+        )?;
+        Ok(get_weekly_resp_data)
+    }
+
     pub async fn toggle_favorite_comic(&self, aid: i64) -> anyhow::Result<ToggleFavoriteRespData> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let form = json!({
@@ -461,7 +536,7 @@ impl JmClient {
         Ok(toggle_favorite_resp_data)
     }
 
-    pub async fn get_img_data(&self, url: &str) -> anyhow::Result<Bytes> {
+    pub async fn get_img_data_and_format(&self, url: &str) -> anyhow::Result<(Bytes, ImageFormat)> {
         let request = self.img_client.read().get(url);
 
         let http_resp = request.send().await?;
@@ -472,6 +547,7 @@ impl JmClient {
             return Err(err);
         }
 
+        let mut headers = http_resp.headers().clone();
         let mut image_data = http_resp.bytes().await?;
 
         if image_data.is_empty() {
@@ -488,22 +564,36 @@ impl JmClient {
                 return Err(err);
             }
 
+            headers = http_resp.headers().clone();
             image_data = http_resp.bytes().await?;
         }
+        // 获取 resp headers 的 content-type 字段
+        let content_type = headers
+            .get("content-type")
+            .ok_or(anyhow!("响应中没有content-type字段"))?
+            .to_str()
+            .context("响应中的content-type字段不是utf-8字符串")?
+            .to_string();
+        // 确定原始图片格式
+        let format = match content_type.as_str() {
+            "image/webp" => ImageFormat::WebP,
+            "image/gif" => ImageFormat::Gif,
+            _ => return Err(anyhow!("原图出现了意料之外的格式: {content_type}")),
+        };
 
-        Ok(image_data)
+        Ok((image_data, format))
     }
 }
 
 pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddleware {
     let builder = reqwest::ClientBuilder::new().cookie_provider(jar.clone());
 
-    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let proxy_mode = app.get_config().read().proxy_mode.clone();
     let builder = match proxy_mode {
         ProxyMode::System => builder,
         ProxyMode::NoProxy => builder.no_proxy(),
         ProxyMode::Custom => {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;
@@ -534,12 +624,12 @@ pub fn create_api_client(app: &AppHandle, jar: &Arc<Jar>) -> ClientWithMiddlewar
 pub fn create_img_client(app: &AppHandle) -> ClientWithMiddleware {
     let builder = reqwest::ClientBuilder::new();
 
-    let proxy_mode = app.state::<RwLock<Config>>().read().proxy_mode.clone();
+    let proxy_mode = app.get_config().read().proxy_mode.clone();
     let builder = match proxy_mode {
         ProxyMode::System => builder,
         ProxyMode::NoProxy => builder.no_proxy(),
         ProxyMode::Custom => {
-            let config = app.state::<RwLock<Config>>();
+            let config = app.get_config();
             let config = config.read();
             let proxy_host = &config.proxy_host;
             let proxy_port = &config.proxy_port;

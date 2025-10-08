@@ -2,7 +2,6 @@ use std::{io::Write, sync::OnceLock};
 
 use anyhow::Context;
 use notify::{RecommendedWatcher, Watcher};
-use parking_lot::RwLock;
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tracing::{Level, Subscriber};
@@ -19,7 +18,10 @@ use tracing_subscriber::{
     Layer, Registry,
 };
 
-use crate::{config::Config, events::LogEvent, extensions::AnyhowErrorToStringChain};
+use crate::{
+    events::LogEvent,
+    extensions::{AnyhowErrorToStringChain, AppHandleExt},
+};
 
 struct LogEventWriter {
     app: AppHandle,
@@ -107,7 +109,7 @@ pub fn reload_file_logger() -> anyhow::Result<()> {
 pub fn disable_file_logger() -> anyhow::Result<()> {
     if let Some(guard) = GUARD.get().context("GUARD未初始化")?.lock().take() {
         drop(guard);
-    };
+    }
     Ok(())
 }
 
@@ -117,7 +119,7 @@ fn create_file_layer<S>(
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    let enable_file_logger = app.state::<RwLock<Config>>().read().enable_file_logger;
+    let enable_file_logger = app.get_config().read().enable_file_logger;
     // 如果不启用文件日志，则返回一个占位用的sink layer，不创建也不输出日志文件
     if !enable_file_logger {
         let sink_layer = layer()

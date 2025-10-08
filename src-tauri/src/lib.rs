@@ -1,7 +1,7 @@
 use anyhow::Context;
 use events::{
-    DownloadSpeedEvent, DownloadTaskEvent, ExportCbzEvent, ExportPdfEvent, LogEvent,
-    UpdateDownloadedFavoriteComicEvent,
+    DownloadAllFavoritesEvent, DownloadSleepingEvent, DownloadSpeedEvent, DownloadTaskEvent,
+    ExportCbzEvent, ExportPdfEvent, LogEvent, UpdateDownloadedComicsEvent,
 };
 use parking_lot::RwLock;
 use tauri::{Manager, Wry};
@@ -41,26 +41,33 @@ pub fn run() {
             search,
             get_comic,
             get_favorite_folder,
+            get_weekly_info,
+            get_weekly,
             get_user_profile,
             create_download_task,
             pause_download_task,
             resume_download_task,
             cancel_download_task,
             download_comic,
-            update_downloaded_favorite_comic,
+            download_all_favorites,
+            update_downloaded_comics,
             show_path_in_file_manager,
-            show_comic_download_dir_in_file_manager,
             sync_favorite_folder,
-            save_metadata,
             get_downloaded_comics,
             export_cbz,
             export_pdf,
             get_logs_dir_size,
+            get_synced_comic,
+            get_synced_comic_in_favorite,
+            get_synced_comic_in_search,
+            get_synced_comic_in_weekly,
         ])
         .events(tauri_specta::collect_events![
             DownloadSpeedEvent,
+            DownloadSleepingEvent,
             DownloadTaskEvent,
-            UpdateDownloadedFavoriteComicEvent,
+            DownloadAllFavoritesEvent,
+            UpdateDownloadedComicsEvent,
             ExportCbzEvent,
             ExportPdfEvent,
             LogEvent,
@@ -89,9 +96,10 @@ pub fn run() {
                 .app_data_dir()
                 .context("failed to get app data dir")?;
 
-            std::fs::create_dir_all(&app_data_dir)
-                .context(format!("failed to create app data dir: {app_data_dir:?}"))?;
-            println!("app data dir: {app_data_dir:?}");
+            std::fs::create_dir_all(&app_data_dir).context(format!(
+                "failed to create app data dir: {}",
+                app_data_dir.display()
+            ))?;
 
             let config = RwLock::new(Config::new(app.handle())?);
             app.manage(config);

@@ -1,19 +1,19 @@
 <script setup lang="tsx">
-import { ProgressData } from '../types.ts'
+import { ProgressData } from '../../../types.ts'
 import { ref, watchEffect, computed, nextTick } from 'vue'
 import { SelectionArea, SelectionEvent } from '@viselect/vue'
-import { commands, DownloadTaskState } from '../bindings.ts'
+import { commands, DownloadTaskState } from '../../../bindings.ts'
 import { DropdownOption, NIcon, ProgressProps } from 'naive-ui'
-import { useStore } from '../store.ts'
+import { useStore } from '../../../store.ts'
 import {
-  CheckOutlined,
-  DeleteOutlined,
-  PauseOutlined,
-  RightOutlined,
-  LoadingOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@vicons/antd'
+  PhPause,
+  PhChecks,
+  PhTrash,
+  PhCaretRight,
+  PhCloudArrowDown,
+  PhClock,
+  PhWarningCircle,
+} from '@phosphor-icons/vue'
 
 const store = useStore()
 
@@ -96,10 +96,10 @@ function useDropdown() {
   const dropdownOptions: DropdownOption[] = [
     {
       label: '全选',
-      key: 'check all',
+      key: 'select-all',
       icon: () => (
-        <NIcon>
-          <CheckOutlined />
+        <NIcon size="20">
+          <PhChecks />
         </NIcon>
       ),
       props: {
@@ -120,8 +120,8 @@ function useDropdown() {
       label: '继续',
       key: 'resume',
       icon: () => (
-        <NIcon>
-          <RightOutlined />
+        <NIcon size="20">
+          <PhCaretRight />
         </NIcon>
       ),
       props: {
@@ -153,8 +153,8 @@ function useDropdown() {
       label: '暂停',
       key: 'pause',
       icon: () => (
-        <NIcon>
-          <PauseOutlined />
+        <NIcon size="20">
+          <PhPause />
         </NIcon>
       ),
       props: {
@@ -182,8 +182,8 @@ function useDropdown() {
       label: '取消',
       key: 'cancel',
       icon: () => (
-        <NIcon>
-          <DeleteOutlined />
+        <NIcon size="20">
+          <PhTrash />
         </NIcon>
       ),
       props: {
@@ -288,10 +288,10 @@ function stateToColorClass(state: DownloadTaskState) {
         </div>
         <div class="flex">
           <n-icon :class="[stateToColorClass(state), 'mr-2']" :size="20">
-            <LoadingOutlined v-if="state === 'Downloading'" class="animate-spin" />
-            <ClockCircleOutlined v-else-if="state === 'Pending'" />
-            <PauseOutlined v-else-if="state === 'Paused'" />
-            <ExclamationCircleOutlined v-else-if="state === 'Failed'" />
+            <PhCloudArrowDown v-if="state === 'Downloading'" />
+            <PhClock v-else-if="state === 'Pending'" />
+            <PhPause v-else-if="state === 'Paused'" />
+            <PhWarningCircle v-else-if="state === 'Failed'" />
           </n-icon>
           <div v-if="isNaN(percentage)" class="ml-auto">{{ indicator }}</div>
           <n-progress

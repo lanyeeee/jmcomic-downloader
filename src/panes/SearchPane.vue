@@ -4,7 +4,7 @@ import { commands, SearchSort } from '../bindings.ts'
 import { useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import FloatLabelInput from '../components/FloatLabelInput.vue'
-import { SearchOutlined } from '@vicons/antd'
+import { PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { SelectProps } from 'naive-ui'
 import { useStore } from '../store.ts'
 
@@ -94,14 +94,14 @@ async function search(keyword: string, page: number, sort: SearchSort) {
         @click="search(searchInput.trim(), 1, sortSelected)">
         <template #icon>
           <n-icon size="22">
-            <SearchOutlined />
+            <PhMagnifyingGlass />
           </n-icon>
         </template>
       </n-button>
     </n-input-group>
 
     <div v-if="store.searchResult !== undefined" class="flex flex-col gap-row-2 overflow-auto box-border px-2">
-      <comic-card
+      <ComicCard
         v-for="comicInSearch in store.searchResult.content"
         :key="comicInSearch.id"
         :comic-id="comicInSearch.id"
@@ -109,7 +109,8 @@ async function search(keyword: string, page: number, sort: SearchSort) {
         :comic-author="comicInSearch.author"
         :comic-category="comicInSearch.category"
         :comic-category-sub="comicInSearch.categorySub"
-        :comic-downloaded="comicInSearch.isDownloaded" />
+        :comic-downloaded="comicInSearch.isDownloaded"
+        :comic-download-dir="comicInSearch.comicDownloadDir" />
     </div>
 
     <n-pagination
