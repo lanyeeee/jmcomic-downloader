@@ -31,9 +31,9 @@ use crate::utils;
 const APP_TOKEN_SECRET: &str = "18comicAPP";
 const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
 const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
-const APP_VERSION: &str = "1.7.5";
+const APP_VERSION: &str = "2.0.13";
 
-const API_DOMAIN: &str = "www.cdnblackmyth.club";
+const API_DOMAIN: &str = "www.cdnbea.club";
 
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
