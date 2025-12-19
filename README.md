@@ -49,8 +49,7 @@ https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 我能想到的解决办法只有：
 
 1. 根据下面的**如何构建(build)**，自行编译
-2. 希望你相信我的承诺，我承诺你在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)下载到的所有东西都是安全的
-3. 切勿轻信他人分享的文件，请**仅**在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)下载。任何不是从该页面下载的版本均可能**已被篡改**并**真的包含病毒**(而非误报)，包括但不限于`网盘`、`通过邮箱或社交软件分享`、`issue或discussion里的文件`、`其他fork(仓库)`、`其他网站`
+2. 希望你相信我的承诺，我承诺你在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)下载到的所有东西都是安全的。切勿轻信他人分享的文件，请**仅**在[Release页面](https://github.com/lanyeeee/jmcomic-downloader/releases)下载。任何不是从该页面下载的版本均可能**已被篡改**并**真的包含病毒**(而非误报)，包括但不限于`网盘`、`通过邮箱或社交软件分享`、`issue或discussion里的文件`、`其他fork(仓库)`、`其他网站`
 
 # 🛠️ 如何构建(build)
 
