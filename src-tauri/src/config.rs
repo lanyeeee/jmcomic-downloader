@@ -5,6 +5,12 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
 
+const API_DOMAIN_1: &str = "www.cdnzack.cc";
+const API_DOMAIN_2: &str = "www.cdnhth.cc";
+const API_DOMAIN_3: &str = "www.cdnhth.net";
+const API_DOMAIN_4: &str = "www.cdnbea.net";
+const API_DOMAIN_5: &str = "www.cdn-mspjmapiproxy.xyz";
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -24,6 +30,8 @@ pub struct Config {
     pub img_download_interval_sec: u64,
     pub download_all_favorites_interval_sec: u64,
     pub update_downloaded_comics_interval_sec: u64,
+    pub api_domain_mode: ApiDomainMode,
+    pub custom_api_domain: String,
 }
 
 impl Config {
@@ -53,6 +61,17 @@ impl Config {
         let config_string = serde_json::to_string_pretty(self)?;
         std::fs::write(config_path, config_string)?;
         Ok(())
+    }
+
+    pub fn get_api_domain(&self) -> String {
+        match self.api_domain_mode {
+            ApiDomainMode::Domain1 => API_DOMAIN_1.to_string(),
+            ApiDomainMode::Domain2 => API_DOMAIN_2.to_string(),
+            ApiDomainMode::Domain3 => API_DOMAIN_3.to_string(),
+            ApiDomainMode::Domain4 => API_DOMAIN_4.to_string(),
+            ApiDomainMode::Domain5 => API_DOMAIN_5.to_string(),
+            ApiDomainMode::Custom => self.custom_api_domain.clone(),
+        }
     }
 
     fn merge_config(config_string: &str, app_data_dir: &Path) -> Config {
@@ -95,6 +114,19 @@ impl Config {
             img_download_interval_sec: 0,
             download_all_favorites_interval_sec: 0,
             update_downloaded_comics_interval_sec: 0,
+            api_domain_mode: ApiDomainMode::Domain2,
+            custom_api_domain: API_DOMAIN_2.to_string(),
         }
     }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub enum ApiDomainMode {
+    Domain1,
+    #[default]
+    Domain2,
+    Domain3,
+    Domain4,
+    Domain5,
+    Custom,
 }

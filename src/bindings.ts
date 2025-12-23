@@ -237,6 +237,7 @@ updateDownloadedComicsEvent: "update-downloaded-comics-event"
 
 /** user-defined types **/
 
+export type ApiDomainMode = "Domain1" | "Domain2" | "Domain3" | "Domain4" | "Domain5" | "Custom"
 export type Category = { id: string | null; title: string | null }
 export type CategoryInWeeklyInfo = { id: string; title: string; time: string }
 export type CategoryRespData = { id: string | null; title: string | null }
@@ -248,7 +249,7 @@ export type ComicInFavorite = { id: number; author: string; description: string 
 export type ComicInSearch = { id: number; author: string; name: string; image: string; category: CategoryRespData; categorySub: CategorySubRespData; liked: boolean; isFavorite: boolean; updateAt: number; isDownloaded: boolean; comicDownloadDir: string }
 export type ComicInWeekly = { id: number; author: string; description: string; name: string; image: string; category: Category; category_sub: CategorySub; liked: boolean; is_favorite: boolean; update_at: number; is_downloaded: boolean; comic_download_dir: string }
 export type CommandError = { err_title: string; err_message: string }
-export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number; downloadAllFavoritesIntervalSec: number; updateDownloadedComicsIntervalSec: number }
+export type Config = { username: string; password: string; downloadDir: string; exportDir: string; downloadFormat: DownloadFormat; dirFmt: string; proxyMode: ProxyMode; proxyHost: string; proxyPort: number; enableFileLogger: boolean; chapterConcurrency: number; chapterDownloadIntervalSec: number; imgConcurrency: number; imgDownloadIntervalSec: number; downloadAllFavoritesIntervalSec: number; updateDownloadedComicsIntervalSec: number; apiDomainMode: ApiDomainMode; customApiDomain: string }
 export type DownloadAllFavoritesEvent = { event: "GetFavoritesStart" } | { event: "GetComicsProgress"; data: { current: number; total: number } } | { event: "StartCreateDownloadTasks"; data: { comicId: number; comicTitle: string; current: number; total: number } } | { event: "CreatingDownloadTask"; data: { comicId: number; current: number } } | { event: "EndCreateDownloadTasks"; data: { comicId: number } } | { event: "GetComicsEnd" }
 export type DownloadFormat = "Jpeg" | "Png" | "Webp"
 export type DownloadSleepingEvent = { id: number; remainingSec: number }

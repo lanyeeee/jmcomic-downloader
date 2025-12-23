@@ -33,8 +33,6 @@ const APP_TOKEN_SECRET_2: &str = "18comicAPPContent";
 const APP_DATA_SECRET: &str = "185Hcomic3PAPP7R";
 const APP_VERSION: &str = "2.0.13";
 
-const API_DOMAIN: &str = "www.cdnbea.club";
-
 #[derive(Debug, Clone, PartialEq)]
 enum ApiPath {
     Login,
@@ -112,11 +110,12 @@ impl JmClient {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         };
 
+        let api_domain = self.app.get_config().read().get_api_domain();
         let path = path.as_str();
         let request = self
             .api_client
             .read()
-            .request(method, format!("https://{API_DOMAIN}{path}").as_str())
+            .request(method, format!("https://{api_domain}{path}").as_str())
             .header("token", token)
             .header("tokenparam", tokenparam)
             .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
