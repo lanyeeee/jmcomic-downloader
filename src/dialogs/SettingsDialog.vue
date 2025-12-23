@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { commands } from '../bindings.ts'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { path } from '@tauri-apps/api'
 import { appDataDir } from '@tauri-apps/api/path'
 import { useStore } from '../store.ts'
@@ -14,6 +14,11 @@ const showing = defineModel<boolean>('showing', { required: true })
 
 const dirFmt = ref<string>(store.config?.dirFmt ?? '')
 const proxyHost = ref<string>(store.config?.proxyHost ?? '')
+const customApiDomain = ref<string>(store.config?.customApiDomain ?? '')
+
+watch([() => store.config?.apiDomainMode, () => store.config?.customApiDomain], () => {
+  message.warning('切换线路后可能需要重新登录')
+})
 
 async function showConfigInFileManager() {
   const configName = 'config.json'
@@ -29,7 +34,7 @@ async function showConfigInFileManager() {
   <n-modal v-if="store.config !== undefined" v-model:show="showing">
     <n-dialog class="w-140!" :showIcon="false" title="配置" @close="showing = false">
       <div class="flex flex-col">
-        <span class="mr-2 font-bold">下载格式</span>
+        <span class="font-bold">下载格式</span>
         <n-radio-group v-model:value="store.config.downloadFormat">
           <n-tooltip placement="top" trigger="hover">
             <template #trigger>
@@ -64,20 +69,18 @@ async function showConfigInFileManager() {
             </template>
             1. 无损
             <br />
-            <span class="text-red">2. 这是jm图片原本的格式</span>
-            <br />
-            3. 文件体积大
+            2. 文件体积大
             <span class="text-red">(约为jpg的4倍)</span>
             <br />
-            4. 宽高的上限为16383
+            3. 宽高的上限为16383
             <span class="text-red">(某些条漫可能会超过这个上限导致报错)</span>
             <br />
-            5. 编码速度较慢
+            4. 编码速度较慢
             <br />
           </n-tooltip>
         </n-radio-group>
 
-        <span class="mr-2 font-bold mt-2">下载速度</span>
+        <span class="font-bold mt-2">下载速度</span>
         <div class="flex flex-col gap-1">
           <div class="flex gap-1">
             <n-input-group class="w-35%">
@@ -145,7 +148,26 @@ async function showConfigInFileManager() {
           </n-input-group>
         </div>
 
-        <span class="mr-2 font-bold mt-2">代理类型</span>
+        <span class="font-bold mt-2">API域名</span>
+        <n-radio-group v-model:value="store.config.apiDomainMode" size="small">
+          <n-radio-button value="Domain1">线路1</n-radio-button>
+          <n-radio-button value="Domain2">线路2</n-radio-button>
+          <n-radio-button value="Domain3">线路3</n-radio-button>
+          <n-radio-button value="Domain4">线路4</n-radio-button>
+          <n-radio-button value="Domain5">线路5</n-radio-button>
+          <n-radio-button value="Custom">自定义</n-radio-button>
+        </n-radio-group>
+        <n-input-group v-if="store.config.apiDomainMode === 'Custom'" class="mt-1">
+          <n-input-group-label size="small">自定义API域名</n-input-group-label>
+          <n-input
+            v-model:value="customApiDomain"
+            size="small"
+            placeholder=""
+            @blur="store.config.customApiDomain = customApiDomain"
+            @keydown.enter="store.config.customApiDomain = customApiDomain" />
+        </n-input-group>
+
+        <span class="font-bold mt-2">代理类型</span>
         <n-radio-group v-model:value="store.config.proxyMode" size="small">
           <n-radio-button value="System">系统代理</n-radio-button>
           <n-radio-button value="NoProxy">直连</n-radio-button>
@@ -167,7 +189,7 @@ async function showConfigInFileManager() {
             :parse="(x: string) => parseInt(x)" />
         </n-input-group>
 
-        <span class="mr-2 font-bold mt-2">下载目录格式</span>
+        <span class="font-bold mt-2">下载目录格式</span>
         <n-tooltip placement="top" trigger="hover" width="550">
           <div>
             可以用斜杠
