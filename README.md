@@ -41,7 +41,7 @@ https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 
 # 📚 哔咔漫画下载器  
 
-[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=lanyeeee&repo=picacomic-downloader)](https://github.com/lanyeeee/picacomic-downloader)  
+[![Readme Card](https://github-readme-stats-lemon-chi-98.vercel.app/api/pin/?username=lanyeeee&repo=picacomic-downloader)](https://github.com/lanyeeee/picacomic-downloader)  
 
 # ⚠️ 关于被杀毒软件误判为病毒
 
