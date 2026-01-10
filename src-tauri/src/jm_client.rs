@@ -537,8 +537,8 @@ impl JmClient {
 
     pub async fn get_img_data_and_format(&self, url: &str) -> anyhow::Result<(Bytes, ImageFormat)> {
         let request = self.img_client.read().get(url);
-
         let http_resp = request.send().await?;
+
         let status = http_resp.status();
         if status != StatusCode::OK {
             let text = http_resp.text().await?;
@@ -546,7 +546,6 @@ impl JmClient {
             return Err(err);
         }
 
-        let mut headers = http_resp.headers().clone();
         let mut image_data = http_resp.bytes().await?;
 
         if image_data.is_empty() {
@@ -563,22 +562,11 @@ impl JmClient {
                 return Err(err);
             }
 
-            headers = http_resp.headers().clone();
             image_data = http_resp.bytes().await?;
         }
-        // 获取 resp headers 的 content-type 字段
-        let content_type = headers
-            .get("content-type")
-            .ok_or(anyhow!("响应中没有content-type字段"))?
-            .to_str()
-            .context("响应中的content-type字段不是utf-8字符串")?
-            .to_string();
-        // 确定原始图片格式
-        let format = match content_type.as_str() {
-            "image/webp" => ImageFormat::WebP,
-            "image/gif" => ImageFormat::Gif,
-            _ => return Err(anyhow!("原图出现了意料之外的格式: {content_type}")),
-        };
+
+        let format = image::guess_format(&image_data)
+            .context("无法从图片数据中猜测出图片格式，可能图片数据不完整或已损坏")?;
 
         Ok((image_data, format))
     }
