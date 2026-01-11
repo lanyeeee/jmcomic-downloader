@@ -269,7 +269,7 @@ pub fn pdf(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
             ))?
             .filter_map(Result::ok)
             .map(|entry| entry.path())
-            .filter(|path| path.is_img())
+            .filter(|path| path.is_common_img())
             .collect();
         image_paths.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
