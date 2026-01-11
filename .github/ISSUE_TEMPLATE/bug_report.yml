@@ -1,4 +1,4 @@
-name: 反馈 Bug
+name: 🐞 反馈 Bug
 description: 反馈遇到的问题
 labels: [bug]
 title: "[Bug] 修改我！未修改标题的issue将被自动关闭"
