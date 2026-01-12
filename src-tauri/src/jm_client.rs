@@ -536,7 +536,11 @@ impl JmClient {
     }
 
     pub async fn get_img_data_and_format(&self, url: &str) -> anyhow::Result<(Bytes, ImageFormat)> {
-        let request = self.img_client.read().get(url);
+        let request = self
+            .img_client
+            .read()
+            .get(url)
+            .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
         let http_resp = request.send().await?;
 
         let status = http_resp.status();
