@@ -32,6 +32,7 @@ pub struct Config {
     pub update_downloaded_comics_interval_sec: u64,
     pub api_domain_mode: ApiDomainMode,
     pub custom_api_domain: String,
+    pub should_download_cover: bool,
 }
 
 impl Config {
@@ -116,6 +117,7 @@ impl Config {
             update_downloaded_comics_interval_sec: 0,
             api_domain_mode: ApiDomainMode::Domain2,
             custom_api_domain: API_DOMAIN_2.to_string(),
+            should_download_cover: true,
         }
     }
 }
