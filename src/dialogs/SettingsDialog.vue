@@ -34,53 +34,7 @@ async function showConfigInFileManager() {
   <n-modal v-if="store.config !== undefined" v-model:show="showing">
     <n-dialog class="w-140!" :showIcon="false" title="配置" @close="showing = false">
       <div class="flex flex-col">
-        <span class="font-bold">下载格式</span>
-        <n-radio-group v-model:value="store.config.downloadFormat">
-          <n-tooltip placement="top" trigger="hover">
-            <template #trigger>
-              <n-radio value="Jpeg">jpg</n-radio>
-            </template>
-            1. 有损
-            <span class="text-red">(肉眼看不出)</span>
-            <br />
-            2. 文件体积小
-            <br />
-            4. 宽高的上限为65534
-            <span class="text-red">(某些条漫可能会超过这个上限导致报错)</span>
-            <br />
-            3. 编码速度最快
-            <br />
-          </n-tooltip>
-          <n-tooltip placement="top" trigger="hover">
-            <template #trigger>
-              <n-radio value="Png">png</n-radio>
-            </template>
-            1. 无损
-            <br />
-            2. 文件体积大
-            <span class="text-red">(约为jpg的5倍)</span>
-            <br />
-            3. 编码速度最慢
-            <br />
-          </n-tooltip>
-          <n-tooltip placement="top" trigger="hover">
-            <template #trigger>
-              <n-radio value="Webp">webp</n-radio>
-            </template>
-            1. 无损
-            <br />
-            2. 文件体积大
-            <span class="text-red">(约为jpg的4倍)</span>
-            <br />
-            3. 宽高的上限为16383
-            <span class="text-red">(某些条漫可能会超过这个上限导致报错)</span>
-            <br />
-            4. 编码速度较慢
-            <br />
-          </n-tooltip>
-        </n-radio-group>
-
-        <span class="font-bold mt-2">下载速度</span>
+        <span class="font-bold">下载速度</span>
         <div class="flex flex-col gap-1">
           <div class="flex gap-1">
             <n-input-group class="w-35%">
@@ -147,6 +101,52 @@ async function showConfigInFileManager() {
             <n-input-group-label size="small">秒</n-input-group-label>
           </n-input-group>
         </div>
+
+        <span class="font-bold mt-2">下载格式</span>
+        <n-radio-group v-model:value="store.config.downloadFormat">
+          <n-tooltip placement="top" trigger="hover">
+            <template #trigger>
+              <n-radio value="Jpeg">jpg</n-radio>
+            </template>
+            1. 有损
+            <span class="text-red">(肉眼看不出)</span>
+            <br />
+            2. 文件体积小
+            <br />
+            4. 宽高的上限为65534
+            <span class="text-red">(某些条漫可能会超过这个上限导致报错)</span>
+            <br />
+            3. 编码速度最快
+            <br />
+          </n-tooltip>
+          <n-tooltip placement="top" trigger="hover">
+            <template #trigger>
+              <n-radio value="Png">png</n-radio>
+            </template>
+            1. 无损
+            <br />
+            2. 文件体积大
+            <span class="text-red">(约为jpg的5倍)</span>
+            <br />
+            3. 编码速度最慢
+            <br />
+          </n-tooltip>
+          <n-tooltip placement="top" trigger="hover">
+            <template #trigger>
+              <n-radio value="Webp">webp</n-radio>
+            </template>
+            1. 无损
+            <br />
+            2. 文件体积大
+            <span class="text-red">(约为jpg的4倍)</span>
+            <br />
+            3. 宽高的上限为16383
+            <span class="text-red">(某些条漫可能会超过这个上限导致报错)</span>
+            <br />
+            4. 编码速度较慢
+            <br />
+          </n-tooltip>
+        </n-radio-group>
 
         <span class="font-bold mt-2">API域名</span>
         <n-radio-group v-model:value="store.config.apiDomainMode" size="small">
@@ -244,6 +244,9 @@ async function showConfigInFileManager() {
               @keydown.enter="store.config.dirFmt = dirFmt" />
           </template>
         </n-tooltip>
+
+        <span class="font-bold mt-2">其他</span>
+        <n-checkbox class="w-fit" v-model:checked="store.config.shouldDownloadCover">下载封面</n-checkbox>
 
         <n-button class="ml-auto mt-4" size="small" @click="showConfigInFileManager">打开配置目录</n-button>
       </div>
