@@ -19,7 +19,7 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::{
     events::{ExportCbzEvent, ExportPdfEvent},
-    extensions::PathIsImg,
+    extensions::{AnyhowErrorToStringChain, PathIsImg},
     types::{ChapterInfo, Comic, ComicInfo},
 };
 
@@ -93,6 +93,13 @@ pub fn cbz(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
     // 保证导出目录存在
     std::fs::create_dir_all(&chapter_export_dir)
         .context(format!("创建目录`{}`失败", chapter_export_dir.display()))?;
+    // 先把封面拷贝到导出目录(如果有)
+    if let Err(err) = copy_cover(comic, &chapter_export_dir) {
+        let comic_title = &comic.name;
+        let err_title = format!("`{comic_title}`导出cbz时，将封面拷贝到导出目录失败");
+        let string_chain = err.to_string_chain();
+        tracing::error!(err_title, message = string_chain);
+    }
     // 并发处理
     let downloaded_chapter_infos = downloaded_chapter_infos.into_par_iter();
     downloaded_chapter_infos.try_for_each(|chapter_info| -> anyhow::Result<()> {
@@ -183,6 +190,18 @@ pub fn cbz(app: &AppHandle, comic: &Comic) -> anyhow::Result<()> {
         chapter_export_dir,
     }
     .emit(app);
+
+    Ok(())
+}
+
+fn copy_cover(comic: &Comic, chapter_export_dir: &Path) -> anyhow::Result<()> {
+    let src_cover_path = comic.get_cover_path().context("获取封面路径失败")?;
+    let cover_filename = src_cover_path.file_name().context("获取封面的文件名失败")?;
+
+    if src_cover_path.exists() {
+        let dst_cover_path = chapter_export_dir.join(cover_filename);
+        std::fs::copy(src_cover_path, dst_cover_path)?;
+    }
 
     Ok(())
 }
