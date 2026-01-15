@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 // TODO: 用`#![allow(clippy::used_underscore_binding)]`来消除警告
@@ -7,6 +8,7 @@ use indexmap::IndexMap;
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
+use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use walkdir::WalkDir;
@@ -307,20 +309,23 @@ pub async fn download_all_favorites(app: AppHandle) -> CommandResult<()> {
     let first_page = jm_client
         .get_favorite_folder(0, 1, FavoriteSort::FavoriteTime)
         .await
-        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+        .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
     favorite_comics.extend(first_page.list);
     // 计算总页数
     let count = first_page.count;
     let total = first_page
         .total
         .parse::<i64>()
-        .map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+        .map_err(|err| CommandError::from("获取收藏夹失败", err))?;
     let page_count = (total / count) + 1;
     // 获取收藏夹剩余页
+    let sem = Arc::new(Semaphore::new(5));
     let mut join_set = JoinSet::new();
     for page in 2..=page_count {
         let jm_client = jm_client.clone();
+        let sem = sem.clone();
         join_set.spawn(async move {
+            let _permit = sem.acquire().await?;
             let page = jm_client
                 .get_favorite_folder(0, page, FavoriteSort::FavoriteTime)
                 .await?;
@@ -330,7 +335,7 @@ pub async fn download_all_favorites(app: AppHandle) -> CommandResult<()> {
     // 等待所有请求完成
     while let Some(Ok(get_favorite_result)) = join_set.join_next().await {
         // 如果有请求失败，直接返回错误
-        let page = get_favorite_result.map_err(|err| CommandError::from("更新收藏夹失败", err))?;
+        let page = get_favorite_result.map_err(|err| CommandError::from("获取收藏夹失败", err))?;
         favorite_comics.extend(page.list);
     }
     // 至此，收藏夹已经全部获取完毕
