@@ -40,7 +40,7 @@ onMounted(async () => {
         </div>
         <div class="flex flex-col text-xs items-center text-gray-400">
           <div>
-            Copyright © 2024-2025
+            Copyright © 2024-2026
             <n-a href="https://github.com/lanyeeee" target="_blank">lanyeeee</n-a>
           </div>
           <div>
