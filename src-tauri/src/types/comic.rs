@@ -236,6 +236,17 @@ impl Comic {
         Ok(())
     }
 
+    pub fn get_cover_path(&self) -> anyhow::Result<PathBuf> {
+        let comic_download_dir = self
+            .comic_download_dir
+            .as_ref()
+            .context("`comic_download_dir`字段为`None`")?;
+
+        let cover_path = comic_download_dir.join("cover.jpg");
+
+        Ok(cover_path)
+    }
+
     fn update_chapter_infos_fields(&mut self) -> anyhow::Result<()> {
         let Some(comic_download_dir) = &self.comic_download_dir else {
             return Err(anyhow!("`comic_download_dir`字段为`None`"));

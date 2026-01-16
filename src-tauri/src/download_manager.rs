@@ -210,6 +210,7 @@ impl DownloadTask {
         let comic_title = &self.comic.name;
         let chapter_title = &self.chapter_info.chapter_title;
         let chapter_id = self.chapter_info.chapter_id;
+
         if let Err(err) = self.comic.save_comic_metadata() {
             let err_title = format!("`{comic_title}`保存元数据失败");
             let string_chain = err.to_string_chain();
@@ -220,6 +221,21 @@ impl DownloadTask {
 
             return;
         }
+
+        let should_download_cover = self.app.get_config().read().should_download_cover;
+        if should_download_cover {
+            if let Err(err) = self.download_cover().await {
+                let err_title = format!("`{comic_title}`下载封面失败");
+                let string_chain = err.to_string_chain();
+                tracing::error!(err_title, message = string_chain);
+
+                self.set_state(DownloadTaskState::Failed);
+                self.emit_download_task_update_event();
+
+                return;
+            }
+        }
+
         // 获取此章节每张图片的下载链接以及对应的block_num
         let Some(urls_with_block_num) = self.get_urls_with_block_num(chapter_id).await else {
             return;
@@ -283,6 +299,28 @@ impl DownloadTask {
 
         self.set_state(DownloadTaskState::Completed);
         self.emit_download_task_update_event();
+    }
+
+    async fn download_cover(&self) -> anyhow::Result<()> {
+        let cover_path = self.comic.get_cover_path().context("获取封面路径失败")?;
+        // if cover_path.exists() {
+        //     return Ok(());
+        // }
+
+        let comic_id = self.comic.id;
+        let url = format!("https://cdn-msp3.18comic.vip/media/albums/{comic_id}.jpg");
+
+        let (img_data, _format) = self
+            .app
+            .get_jm_client()
+            .get_img_data_and_format(&url)
+            .await
+            .context(format!("下载图片`{url}`失败"))?;
+
+        std::fs::write(&cover_path, img_data)
+            .context(format!("保存图片`{}`失败", cover_path.display()))?;
+
+        Ok(())
     }
 
     fn create_temp_download_dir(&self) -> Option<PathBuf> {
