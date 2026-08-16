@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { commands, SearchSort } from '../bindings.ts'
-import { useMessage } from 'naive-ui'
+import { DropdownOption, SelectProps, useMessage } from 'naive-ui'
 import ComicCard from '../components/ComicCard.vue'
 import FloatLabelInput from '../components/FloatLabelInput.vue'
 import { PhMagnifyingGlass } from '@phosphor-icons/vue'
-import { SelectProps } from 'naive-ui'
 import { useStore } from '../store.ts'
 
 const store = useStore()
@@ -23,6 +22,22 @@ const searchInput = ref<string>('')
 const searching = ref<boolean>(false)
 const sortSelected = ref<SearchSort>('Latest')
 const searchPage = ref<number>(1)
+const contextMenuX = ref<number>(0)
+const contextMenuY = ref<number>(0)
+const contextMenuShowing = ref<boolean>(false)
+const searchInputElement = ref<HTMLInputElement>()
+let selectionStart = 0
+let selectionEnd = 0
+
+const contextMenuOptions: DropdownOption[] = [
+  {
+    label: '粘贴',
+    key: 'paste',
+    props: {
+      onClick: pasteFromClipboard,
+    },
+  },
+]
 
 const searchPageCount = computed(() => {
   const PAGE_SIZE = 80
@@ -32,6 +47,42 @@ const searchPageCount = computed(() => {
   const total = store.searchResult.total
   return Math.ceil(total / PAGE_SIZE)
 })
+
+async function showContextMenu(event: MouseEvent) {
+  const target = event.target
+  if (!(target instanceof Element)) {
+    return
+  }
+  const inputElement = target.closest('.n-input')?.querySelector('input')
+  if (!(inputElement instanceof HTMLInputElement)) {
+    return
+  }
+
+  searchInputElement.value = inputElement
+  selectionStart = inputElement.selectionStart ?? inputElement.value.length
+  selectionEnd = inputElement.selectionEnd ?? inputElement.value.length
+  contextMenuShowing.value = false
+  await nextTick()
+  contextMenuX.value = event.clientX
+  contextMenuY.value = event.clientY
+  contextMenuShowing.value = true
+}
+
+async function pasteFromClipboard() {
+  contextMenuShowing.value = false
+  try {
+    const clipboardText = await navigator.clipboard.readText()
+    searchInput.value =
+      searchInput.value.slice(0, selectionStart) + clipboardText + searchInput.value.slice(selectionEnd)
+    const caretPosition = selectionStart + clipboardText.length
+    await nextTick()
+    searchInputElement.value?.focus()
+    searchInputElement.value?.setSelectionRange(caretPosition, caretPosition)
+  } catch (error) {
+    console.error(error)
+    message.error('无法读取剪贴板，请检查系统剪贴板权限')
+  }
+}
 
 async function search(keyword: string, page: number, sort: SearchSort) {
   if (searching.value) {
@@ -78,6 +129,7 @@ async function search(keyword: string, page: number, sort: SearchSort) {
         size="small"
         v-model:value="searchInput"
         clearable
+        @contextmenu="showContextMenu"
         @keydown.enter="search(searchInput.trim(), 1, sortSelected)" />
       <n-select
         class="w-45%"
@@ -119,5 +171,14 @@ async function search(keyword: string, page: number, sort: SearchSort) {
       :page-count="searchPageCount"
       :page="searchPage"
       @update:page="search(searchInput.trim(), $event, sortSelected)" />
+
+    <n-dropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :options="contextMenuOptions"
+      :show="contextMenuShowing"
+      :on-clickoutside="() => (contextMenuShowing = false)" />
   </div>
 </template>
