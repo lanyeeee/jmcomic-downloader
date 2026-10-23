@@ -79,6 +79,24 @@ impl Config {
         }
     }
 
+    pub fn get_api_domains(&self) -> Vec<String> {
+        let mut domains = vec![self.get_api_domain()];
+        if self.api_domain_mode != ApiDomainMode::Custom {
+            for domain in [
+                API_DOMAIN_1,
+                API_DOMAIN_2,
+                API_DOMAIN_3,
+                API_DOMAIN_4,
+                API_DOMAIN_5,
+            ] {
+                if domains[0] != domain {
+                    domains.push(domain.to_string());
+                }
+            }
+        }
+        domains
+    }
+
     fn merge_config(config_string: &str, app_data_dir: &Path) -> Config {
         let Ok(mut json_value) = serde_json::from_str::<serde_json::Value>(config_string) else {
             return Config::default(app_data_dir);
@@ -154,4 +172,49 @@ pub enum ExportSkipMode {
     SkipExisting,
     /// 跳过曾导出过的章节（即使本地文件已删除）
     SkipExported,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn built_in_domains_start_with_manual_selection_and_appear_once() {
+        for (mode, selected) in [
+            (ApiDomainMode::Domain1, API_DOMAIN_1),
+            (ApiDomainMode::Domain2, API_DOMAIN_2),
+            (ApiDomainMode::Domain3, API_DOMAIN_3),
+            (ApiDomainMode::Domain4, API_DOMAIN_4),
+            (ApiDomainMode::Domain5, API_DOMAIN_5),
+        ] {
+            let mut config = Config::default(Path::new("."));
+            config.api_domain_mode = mode;
+            let domains = config.get_api_domains();
+            assert_eq!(domains[0], selected);
+            assert_eq!(domains.len(), 5);
+            for domain in [
+                API_DOMAIN_1,
+                API_DOMAIN_2,
+                API_DOMAIN_3,
+                API_DOMAIN_4,
+                API_DOMAIN_5,
+            ] {
+                assert_eq!(
+                    domains
+                        .iter()
+                        .filter(|candidate| *candidate == domain)
+                        .count(),
+                    1
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn custom_domain_does_not_add_built_in_fallbacks() {
+        let mut config = Config::default(Path::new("."));
+        config.api_domain_mode = ApiDomainMode::Custom;
+        config.custom_api_domain = "api.example.test".to_string();
+        assert_eq!(config.get_api_domains(), vec!["api.example.test"]);
+    }
 }

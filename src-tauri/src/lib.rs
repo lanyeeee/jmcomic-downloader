@@ -14,6 +14,7 @@ use crate::errors::install_custom_eyre_handler;
 use crate::export::ComicExportLock;
 use crate::jm_client::JmClient;
 
+mod api_failover;
 mod commands;
 mod config;
 mod downloader;

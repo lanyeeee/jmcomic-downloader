@@ -35,6 +35,12 @@ https://github.com/user-attachments/assets/46096bd9-1fde-4474-b297-0f4389dbe770
 
 # ❓ 常见问题
 
+#### API 线路连接失败或返回网页怎么办？
+
+选择内置 API 线路时，搜索等请求会优先使用选定线路；遇到连接失败、超时、服务器错误或返回非 API 数据时，会依次尝试其他内置线路，并在本次运行中优先复用成功的线路。每条线路的一次尝试（含原有重试及读取响应）最多等待 15 秒，所有线路失败后显示各线路的失败原因。修改所选线路或代理设置后，会重新优先尝试选定线路。
+
+自定义 API 域名只使用填写的域名，不会切换到内置线路。账号或业务错误、HTTP 401/403/429 不会触发切换；收藏/取消收藏操作不会在其他线路重复提交。切换线路后，登录状态可能需要重新验证。此行为只涉及 API 请求，图片下载仍使用原有图片域名。
+
 - [为什么下载过程中CPU占用很高](https://github.com/lanyeeee/jmcomic-downloader/discussions/11)
 - [使用Ubuntu22.04时，搜索结果和收藏夹无法加载封面图](https://github.com/lanyeeee/jmcomic-downloader/discussions/31)
 - [使用Ubuntu24.04时，窗口全白](https://github.com/lanyeeee/jmcomic-downloader/discussions/32)

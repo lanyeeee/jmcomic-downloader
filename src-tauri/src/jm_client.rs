@@ -19,6 +19,7 @@ use serde_json::json;
 use tauri::AppHandle;
 use tracing::instrument;
 
+use crate::api_failover::{ApiFailover, ApiResponse};
 use crate::extensions::{AppHandleExt, EyreReportToMessage};
 use crate::responses::{
     GetChapterRespData, GetComicRespData, GetFavoriteRespData, GetUserProfileRespData,
@@ -70,6 +71,7 @@ pub struct JmClient {
     app: AppHandle,
     api_client: Arc<RwLock<ClientWithMiddleware>>,
     api_jar: Arc<Jar>,
+    api_failover: Arc<ApiFailover>,
     img_client: Arc<RwLock<ClientWithMiddleware>>,
 }
 
@@ -86,6 +88,7 @@ impl JmClient {
             app,
             api_client,
             api_jar,
+            api_failover: Arc::new(ApiFailover::default()),
             img_client,
         }
     }
@@ -93,6 +96,7 @@ impl JmClient {
     pub fn reload_client(&self) {
         let api_client = create_api_client(&self.app, &self.api_jar);
         *self.api_client.write() = api_client;
+        self.api_failover.reset();
         let img_client = create_img_client(&self.app);
         *self.img_client.write() = img_client;
     }
@@ -104,7 +108,7 @@ impl JmClient {
         query: Option<serde_json::Value>,
         form: Option<serde_json::Value>,
         ts: u64,
-    ) -> eyre::Result<reqwest::Response> {
+    ) -> eyre::Result<ApiResponse> {
         let tokenparam = format!("{ts},{APP_VERSION}");
         let token = if path == ApiPath::GetScrambleId {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET_2}"))
@@ -112,29 +116,34 @@ impl JmClient {
             utils::md5_hex(&format!("{ts}{APP_TOKEN_SECRET}"))
         };
 
-        let api_domain = self.app.get_config().read().get_api_domain();
+        let domains: Vec<String> = self
+            .app
+            .get_config()
+            .read()
+            .get_api_domains()
+            .into_iter()
+            .map(|domain| format!("https://{domain}"))
+            .collect();
+        // A favorite toggle may already have taken effect even if its response was lost.
+        let allow_failover =
+            !(method == reqwest::Method::POST && path == ApiPath::GetFavoriteFolder);
+        let api_domain = &domains[0];
         let path = path.as_str();
         let request = self
             .api_client
             .read()
-            .request(method, format!("https://{api_domain}{path}").as_str())
+            .request(method, format!("{api_domain}{path}").as_str())
             .header("token", token)
             .header("tokenparam", tokenparam)
             .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
 
-        let http_resp = match form {
-            Some(payload) => request.query(&query).form(&payload).send().await,
-            None => request.query(&query).send().await,
-        }
-        .map_err(|e| {
-            if e.is_timeout() {
-                eyre::Report::from(e).wrap_err("连接超时，请使用代理或换条线路重试")
-            } else {
-                eyre::Report::from(e)
-            }
-        })?;
-
-        Ok(http_resp)
+        let request = match form {
+            Some(payload) => request.query(&query).form(&payload),
+            None => request.query(&query),
+        };
+        self.api_failover
+            .send(request, &domains, allow_failover)
+            .await
     }
 
     async fn jm_get(
@@ -142,7 +151,7 @@ impl JmClient {
         path: ApiPath,
         query: Option<serde_json::Value>,
         ts: u64,
-    ) -> eyre::Result<reqwest::Response> {
+    ) -> eyre::Result<ApiResponse> {
         self.jm_request(reqwest::Method::GET, path, query, None, ts)
             .await
     }
@@ -153,7 +162,7 @@ impl JmClient {
         query: Option<serde_json::Value>,
         payload: Option<serde_json::Value>,
         ts: u64,
-    ) -> eyre::Result<reqwest::Response> {
+    ) -> eyre::Result<ApiResponse> {
         self.jm_request(reqwest::Method::POST, path, query, payload, ts)
             .await
     }
@@ -172,8 +181,8 @@ impl JmClient {
         // 发送登录请求
         let http_resp = self.jm_post(ApiPath::Login, None, Some(form), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!(
                 "使用账号密码登录失败，预料之外的状态码({status}): {body}"
@@ -209,8 +218,8 @@ impl JmClient {
             .jm_post(ApiPath::GetUserProfile, None, None, ts)
             .await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status == reqwest::StatusCode::UNAUTHORIZED {
             return Err(eyre!("获取用户信息失败，Cookie无效或已过期，请重新登录"));
         } else if status != reqwest::StatusCode::OK {
@@ -262,8 +271,8 @@ impl JmClient {
         // 发送搜索请求
         let http_resp = self.jm_get(ApiPath::Search, Some(query), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!("搜索失败，预料之外的状态码({status}): {body}"));
         }
@@ -302,8 +311,8 @@ impl JmClient {
         // 发送获取漫画请求
         let http_resp = self.jm_get(ApiPath::GetComic, Some(query), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!("获取漫画失败，预料之外的状态码({status}): {body}"));
         }
@@ -335,8 +344,8 @@ impl JmClient {
         // 发送获取章节请求
         let http_resp = self.jm_get(ApiPath::GetChapter, Some(query), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!("获取章节失败，预料之外的状态码({status}): {body}"));
         }
@@ -375,8 +384,8 @@ impl JmClient {
         // 发送获取scramble_id请求
         let http_resp = self.jm_get(ApiPath::GetScrambleId, Some(query), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!(
                 "获取scramble_id失败，预料之外的状态码({status}): {body}"
@@ -414,8 +423,8 @@ impl JmClient {
             .jm_get(ApiPath::GetFavoriteFolder, Some(query), ts)
             .await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!("获取收藏夹失败，预料之外的状态码({status}): {body}"));
         }
@@ -445,8 +454,8 @@ impl JmClient {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let http_resp = self.jm_get(ApiPath::GetWeeklyInfo, None, ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!(
                 "获取每周必看信息失败，预料之外的状态码({status}): {body}"
@@ -489,8 +498,8 @@ impl JmClient {
         });
         let http_resp = self.jm_get(ApiPath::GetWeekly, Some(query), ts).await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!(
                 "获取每周必看信息失败，预料之外的状态码({status}): {body}"
@@ -527,8 +536,8 @@ impl JmClient {
             .jm_post(ApiPath::GetFavoriteFolder, None, Some(form), ts)
             .await?;
         // 检查http响应状态码
-        let status = http_resp.status();
-        let body = http_resp.text().await?;
+        let status = http_resp.status;
+        let body = http_resp.body;
         if status != reqwest::StatusCode::OK {
             return Err(eyre!(
                 "收藏/取消收藏 失败，预料之外的状态码({status}): {body}"
