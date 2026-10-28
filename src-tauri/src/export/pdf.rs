@@ -12,6 +12,7 @@ use lopdf::{
 };
 use parking_lot::Mutex;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::Serialize;
 use tauri::AppHandle;
 use tauri_specta::Event;
 use tracing::instrument;
@@ -20,8 +21,8 @@ use crate::{
     config::ExportSkipMode,
     events::ExportPdfEvent,
     export::{
-        get_downloaded_chapters, get_downloaded_chapters_by_ids, get_image_paths,
-        ComicExportLockGuard, ExportFormat,
+        build_export_targets, fmt_to_path, get_downloaded_chapters, get_downloaded_chapters_by_ids,
+        get_image_paths, to_fmt_vars, ComicExportLockGuard, ExportFormat, ExportTarget,
     },
     extensions::AppHandleExt,
     types::{ChapterInfo, Comic},
@@ -134,12 +135,34 @@ fn pdf_internal(
     skip_mode: ExportSkipMode,
     enable_merge: bool,
 ) -> eyre::Result<()> {
+    let export_targets = build_export_targets(app, comic, downloaded_chapters, ExportFormat::Pdf)?;
+
+    // 提前计算合并路径，`合并pdf目录格式`有误时在创建pdf前就报错
+    let merge_pdf_path = if enable_merge {
+        Some(get_merge_pdf_path(app, comic)?)
+    } else {
+        None
+    };
+
+    // 章节字段只能出现在格式的最后一层，所以所有章节都导出到同一个目录
+    let Some(first_target) = export_targets.first() else {
+        return Ok(());
+    };
+    let pdf_export_dir = first_target
+        .export_path
+        .parent()
+        .ok_or_eyre(format!(
+            "`{}`没有父目录",
+            first_target.export_path.display()
+        ))?
+        .to_path_buf();
+
     let create_event_uuid = uuid::Uuid::new_v4().to_string();
     // 发送开始创建pdf事件
     let _ = ExportPdfEvent::CreateStart {
         uuid: create_event_uuid.clone(),
         comic_title: comic.name.clone(),
-        total: downloaded_chapters.len() as u32,
+        total: export_targets.len() as u32,
     }
     .emit(app);
     // 如果success为false，drop时发送CreateError事件
@@ -151,11 +174,9 @@ fn pdf_internal(
     // 用来记录创建pdf的进度
     let created_count = Arc::new(AtomicU32::new(0));
 
-    let extension = ExportFormat::Pdf.extension();
-    let comic_export_dir = comic
-        .get_comic_export_dir(app)
-        .wrap_err("获取导出目录失败")?;
-    let pdf_export_dir = comic_export_dir.join(extension);
+    // 保证导出目录存在
+    std::fs::create_dir_all(&pdf_export_dir)
+        .wrap_err(format!("创建目录`{}`失败", pdf_export_dir.display()))?;
 
     // 章节和它们对应的pdf路径(用于合并)
     let chapter_with_pdf_path = Arc::new(Mutex::new(Vec::new()));
@@ -169,8 +190,13 @@ fn pdf_internal(
         .wrap_err("rayon线程池创建失败")?;
 
     thread_pool.install(|| {
-        let downloaded_chapters = downloaded_chapters.into_par_iter();
-        downloaded_chapters.try_for_each(|mut chapter_info| -> eyre::Result<()> {
+        let export_targets = export_targets.into_par_iter();
+        export_targets.try_for_each(|target| -> eyre::Result<()> {
+            let ExportTarget {
+                mut chapter_info,
+                export_path: pdf_path,
+            } = target;
+
             let _enter = current_span.enter();
             let span = tracing::error_span!(
                 "export_pdf_rayon",
@@ -186,22 +212,7 @@ fn pdf_internal(
                 .chapter_download_dir
                 .as_ref()
                 .ok_or_eyre("`chapter_download_dir`字段为`None`")?;
-            let chapter_download_dir_name = chapter_info
-                .get_chapter_download_dir_name()
-                .wrap_err("获取章节下载目录名失败")?;
-            let chapter_relative_dir = chapter_info
-                .get_chapter_relative_dir(comic)
-                .wrap_err("获取章节相对目录失败")?;
-            let chapter_export_dir = match chapter_relative_dir.parent() {
-                Some(parent) => pdf_export_dir.join(parent),
-                None => pdf_export_dir.clone(),
-            };
-            // 保证导出目录存在
-            std::fs::create_dir_all(&chapter_export_dir)
-                .wrap_err(format!("创建目录`{}`失败", chapter_export_dir.display()))?;
 
-            let pdf_path =
-                chapter_export_dir.join(format!("{chapter_download_dir_name}.{extension}"));
             // 跳过逻辑
             let should_skip = match skip_mode {
                 ExportSkipMode::SkipExported if chapter_info.is_pdf_exported => true,
@@ -263,9 +274,9 @@ fn pdf_internal(
     .emit(app);
 
     // 合并PDF
-    if enable_merge {
+    if let Some(merge_pdf_path) = merge_pdf_path {
         let chapter_and_pdf_path_pairs = std::mem::take(&mut *chapter_with_pdf_path.lock());
-        merge_pdf_files(app, comic, &comic_export_dir, chapter_and_pdf_path_pairs)?;
+        merge_pdf_files(app, comic, &merge_pdf_path, chapter_and_pdf_path_pairs)?;
     }
 
     Ok(())
@@ -276,7 +287,7 @@ fn pdf_internal(
 fn merge_pdf_files(
     app: &AppHandle,
     comic: &Comic,
-    comic_export_dir: &Path,
+    merge_pdf_path: &Path,
     mut chapter_and_pdf_path_pairs: Vec<(ChapterInfo, PathBuf)>,
 ) -> eyre::Result<()> {
     chapter_and_pdf_path_pairs.sort_by(|(a, _), (b, _)| a.order.cmp(&b.order));
@@ -300,14 +311,15 @@ fn merge_pdf_files(
         success: false,
     };
 
-    let extension = ExportFormat::Pdf.extension();
-    let comic_download_dir_name = comic
-        .get_comic_download_dir_name()
-        .wrap_err("获取漫画下载目录名失败")?;
-    let save_path = comic_export_dir.join(format!("{comic_download_dir_name}.{extension}"));
+    // 保证合并pdf的目录存在
+    let merge_pdf_dir = merge_pdf_path
+        .parent()
+        .ok_or_eyre(format!("`{}`没有父目录", merge_pdf_path.display()))?;
+    std::fs::create_dir_all(merge_pdf_dir)
+        .wrap_err(format!("创建目录`{}`失败", merge_pdf_dir.display()))?;
 
     // 合并pdf
-    merge_pdf_file(chapter_pdf_paths, &save_path).wrap_err("合并pdf失败")?;
+    merge_pdf_file(chapter_pdf_paths, merge_pdf_path).wrap_err("合并pdf失败")?;
 
     // 发送合并pdf进度事件
     let _ = ExportPdfEvent::MergeProgress {
@@ -321,10 +333,42 @@ fn merge_pdf_files(
     let _ = ExportPdfEvent::MergeEnd {
         uuid: merge_event_uuid,
         comic_id: comic.id,
-        chapter_export_dir: save_path,
+        chapter_export_dir: merge_pdf_path.to_path_buf(),
     }
     .emit(app);
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct MergePdfFmtParams {
+    comic_id: i64,
+    comic_title: String,
+    author: String,
+}
+
+/// 按`合并pdf目录格式`计算合并pdf的路径
+///
+/// 例如格式为`{comic_title}/{comic_title}`，《蓦然回首》合并后的路径是`导出目录/蓦然回首/蓦然回首.pdf`
+#[instrument(level = "error", skip_all, fields(comic_id = comic.id, comic_title = comic.name))]
+fn get_merge_pdf_path(app: &AppHandle, comic: &Comic) -> eyre::Result<PathBuf> {
+    let (export_dir, merge_pdf_fmt) = {
+        let config = app.get_config();
+        let config = config.read();
+        (config.export_dir.clone(), config.merge_pdf_fmt.clone())
+    };
+
+    let fmt_params = MergePdfFmtParams {
+        comic_id: comic.id,
+        comic_title: comic.name.clone(),
+        author: comic.author.join(", "),
+    };
+    let vars = to_fmt_vars(&fmt_params)?;
+
+    let extension = ExportFormat::Pdf.extension();
+    let merge_pdf_path = fmt_to_path(&export_dir, &merge_pdf_fmt, &vars, extension)
+        .wrap_err("按`合并pdf目录格式`生成路径失败")?;
+
+    Ok(merge_pdf_path)
 }
 
 /// 用`image_paths`中的图片创建PDF文件，保存到`pdf_path`

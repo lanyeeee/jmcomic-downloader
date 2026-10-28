@@ -33,6 +33,8 @@ pub struct Config {
     pub api_domain_mode: ApiDomainMode,
     pub custom_api_domain: String,
     pub should_download_cover: bool,
+    pub export_dir_fmt: String,
+    pub merge_pdf_fmt: String,
     pub create_pdf_concurrency: usize,
     pub enable_merge_pdf: bool,
     /// 导出跳过模式
@@ -126,6 +128,8 @@ impl Config {
             api_domain_mode: ApiDomainMode::Domain2,
             custom_api_domain: API_DOMAIN_2.to_string(),
             should_download_cover: true,
+            export_dir_fmt: "{comic_title}/{export_format}/{chapter_title}".to_string(),
+            merge_pdf_fmt: "{comic_title}/{comic_title}".to_string(),
             create_pdf_concurrency: cpu_core_num,
             enable_merge_pdf: true,
             export_skip_mode: ExportSkipMode::default(),

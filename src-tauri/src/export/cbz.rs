@@ -15,8 +15,8 @@ use crate::{
     config::ExportSkipMode,
     events::ExportCbzEvent,
     export::{
-        get_downloaded_chapters, get_downloaded_chapters_by_ids, get_image_paths,
-        ComicExportLockGuard, ExportFormat,
+        build_export_targets, get_downloaded_chapters, get_downloaded_chapters_by_ids,
+        get_image_paths, ComicExportLockGuard, ExportFormat, ExportTarget,
     },
     extensions::{AppHandleExt, EyreReportToMessage},
     types::{ChapterInfo, Comic, ComicInfo},
@@ -93,6 +93,21 @@ fn cbz_internal(
     downloaded_chapters: Vec<ChapterInfo>,
     skip_mode: ExportSkipMode,
 ) -> eyre::Result<()> {
+    let export_targets = build_export_targets(app, comic, downloaded_chapters, ExportFormat::Cbz)?;
+
+    // 章节字段只能出现在格式的最后一层，所以所有章节都导出到同一个目录
+    let Some(first_target) = export_targets.first() else {
+        return Ok(());
+    };
+    let cbz_export_dir = first_target
+        .export_path
+        .parent()
+        .ok_or_eyre(format!(
+            "`{}`没有父目录",
+            first_target.export_path.display()
+        ))?
+        .to_path_buf();
+
     // 生成格式化的xml
     let cfg = yaserde::ser::Config {
         perform_indent: true,
@@ -103,7 +118,7 @@ fn cbz_internal(
     let _ = ExportCbzEvent::Start {
         uuid: event_uuid.clone(),
         comic_title: comic.name.clone(),
-        total: downloaded_chapters.len() as u32,
+        total: export_targets.len() as u32,
     }
     .emit(app);
     // 如果success为false，drop时发送Error事件
@@ -115,11 +130,6 @@ fn cbz_internal(
     // 用来记录导出进度
     let current = Arc::new(AtomicU32::new(0));
 
-    let extension = ExportFormat::Cbz.extension();
-    let comic_export_dir = comic
-        .get_comic_export_dir(app)
-        .wrap_err("获取导出目录失败")?;
-    let cbz_export_dir = comic_export_dir.join(extension);
     // 保证导出目录存在
     std::fs::create_dir_all(&cbz_export_dir)
         .wrap_err(format!("创建目录`{}`失败", cbz_export_dir.display()))?;
@@ -131,8 +141,13 @@ fn cbz_internal(
     }
     // 并发处理
     let current_span = tracing::Span::current();
-    let downloaded_chapters = downloaded_chapters.into_par_iter();
-    downloaded_chapters.try_for_each(|mut chapter_info| -> eyre::Result<()> {
+    let export_targets = export_targets.into_par_iter();
+    export_targets.try_for_each(|target| -> eyre::Result<()> {
+        let ExportTarget {
+            mut chapter_info,
+            export_path: zip_path,
+        } = target;
+
         let _enter = current_span.enter();
         let span = tracing::error_span!(
             "export_cbz_rayon",
@@ -143,27 +158,11 @@ fn cbz_internal(
         );
         let _enter = span.enter();
 
-        // 获取导出路径
+        // 获取章节下载目录
         let chapter_download_dir = chapter_info
             .chapter_download_dir
             .as_ref()
             .ok_or_eyre("`chapter_download_dir`字段为`None`")?;
-        let chapter_download_dir_name = chapter_info
-            .get_chapter_download_dir_name()
-            .wrap_err("获取章节下载目录名失败")?;
-        let chapter_relative_dir = chapter_info
-            .get_chapter_relative_dir(comic)
-            .wrap_err("获取章节相对目录失败")?;
-        let chapter_export_dir = match chapter_relative_dir.parent() {
-            Some(parent) => cbz_export_dir.join(parent),
-            None => cbz_export_dir.clone(),
-        };
-
-        // 保证导出目录存在
-        std::fs::create_dir_all(&chapter_export_dir)
-            .wrap_err(format!("创建目录`{}`失败", chapter_export_dir.display()))?;
-
-        let zip_path = chapter_export_dir.join(format!("{chapter_download_dir_name}.{extension}"));
 
         // 跳过逻辑
         let should_skip = match skip_mode {

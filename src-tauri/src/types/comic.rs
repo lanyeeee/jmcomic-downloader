@@ -11,7 +11,7 @@ use tracing::instrument;
 use walkdir::WalkDir;
 
 use crate::{
-    extensions::{AppHandleExt, WalkDirEntryExt},
+    extensions::WalkDirEntryExt,
     responses::{GetComicRespData, RelatedListRespData},
     utils,
 };
@@ -167,49 +167,6 @@ impl Comic {
         comic.update_chapter_infos_fields()?;
 
         Ok(comic)
-    }
-
-    #[instrument(level = "error", skip_all, fields(comic_id = self.id, comic_title = self.name))]
-    pub fn get_comic_download_dir_name(&self) -> eyre::Result<String> {
-        let comic_download_dir = self
-            .comic_download_dir
-            .as_ref()
-            .ok_or_eyre("`comic_download_dir`字段为`None`")?;
-
-        let comic_download_dir_name = comic_download_dir
-            .file_name()
-            .ok_or_eyre(format!(
-                "获取`{}`的目录名失败",
-                comic_download_dir.display()
-            ))?
-            .to_string_lossy()
-            .to_string();
-
-        Ok(comic_download_dir_name)
-    }
-
-    #[instrument(level = "error", skip_all, fields(comic_id = self.id, comic_title = self.name))]
-    pub fn get_comic_export_dir(&self, app: &AppHandle) -> eyre::Result<PathBuf> {
-        let (download_dir, export_dir) = {
-            let config = app.get_config();
-            let config = config.read();
-            (config.download_dir.clone(), config.export_dir.clone())
-        };
-
-        let Some(comic_download_dir) = self.comic_download_dir.clone() else {
-            return Err(eyre!("`comic_download_dir`字段为`None`"));
-        };
-
-        let relative_dir = comic_download_dir
-            .strip_prefix(&download_dir)
-            .wrap_err(format!(
-                "无法从路径`{}`中移除前缀`{}`",
-                comic_download_dir.display(),
-                download_dir.display()
-            ))?;
-
-        let comic_export_dir = export_dir.join(relative_dir);
-        Ok(comic_export_dir)
     }
 
     #[instrument(level = "error", skip_all, fields(comic_id = self.id, comic_title = self.name))]

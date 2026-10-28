@@ -8,8 +8,6 @@ use tracing::instrument;
 
 use crate::{extensions::AppHandleExt, utils};
 
-use super::Comic;
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 #[serde(default)]
@@ -87,39 +85,6 @@ impl ChapterInfo {
             .wrap_err(format!("写入文件`{}`失败", metadata_path.display()))?;
 
         Ok(())
-    }
-
-    #[instrument(
-        level = "error",
-        skip_all,
-        fields(
-            comic_id = comic.id,
-            comic_title = comic.name,
-            chapter_id = self.chapter_id,
-            chapter_title = self.chapter_title,
-            order = self.order
-        )
-    )]
-    pub fn get_chapter_relative_dir(&self, comic: &Comic) -> eyre::Result<PathBuf> {
-        let comic_download_dir = comic
-            .comic_download_dir
-            .as_ref()
-            .ok_or_eyre("`comic_download_dir`字段为`None`")?;
-
-        let chapter_download_dir = self
-            .chapter_download_dir
-            .as_ref()
-            .ok_or_eyre("`chapter_download_dir`字段为`None`")?;
-
-        let relative_dir = chapter_download_dir
-            .strip_prefix(comic_download_dir)
-            .wrap_err(format!(
-                "无法从路径`{}`中移除前缀`{}`",
-                chapter_download_dir.display(),
-                comic_download_dir.display()
-            ))?;
-
-        Ok(relative_dir.to_path_buf())
     }
 
     #[instrument(
